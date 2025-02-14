@@ -1,4 +1,13 @@
-# MatEnsemble
+                      <div align="center">
+
+```ascii
+    __  ___      __  ______                           __    __     
+   /  |/  /___ _/ /_/ ____/___  ________  ____ ___  / /_  / /__  
+  / /|_/ / __ `/ __/ __/ / __ \/ ___/ _ \/ __ `__ \/ __ \/ / _ \ 
+ / /  / / /_/ / /_/ /___/ / / (__  )  __/ / / / / / /_/ / /  __/ 
+/_/  /_/\__,_/\__/_____/_/ /_/____/\___/_/ /_/ /_/_.___/_/\___/  # MatEnsemble
+
+
 
 An adaptive and highly asynchronous ensemble simulation workflow manager
 
