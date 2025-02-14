@@ -35,17 +35,17 @@ dependencies:
   - make
   ```
 
-# Create and activate conda environment:
+## Create and activate conda environment:
 ```bash
 conda env create -f environment.yaml
 conda activate matensemble
 ```
 
-# Install Python dependencies
+### Install Python dependencies
 ```bash
 pip install -r requirements.txt
 ```
-# Install package in development mode
+### Install package in development mode
 ```bash
 pip install -e .
 ```
