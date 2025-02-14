@@ -8,7 +8,7 @@
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
  <img src="images/Logo-Matensemble.png" alt="MatEnsemble Logo" width="800"/>
-```
+```asci
 An adaptive and highly asynchronous ensemble simulation workflow manager
  with in-memory dynamics (GPU) and on-the-fly analysis (CPU) capabilties.
 ```
