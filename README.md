@@ -7,8 +7,8 @@ An adaptive and highly asynchronous ensemble simulation workflow manager
 ### Prerequisites
 - Anaconda or Miniconda
 - Git
-- C++ compiler (gcc/clang)
-- CMake
+- (optional) C++ compiler (gcc/clang) (for online MD using lammps, mg etc.)
+- (optional) CMake
 
 ### Quick Install
 ```bash
