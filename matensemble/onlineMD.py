@@ -8,7 +8,7 @@ __package__= 'matensemble'
 
 
 
-def onlineMD(candidate_parameters, initial_parameters_file=None,MD_tasks=56):        
+def onlineMD(candidate_parameters, initial_parameters_file=None,MD_tasks=56, task_command='driver.py'):        
      # create a list of task indicators; In the following I use integers as task-IDs. 
 
     N_task = len(candidate_parameters)
@@ -16,7 +16,7 @@ def onlineMD(candidate_parameters, initial_parameters_file=None,MD_tasks=56):
 
     # spceify the basic command/executable-filepath used to execute the task (you can skip any mpirun/srun prefixes, and also any *args, **kwargs at this point)
 
-    task_command = '/autofs/nccs-svm1_proj/cph162/python_environments/matensemble_env/lib/python3.11/site-packages/matensemble/matensemble/driver.py' #'mpi_helloworld.py' #make sure to make it executable by `chmod u+x <file.py>`
+    # task_command = '/autofs/nccs-svm1_proj/cph162/python_environments/matensemble_env/lib/python3.11/site-packages/matensemble/matensemble/driver.py' #'mpi_helloworld.py' #make sure to make it executable by `chmod u+x <file.py>`
 
     # Now instatiate a task_manager object which is a Superflux Manager sitting on top of evey smaller Fluxlets
 
