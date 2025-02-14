@@ -40,3 +40,13 @@ dependencies:
 conda env create -f environment.yaml
 conda activate matensemble
 ```
+
+# Install Python dependencies
+```bash
+pip install -r requirements.txt
+```
+# Install package in development mode
+```bash
+pip install -e .
+```
+
