@@ -11,6 +11,9 @@
 An adaptive and highly asynchronous ensemble simulation workflow manager
  with in-memory dynamics (GPU) and on-the-fly analysis (CPU) capabilties.
 
+## Core Capabiliies:
+- Adaptive task management (with the ability to integrate with autonmous data acquistion algorirthms)
+ <img src="images/cap-1_adaptive_task-sched.png" alt="Adaptive-task-management" width="400"/>
 
 ## Installation Guide
 
