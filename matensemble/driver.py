@@ -2,8 +2,8 @@
 
 from mpi4py import MPI
 import json
-from XATOMS.task_lib.MDSubprocess import *
-from XATOMS.task_lib.AnalysisSubprocess import *
+from dynopro.task_lib.MDSubprocess import *
+from dynopro.task_lib.AnalysisSubprocess import *
 import sys
 import os
 

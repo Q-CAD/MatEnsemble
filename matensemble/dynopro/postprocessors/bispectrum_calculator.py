@@ -1,8 +1,7 @@
-from utils.lammps_init import initilize_from_MD, initialize_from_poscar
+from dynopro.utils.lammps_init import initilize_from_MD, initialize_from_poscar
 import numpy as np
 from lammps import LMP_STYLE_ATOM, LMP_TYPE_ARRAY
 import sys
-import
 
 def SNAP(cutfac, rfrac0, twojmax, R, w, structure=None,lmp_snapshot=None):
 

@@ -1,5 +1,5 @@
-from XATOMS.postprocessors.ovito_calculators import OvitoCalculators
-from XATOMS.postprocessors import compute_twist, compute_diffraction
+from dynopro.postprocessors.ovito_calculators import OvitoCalculators
+from dynopro.postprocessors import compute_twist, compute_diffraction
 import math
 
 def AnalysisSubprocess(comm, input_params):

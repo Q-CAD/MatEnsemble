@@ -1,4 +1,4 @@
-from XATOMS.postprocessors.bispectrum_calculator import SNAP  
+from dynopro.postprocessors.bispectrum_calculator import SNAP  
 import math
 
 def AnalysisSubprocess(comm, input_params):
