@@ -13,9 +13,10 @@ An adaptive and highly asynchronous ensemble simulation workflow manager
 
 ## Core Capabiliies:
 - Adaptive task management (with the ability to integrate with autonmous data acquistion algorirthms)
- <img src="images/Cap_1_adaptive_task_management.png" alt="Adaptive-task-management" width="400"/>
+ <img src="images/Cap_1_adaptive_task_management.png" alt="Adaptive-task-management" width="600"/>
+
 - On-the-fly streaming of materials dynamics with custom analysis algorithms
- <img src="images/Cap_2_dynopro.png" alt="Adaptive-task-management" width="400"/>
+ <img src="images/Cap_2_dynopro.png" alt="on-the-fly dynamics" width="600"/>
 
 ## Installation Guide
 
