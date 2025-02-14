@@ -15,7 +15,8 @@
 
 
 
-An adaptive and highly asynchronous ensemble simulation workflow manager with in-memory dynamics (GPU) and on-the-fly analysis (CPU) capabilties.
+An adaptive and highly asynchronous ensemble simulation workflow manager with in-memory dynamics \\
+(GPU) and on-the-fly analysis (CPU) capabilties.
 ```
 
 ## Installation Guide
