@@ -1,5 +1,7 @@
   # MatEnsemble
 
+<img src="images/Logo-Matensemble.png" alt="MatEnsemble Logo" width="200"/>
+
 [![PyPI version](https://badge.fury.io/py/matensemble.svg)](https://badge.fury.io/py/matensemble)
 [![Documentation Status](https://readthedocs.org/projects/matensemble/badge/?version=latest)](https://matensemble.readthedocs.io/en/latest/?badge=latest)
 <!-- [![Build Status](https://github.com/username/matensemble/workflows/Build/badge.svg)](https://github.com/username/matensemble/actions) -->
