@@ -10,9 +10,33 @@ An adaptive and highly asynchronous ensemble simulation workflow manager
 - (optional) C++ compiler (gcc/clang) (for online MD using lammps, mg etc.)
 - (optional) CMake
 
-### Quick Install
+### Quick Install (linux systems)
 ```bash
 git clone https://github.com/your-username/matensemble.git
 cd matensemble
 chmod +x install.sh
 ./install.sh
+```
+### Customized Install
+Environment Setup (`environment.yaml`)
+
+```bash
+# filepath: environment.yaml
+name: matensemble
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - flux-core>=0.48.0
+  - flux-sched>=0.25.0
+  - cmake>=3.20
+  - gcc>=11.0
+  - make
+  ```
+
+# Create and activate conda environment:
+```bash
+conda env create -f environment.yaml
+conda activate matensemble
+```
