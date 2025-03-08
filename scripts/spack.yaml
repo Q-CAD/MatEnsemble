@@ -1,0 +1,279 @@
+spack:
+  specs:
+  - flux-sched
+  view: false
+  config:
+    connect_timeout: 60
+  concretizer:
+    unify: when_possible
+    reuse: false
+  repos:
+  - $spack/var/spack/repos/builtin
+  compilers:
+  - compiler:
+      spec: gcc@=12.2.0
+      paths:
+        cc: /opt/cray/pe/gcc/12.2.0/bin/gcc
+        cxx: /opt/cray/pe/gcc/12.2.0/bin/g++
+        f77: /opt/cray/pe/gcc/12.2.0/bin/gfortran
+        fc: /opt/cray/pe/gcc/12.2.0/bin/gfortran
+      flags: {}
+      operating_system: sles15
+      target: x86_64
+      modules: []
+      environment: {}
+      extra_rpaths: [/opt/rocm-6.2.4/llvm/lib/]
+  packages:
+    all:
+      variants: [+rocm amdgpu_target=gfx90a]
+      compiler: [gcc@=12.2.0]
+      providers:
+        mpi: [cray-mpich]
+        blas: [openblas]
+        lapack: [openblas]
+    cray-mpich:
+      externals:
+      - spec: cray-mpich@8.1.31
+        prefix: /opt/cray/pe/mpich/8.1.31/ofi/rocm-compiler/6.0/
+      buildable: false
+    libfabric:
+      externals:
+      - spec: libfabric@1.22.0
+        prefix: /opt/cray/libfabric/1.22.0/
+      buildable: false
+    rocm:
+      externals:
+      - spec: rocm@6.2.4
+        prefix: /opt/rocm-6.2.4/
+        modules: [rocm/6.2.4]
+      buildable: false
+    llvm:
+      externals:
+      - spec: llvm@18.0.0+clang~lld~lldb
+        prefix: /opt/rocm-6.2.4/llvm/
+        extra_attributes:
+          compilers:
+            c: /opt/rocm-6.2.4/bin/amdclang
+            cxx: /opt/rocm-6.2.4/bin/amdclang++
+      buildable: false
+    hip:
+      externals:
+      - spec: hip@6.2.4
+        prefix: /opt/rocm-6.2.4/hip
+      buildable: false
+    hipblas:
+      externals:
+      - spec: hipblas@6.2.4
+        prefix: /opt/rocm-6.2.4
+      buildable: false
+    hiprand:
+      externals:
+      - spec: hiprand@6.2.4
+        prefix: /opt/rocm-6.2.4
+    hipsolver:
+      externals:
+      - spec: hipsolver@6.2.4
+        prefix: /opt/rocm-6.2.4
+      buildable: false
+    hipsparse:
+      externals:
+      - spec: hipsparse@6.2.4
+        prefix: /opt/rocm-6.2.4
+      buildable: false
+    hsa-rocr-dev:
+      externals:
+      - spec: hsa-rocr-dev@6.2.4
+        prefix: /opt/rocm-6.2.4
+      buildable: false
+    migraphx:
+      externals:
+      - spec: migraphx@6.2.4
+        prefix: /opt/rocm-6.2.4
+      buildable: false
+    miopen-hip:
+      externals:
+      - spec: miopen-hip@6.2.4
+        prefix: /opt/rocm-6.2.4
+      buildable: false
+    miopen-opencl:
+      externals:
+      - spec: miopen-opencl@6.2.4
+        prefix: /opt/rocm-6.2.4
+      buildable: false
+    rccl:
+      externals:
+      - spec: rccl@6.2.4
+        prefix: /opt/rocm-6.2.4
+      buildable: false
+    rocblas:
+      externals:
+      - spec: rocblas@6.2.4
+        prefix: /opt/rocm-6.2.4
+      buildable: false
+    rocfft:
+      externals:
+      - spec: rocfft@6.2.4
+        prefix: /opt/rocm-6.2.4
+      buildable: false
+    rocm-smi-lib:
+      externals:
+      - spec: rocm-smi-lib@6.2.4
+        prefix: /opt/rocm-6.2.4
+      buildable: false
+    rocrand:
+      externals:
+      - spec: rocrand@6.2.4
+        prefix: /opt/rocm-6.2.4
+      buildable: false
+    rocsolver:
+      externals:
+      - spec: rocsolver@6.2.4
+        prefix: /opt/rocm-6.2.4
+      buildable: false
+    rocsparse:
+      externals:
+      - spec: rocsparse@6.2.4
+        prefix: /opt/rocm-6.2.4
+      buildable: false
+    roctracer-dev:
+      externals:
+      - spec: roctracer-dev@6.2.4
+        prefix: /opt/rocm-6.2.4/
+      buildable: false
+    hipcub:
+      externals:
+      - spec: hipcub@6.2.4
+        prefix: /opt/rocm-6.2.4/
+      buildable: false
+    hipfft:
+      externals:
+      - spec: hipfft@6.2.4
+        prefix: /opt/rocm-6.2.4
+      buildable: false
+    rocminfo:
+      externals:
+      - spec: rocminfo@6.2.4
+        prefix: /opt/rocm-6.2.4/
+      buildable: false
+    rocprofiler-dev:
+      externals:
+      - spec: rocprofiler-dev@6.2.4
+        prefix: /opt/rocm-6.2.4
+      buildable: false
+    rocthrust:
+      externals:
+      - spec: rocthrust@6.2.4
+        prefix: /opt/rocm-6.2.4/
+      buildable: false
+    rocprim:
+      externals:
+      - spec: rocprim@6.2.4
+        prefix: /opt/rocm-6.2.4/
+      buildable: false
+    miopengemm:
+      externals:
+      - spec: miopengemm@6.2.4
+        prefix: /opt/rocm-6.2.4
+      buildable: false
+    binutils:
+      externals:
+      - spec: binutils@2.39.0
+        prefix: /usr
+      buildable: false
+    coreutils:
+      externals:
+      - spec: coreutils@8.32
+        prefix: /usr
+      buildable: false
+    diffutils:
+      externals:
+      - spec: diffutils@3.6
+        prefix: /usr
+      buildable: false
+    findutils:
+      externals:
+      - spec: findutils@4.8.0
+        prefix: /usr
+      buildable: false
+    gawk:
+      externals:
+      - spec: gawk@4.2.1
+        prefix: /usr
+      buildable: false
+    openssh:
+      externals:
+      - spec: openssh@8.4p1
+        prefix: /usr
+      buildable: false
+    openssl:
+      externals:
+      - spec: openssl@1.1.1l
+        prefix: /usr
+      buildable: false
+    tar:
+      externals:
+      - spec: tar@1.34
+        prefix: /usr
+      buildable: false
+    autoconf:
+      externals:
+      - spec: autoconf@2.69
+        prefix: /usr
+      buildable: false
+    automake:
+      externals:
+      - spec: automake@1.15.1
+        prefix: /usr
+      buildable: false
+    bison:
+      externals:
+      - spec: bison@3.0.4
+        prefix: /usr
+      buildable: false
+    cmake:
+      externals:
+      - spec: cmake@3.27.9
+        prefix: /sw/frontier/spack-envs/core-24.07/opt/gcc-7.5.0/cmake-3.27.9-pyxnvhiskwepbw5itqyipzyhhfw3yitk/
+      buildable: false
+    curl:
+      externals:
+      - spec: curl@7.79.1+gssapi+ldap+nghttp2
+        prefix: /usr
+      buildable: true
+    flex:
+      externals:
+      - spec: flex@2.6.4+lex
+        prefix: /usr
+      buildable: false
+    git:
+      externals:
+      - spec: git@2.35.3+tcltk
+        prefix: /usr
+      buildable: false
+    gmake:
+      externals:
+      - spec: gmake@4.2.1
+        prefix: /usr
+      buildable: false
+    groff:
+      externals:
+      - spec: groff@1.22.4
+        prefix: /usr
+      buildable: false
+    m4:
+      externals:
+      - spec: m4@1.4.18
+        prefix: /usr
+      buildable: false
+    pkg-config:
+      externals:
+      - spec: pkg-config@0.29.2
+        prefix: /usr
+      buildable: false
+    fftw:
+      externals:
+      - spec: fftw@3.3.10
+        prefix: /opt/cray/pe/fftw/3.3.10.3/x86_trento/
+        modules: [cray-fftw]
+      buildable: false
+
