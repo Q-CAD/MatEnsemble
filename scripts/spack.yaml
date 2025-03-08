@@ -1,6 +1,6 @@
 spack:
   specs:
-  - flux-sched
+  - flux-sched@0.36.1^flux-core@0.66.0^py-jsonschema@4.17.3
   view: false
   config:
     connect_timeout: 60

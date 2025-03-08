@@ -10,8 +10,10 @@ module load libfabric/1.22.0
 # Install Spack and build environment
 git clone https://github.com/spack/spack.git
 . spack/share/spack/setup-env.sh
+export TMPDIR=
 spack env create matensemble_spack_env spack.yaml
 spack env activate matensemble_spack_env
+cat spack_packages.json | jq -r '.[] | .spec' | xargs -I {} spack add {}
 spack install # This will take a while
 
 
