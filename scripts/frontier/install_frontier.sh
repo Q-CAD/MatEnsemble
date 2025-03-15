@@ -19,16 +19,11 @@ spack install # This will take a while
 
 # Create and activate conda environment
 conda env create -f environment.yaml
-conda activate matensemble
+conda activate matensemble_env
 
-# Clone and build LAMMPS
-git clone https://github.com/lammps/lammps.git
-cd lammps
-mkdir build
-cd build
-cmake ../cmake -D BUILD_MPI=yes -D PKG_MANYBODY=yes -D PKG_MOLECULE=yes
-make -j4
-make install
+# Clone and build LAMMPS and mpi4py from source
+chmod +x build_lammps.sh
+./build_lammps.sh
 
 # Install Python dependencies
 pip install -r requirements.txt
