@@ -28,7 +28,7 @@ An adaptive and highly asynchronous ensemble simulation workflow manager
 
 ### Quick Install (linux systems)
 ```bash
-git clone https://github.com/your-username/matensemble.git
+git clone https://github.com/Q-CAD/MatEnsemble.git
 cd matensemble
 chmod +x install.sh
 ./install.sh
