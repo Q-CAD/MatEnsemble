@@ -1,4 +1,4 @@
-from matensemble.matflux import SuperFluxManager
+from matensemble.dynopro.ensemble import EnsembleDynamicsRunner
 import numpy as np
 import pandas as pd
 import os
@@ -8,21 +8,11 @@ __package__= 'matensemble'
 
 
 
-def onlineMD(candidate_parameters, initial_parameters_file=None,MD_tasks=56, task_command='driver.py'):        
+def ht_ensemble_md(candidate_parameters, initial_parameters_file=None,MD_tasks=56):        
      # create a list of task indicators; In the following I use integers as task-IDs. 
 
-    N_task = len(candidate_parameters)
-    task_list = list(np.arange(N_task))
-
-    # spceify the basic command/executable-filepath used to execute the task (you can skip any mpirun/srun prefixes, and also any *args, **kwargs at this point)
-
-    # task_command = '/autofs/nccs-svm1_proj/cph162/python_environments/matensemble_env/lib/python3.11/site-packages/matensemble/matensemble/driver.py' #'mpi_helloworld.py' #make sure to make it executable by `chmod u+x <file.py>`
-
-    # Now instatiate a task_manager object which is a Superflux Manager sitting on top of evey smaller Fluxlets
-
-    if initial_parameters_file==None:
-        master = SuperFluxManager(task_list, task_command, None, tasks_per_job=MD_tasks, cores_per_task=1, gpus_per_task=0, write_restart_freq=5)
-
+    N_sim = len(candidate_parameters)
+    sim_list = list(np.arange(N_sim))
 
     # Input argument list specific to each task in the sorted as task_ids
     import json
@@ -34,27 +24,49 @@ def onlineMD(candidate_parameters, initial_parameters_file=None,MD_tasks=56, tas
         except:
             print (f"Have to sepcify initial_paramters file to setup MD")
 
-    master = SuperFluxManager(task_list, task_command, None, tasks_per_job=input_params['tasks_per_job'], cores_per_task=input_params['cores_per_task'], gpus_per_task=input_params['gpus_per_task'], write_restart_freq=input_params['write_restart_freq'])
-    task_args_list = []
-    gen_task_dir_list = []
+    sim_args_list = []
+    gen_sim_dir_list = []
 
-    for i in range(N_task):
+    for i in range(N_sim):
+
         input_params['heat']['T_heat']=candidate_parameters[i]['Temp_K']
         input_params['lattice_strain']=candidate_parameters[i]['Strain']
         input_params['shear_strain']=candidate_parameters[i]['Shear_Strain']
-        task_args_list.append(json.dumps(input_params))
-        gen_task_dir_list.append(f'{candidate_parameters[i]["Temp_K"]}_K_{candidate_parameters[i]["Strain"]}_lattice_{candidate_parameters[i]["Shear_Strain"]}_shear')
+        sim_args_list.append(json.dumps(input_params))
+        gen_sim_dir_list.append(f'{candidate_parameters[i]["Temp_K"]}_K_{candidate_parameters[i]["Strain"]}_lattice_{candidate_parameters[i]["Shear_Strain"]}_shear')
 
-    # For multiple args per task each if the elements could be a list i.e. task_args_list = [['x0f','x14'],['xa9','xf3'],[]...]
-    # finally execute the whole pool of tasks
-    master.poolexecutor(task_args_list, buffer_time=0.1, task_dir_list=gen_task_dir_list)
-
+        
+    edr = EnsembleDynamicsRunner(sim_list=sim_list, \
+                                sim_args_list=sim_args_list, \
+                                sim_dir_list=gen_sim_dir_list, \
+                                tasks_per_job=input_params['tasks_per_job'], \
+                                cores_per_task=1,\
+                                gpus_per_task=input_params['gpus_per_task'], \
+                                write_restart_freq=input_params['write_restart_freq'], \
+                                buffer_time=0.1)
+    # run the ensemble of MD simulations
+    edr.run()
+   
 
     if 'return_output' in input_params.keys():
-        return gather_data(gen_task_dir_list, input_params['return_output'])
+        return gather_data(gen_sim_dir_list, input_params['return_output'])
     else:
         
         return 
+
+
+from matensemble.dynopro.task_lib.analysis_registry import AnalysisRegistry
+
+@AnalysisRegistry.register('my_custom_analysis')
+def my_custom_analysis(data, params):
+    # Your custom analysis code here
+    result = some_calculation(data, **params)
+    
+    # Save results
+    with open(f'custom_analysis_{data.timestep}', 'w') as file:
+        file.write(f'time-step result\n')
+        file.write(f'{data.timestep} {result}')
+
 
 def gather_data(dirs, params):
 

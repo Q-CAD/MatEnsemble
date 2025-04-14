@@ -1,5 +1,6 @@
 from matensemble.dynopro.postprocessors.ovito_calculators import OvitoCalculators
 from matensemble.dynopro.postprocessors import compute_twist, compute_diffraction
+from matensemble.dynopro.task_lib.analysis_registry import AnalysisRegistry
 import math
 
 def AnalysisSubprocess(comm, input_params):
@@ -45,18 +46,26 @@ def AnalysisSubprocess(comm, input_params):
                                 file.write(f'time-step twist-angle\n')
                                 file.write(f'{data.timestep} {twist_angle}')
 
-                if 'target_window' in input_params['compute_twist'].keys():
-                        
-                        assert input_params['compute_twist']['grid_resolution']>1, f"Grid resolution has to be greater than 1 for for a multigrid coverage analysis"
+                        if 'target_window' in input_params['compute_twist'].keys():
+                                
+                                assert input_params['compute_twist']['grid_resolution']>1, f"Grid resolution has to be greater than 1 for for a multigrid coverage analysis"
 
-                        from matensemble.dynopro.utils.stat import get_probability
-                        prob = get_probability(twist_angle, target_window=input_params['compute_twist']['target_window'])
-                        with open(f'coverage_probability_{data.timestep}', 'w') as file:
-                                file.write(f'time-step coverage_prob min_twist max_twist\n')
-                                file.write(f'{data.timestep} {prob} {input_params["compute_twist"]["target_window"][0]} {input_params["compute_twist"]["target_window"][1]}')
+                                from matensemble.dynopro.utils.stat import get_probability
+                                prob = get_probability(twist_angle, target_window=input_params['compute_twist']['target_window'])
+                                with open(f'coverage_probability_{data.timestep}', 'w') as file:
+                                        file.write(f'time-step coverage_prob min_twist max_twist\n')
+                                        file.write(f'{data.timestep} {prob} {input_params["compute_twist"]["target_window"][0]} {input_params["compute_twist"]["target_window"][1]}')
 
-                
-        
+
+                 # Execute registered analyses
+                registered_analyses = AnalysisRegistry.get_registered_analyses()
+                for analysis_name, analysis_func in registered_analyses.items():
+                        if analysis_name in input_params:
+                                if input_params[analysis_name].get('enabled'):
+                                        analysis_data = analysis_func(data=data, params=input_params[analysis_name])
+                                
+                                        
+      
                 
                 # if 'compute_Laue_Diffraction' in input_params.keys():
                         
