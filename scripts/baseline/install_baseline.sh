@@ -1,5 +1,6 @@
 #!/bin/bash
 
+module load python
 # Check if environment path is provided
 if [ -z "$1" ]; then
     echo "Usage: $0 /path/to/conda/environment"
