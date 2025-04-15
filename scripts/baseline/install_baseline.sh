@@ -43,5 +43,7 @@ chmod +x build_lammps.sh
 # Install Python dependencies
 pip install -r requirements.txt
 
+# go back to the root directory of the repository
+cd ../../
 # Install package in development mode
 pip install -e .
