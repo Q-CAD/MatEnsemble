@@ -10,7 +10,7 @@
 1. Clone the repository:
 ```bash
 git clone https://github.com/Q-CAD/MatEnsemble.git
-cd matensemble/scripts/baseline
+cd Matensemble/scripts/baseline
 ```
 
 2. Make the installation script executable:
