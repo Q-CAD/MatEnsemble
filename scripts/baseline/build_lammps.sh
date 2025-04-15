@@ -1,4 +1,10 @@
 #!/bin/bash
+
+# This script builds LAMMPS from source with specific packages and configurations.
+# It assumes that the user has a working installation of conda and the necessary modules loaded.
+# Usage: ./build_lammps.sh
+# Load necessary modules
+module load python
 module load gcc
 module load fftw
 module load cmake
@@ -16,9 +22,10 @@ fi
 
 cd "${LAMMPS_DIR}"
 
-rm -rf ./build ./install
-
-mkdir build install
+rm -rf ./build # Remove any existing build directory
+# Create a new build directory
+mkdir build 
+cd build
 
 cmake  -D CMAKE_BUILD_TYPE=Release \
             -D LAMMPS_EXCEPTIONS=ON \
