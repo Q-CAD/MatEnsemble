@@ -5,6 +5,21 @@ module load cmake
 
 conda install cython
 
+# Get current date in MonthName_YYYY format
+CURRENT_DATE=$(date +%B_%Y)
+LAMMPS_DIR="lammps_${CURRENT_DATE}"
+
+# Clone LAMMPS if not exists with dated directory
+if [ ! -d "./${LAMMPS_DIR}" ]; then
+    git clone https://github.com/lammps/lammps.git "${LAMMPS_DIR}"
+fi
+
+cd "${LAMMPS_DIR}"
+
+rm -rf ./build ./install
+
+mkdir build install
+
 cmake  -D CMAKE_BUILD_TYPE=Release \
             -D LAMMPS_EXCEPTIONS=ON \
             -D BUILD_SHARED_LIBS=ON \
