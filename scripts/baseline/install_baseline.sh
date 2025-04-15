@@ -1,27 +1,41 @@
 #!/bin/bash
 
-# load the necessary modules
-module load PrgEnv-amd/8.6.0
-module load cray-mpich/8.1.31
-module load amd/6.2.4 
-module load rocm/6.2.4
-module load libfabric/1.22.0
+# Check if environment path is provided
+if [ -z "$1" ]; then
+    echo "Usage: $0 /path/to/conda/environment"
+    echo "Example: $0 ~/envs/matensemble_env"
+    exit 1
+fi
 
-# Install Spack and build environment
-git clone https://github.com/spack/spack.git
-. spack/share/spack/setup-env.sh
-export TMPDIR= # can set a custom to /tmp to avoid disk space issues
-spack env create matensemble_spack_env spack.yaml
-spack env activate matensemble_spack_env
-# cat spack_packages.json | jq -r '.[] | .spec' | xargs -I {} spack add {}
-spack install # This will take a while
+ENV_PATH="$1"
 
+# Check if directory exists
+if [ -d "$ENV_PATH" ]; then
+    read -p "Directory $ENV_PATH already exists. Do you want to remove it and continue? [y/N] " response
+    case "$response" in
+        [yY][eE][sS]|[yY]) 
+            echo "Removing existing environment..."
+            rm -rf "$ENV_PATH"
+            ;;
+        *)
+            echo "Installation cancelled"
+            exit 1
+            ;;
+    esac
+fi
 
-# Create and activate conda environment
-conda env create -f environment.yaml
-conda activate matensemble_env
+# Create and activate conda environment with custom path
+echo "Creating conda environment at $ENV_PATH..."
+conda env create -f environment.yaml --prefix "$ENV_PATH"
 
-# Clone and build LAMMPS and mpi4py from source
+if [ $? -ne 0 ]; then
+    echo "Failed to create conda environment"
+    exit 1
+fi
+
+source activate "$ENV_PATH"
+
+# Clone and build LAMMPS (and possibly also mpi4py?) from source
 chmod +x build_lammps.sh
 ./build_lammps.sh
 

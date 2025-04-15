@@ -1,3 +1,4 @@
+#!/bin/bash
 module load gcc
 module load fftw
 module load cmake
