@@ -2,7 +2,7 @@
 from lammps import lammps
 import numpy as np
 import math
-from dynopro.utils import preprocessors
+from matensemble.dynopro.utils import preprocessors
 import os
 
 def MDSubprocess(split, comm, input_params):

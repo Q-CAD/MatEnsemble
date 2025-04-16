@@ -21,7 +21,7 @@ class EnsembleDynamicsRunner():
                 sim_dir_list, \
                 tasks_per_job=1, \
                 cores_per_task=1, \
-                gpus_per_task=1, \
+                gpus_per_task=0, \
                 write_restart_freq=1000, \
                 buffer_time=0.1):
         

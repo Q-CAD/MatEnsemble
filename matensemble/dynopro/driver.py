@@ -70,6 +70,7 @@ if __name__ == "__main__":
                        help='Path to JSON input file or JSON string')
     args = parser.parse_args()
     
+    print ('Starting onine dynamics now . . . . ')
     online_dynamics(args.input_file)
 
 

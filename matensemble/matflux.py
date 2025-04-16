@@ -231,7 +231,7 @@ class SuperFluxManager():
                     else:
                         print ("resources----", "free cores: ", self.free_cores,"free gpus: ",self.free_gpus)
                         while self.free_cores>=self.tasks_per_job*self.cores_per_task and len(self.pending_tasks)>0:
-                            
+
                             cur_task=self.pending_tasks[0]
 
                             cur_task_args = gen_task_arg_list[0]
@@ -307,6 +307,7 @@ class Fluxlet():
         launch_dir = os.getcwd()
         cmd_list = [] #['flux', 'run', '-n', str(self.tasks_per_job), '-c', str(self.cores_per_task),'-g', str(self.gpus_per_task)]
         cmd_list.extend(command.split(" "))
+        print (cmd_list)
 #        cmd_list.append(os.path.abspath(command))
         
         if task_directory != None:
@@ -361,6 +362,8 @@ class Fluxlet():
         jobspec.setattr_shell_option("gpu-affinity","per-task")
 #        jobspec.setattr_shell_option("pmi","simple")
         jobspec.environment = dict(os.environ)
+        jobspec.stdout = os.getcwd() + '/stdout'
+        jobspec.stderr = os.getcwd() + '/stderr'
 
         self.future = executor.submit(jobspec)
         self.future.task_= task
