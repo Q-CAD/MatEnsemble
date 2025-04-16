@@ -43,7 +43,7 @@ class EnsembleDynamicsRunner():
         """
         # Initialize SuperFluxManager
         sfm = SuperFluxManager(gen_task_list=self.sim_list, \
-                               gen_task_command=self.sim_command, \
+                               gen_task_cmd=self.sim_command, \
                                 ml_task_cmd=None, \
                                 tasks_per_job=self.tasks_per_job, \
                                 cores_per_task=self.cores_per_task, \
