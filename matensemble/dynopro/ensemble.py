@@ -51,6 +51,6 @@ class EnsembleDynamicsRunner():
                                 write_restart_freq=self.write_restart_freq)
         
         # Execute the simulations
-        sfm.poolexecutor(task_args_list=self.sim_args_list, \
+        sfm.poolexecutor(task_arg_list=self.sim_args_list, \
                         buffer_time=self.buffer_time, \
                         task_dir_list=self.sim_dir_list)
