@@ -4,7 +4,7 @@
 # It assumes that the user has a working installation of conda and the necessary modules loaded.
 # Usage: ./build_lammps.sh
 # Load necessary modules
-module load python
+# module load python
 module load gcc
 module load fftw
 module load cmake
