@@ -1,5 +1,4 @@
 name: matensemble
-channel_priority: strict
 channels:
   - https://conda.ovito.org
   - conda-forge
