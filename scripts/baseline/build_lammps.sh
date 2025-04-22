@@ -10,12 +10,15 @@ module load fftw
 module load cmake
 module load openmpi
 
+echo "Starting to Bild LAMMPS at this point"
+which python
+# source activate "$ENV_PATH"
 # Avoid conflicts for mpi4py installation
-MPICC="mpicc -shared" pip install --no-cache-dir --no-binary=mpi4py mpi4py
+#MPICC="mpicc -shared" pip install --no-cache-dir --no-binary=mpi4py mpi4py
 
 # Install Cython using conda
 # This is necessary for building LAMMPS with Python support
-conda install cython
+#conda install cython
 
 # Get current date in MonthName_YYYY format
 CURRENT_DATE=$(date +%B_%Y)
