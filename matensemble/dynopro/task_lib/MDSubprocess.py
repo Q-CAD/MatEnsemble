@@ -92,13 +92,13 @@ def MDSubprocess(split, comm, input_params):
 
                         if stride==0 and md_subtask==1:
                                 try:
-                                        lmp.command(f"run 0")
+                                        lmp.command(f"run 0 start 0 stop {input_params['total_number_of_timesteps']}")
                                 except:
                                         comm.Abort(1)
 
                         elif int(lmp.get_thermo('step'))<input_params["total_number_of_timesteps"]:
                                 try:
-                                        lmp.command(f"run {input_params['i_o_freq']}")
+                                        lmp.command(f"run {input_params['i_o_freq']} start 0 stop {input_params['total_number_of_timesteps']}")
                                 except:
                                         comm.Abort(1)
                                         
