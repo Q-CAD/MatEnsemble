@@ -13,7 +13,7 @@ dependencies:
   - matplotlib>=3.4.0
   - flux-core=0.64.0
   - flux-sched=0.38.0
-  - openmpi
+  - openmpi=4.1.6
   - redis>=4.0.0
   - cython
 
