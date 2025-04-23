@@ -5,9 +5,9 @@
 # Usage: ./build_lammps.sh
 # Load necessary modules
 # module load python
-module load gcc
-module load fftw
-module load cmake
+module load gcc/12.2.0 
+module load fftw/3.3.10
+module load cmake/3.26.3
 
 echo "Starting to Build LAMMPS at this point"
 which python
