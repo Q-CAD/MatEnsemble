@@ -1,5 +1,7 @@
 #!/bin/bash
 
+module purge
+module load gcc/12.2.0
 module load python
 
 # Check if environment path is provided
