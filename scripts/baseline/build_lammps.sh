@@ -8,9 +8,8 @@
 module load gcc
 module load fftw
 module load cmake
-module load openmpi
 
-echo "Starting to Bild LAMMPS at this point"
+echo "Starting to Build LAMMPS at this point"
 which python
 # source activate "$ENV_PATH"
 # Avoid conflicts for mpi4py installation
