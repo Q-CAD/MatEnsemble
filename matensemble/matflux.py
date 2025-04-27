@@ -93,7 +93,7 @@ class SuperFluxManager():
     def check_resources(self):
 
         self.status=flux.resource.status.ResourceStatusRPC(self.flux_handle).get()
-        self.resource_list=flux.resource.list.resource_list(self.flux_handle).get()
+        # self.resource_list=flux.resource.list.resource_list(self.flux_handle).get()
         self.resource = flux.resource.list.resource_list(self.flux_handle).get()
         self.free_gpus = self.resource.free.ngpus
         self.free_cores = self.resource.free.ncores
@@ -209,7 +209,8 @@ class SuperFluxManager():
                         
                         #   FOR FRONTIER FREE CORES ARE EQUIV. TO FREE "EXCESS" CORES! SO CHANGING THE LOGIC BELOW ACCORDINGLY . . . 
                         while self.free_cores>=self.tasks_per_job*self.cores_per_task and self.free_gpus>=self.tasks_per_job*self.gpus_per_task and len(self.pending_tasks)>0:
-                            
+                            self.check_resources()
+                            print ("resources----", "free cores: ", self.free_cores,"free gpus: ",self.free_gpus)
                             cur_task=self.pending_tasks[0]
                             cur_task_args = gen_task_arg_list[0]
                             _ = self._pending_tasks.pop(0)
@@ -226,12 +227,15 @@ class SuperFluxManager():
 
                             self.futures.add(flxt.future)
                             self._running_tasks.append(cur_task)
-                            self.update_resources()
+                            # self.update_resources()
                     
                     else:
                         print ("resources----", "free cores: ", self.free_cores,"free gpus: ",self.free_gpus)
                         while self.free_cores>=self.tasks_per_job*self.cores_per_task and len(self.pending_tasks)>0:
 
+                            self.check_resources()
+                            print ("resources----", "free cores: ", self.free_cores,"free gpus: ",self.free_gpus)
+
                             cur_task=self.pending_tasks[0]
 
                             cur_task_args = gen_task_arg_list[0]
@@ -249,7 +253,11 @@ class SuperFluxManager():
 
                             self.futures.add(flxt.future)
                             self._running_tasks.append(cur_task)
-                            self.update_resources()
+
+                            self.check_resources()
+                            print ("resources----", "free cores: ", self.free_cores,"free gpus: ",self.free_gpus)
+                            time.sleep(buffer_time)
+                            # self.update_resources()
 
                 # self.process_futures(buffer_time)
 
@@ -268,7 +276,9 @@ class SuperFluxManager():
 #=====================================================================================
                 # Adaptive task submission and update the pool
                     if adaptive:
-                        if len(self.pending_tasks):
+                        self.check_resources()
+                        self.logger.info(("resources----", "free cores: ", self.free_cores,"free gpus: ",self.free_gpus))
+                        if self.free_cores>=self.tasks_per_job*self.cores_per_task and len(self.pending_tasks):
                             cur_task=self.pending_tasks[0]
 
                             cur_task_args = gen_task_arg_list[0]
@@ -286,6 +296,11 @@ class SuperFluxManager():
 
                             self.futures.add(flxt.future)
                             self._running_tasks.append(cur_task)
+                            time.sleep(buffer_time)
+                            self.check_resources()
+                            self.logger.info(("resources----", "free cores: ", self.free_cores,"free gpus: ",self.free_gpus))
+
+
                             # self.update_resources()
 
 #=====================================================================================
