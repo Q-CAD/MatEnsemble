@@ -171,7 +171,7 @@ class SuperFluxManager():
 
 
     
-    def poolexecutor(self, task_arg_list, buffer_time=0.5, task_dir_list=None):
+    def poolexecutor(self, task_arg_list, buffer_time=0.5, task_dir_list=None, adaptive=False):
         """ High-throughput executor implementation """
 
         # trigger_ml = False
@@ -251,24 +251,44 @@ class SuperFluxManager():
                             self._running_tasks.append(cur_task)
                             self.update_resources()
 
-                        #   TO BE IMPLEMENTED FOR THE ACTIVE LEARNING LOOP
-                        # 
-                        # if trigger_ml and self.free_excess_cores >=  self.cores_per_ml_task:
-                             
-                        #     """
-                        #     implement ML Workflow HERE--also DATA EXTRACTION WORKLFLOW GOES HERE
-                        #     """
-
-                        #     trigger_ml=False
-
-               # time.sleep(120)
-                        # """
-
                 # self.process_futures(buffer_time)
 
                 done, self.futures =concurrent.futures.wait(self.futures, timeout=buffer_time) #return_when=concurrent.futures.FIRST_COMPLETED) #timeout=buffer_time)
                 for fut in done:
                     self._completed_tasks.append(fut.task_)
+                    self._running_tasks.remove(fut.task_)
+                    
+                    try:
+                        print (f"Task {fut.task_} result: {fut.result(timeout=buffer_time)}")
+                        if fut.result(timeout=buffer_time) != 0:
+                            self.logger.info(f"Task {fut.task_} exited with ERROR CODE {fut.result()}")
+                            self._failed_tasks.append(fut.task_)
+                    except Exception as e:
+                        print (f"Task {fut.task_}: could not process future.results() and exited with exception {e}") 
+#=====================================================================================
+                # Adaptive task submission and update the pool
+                    if adaptive:
+                        if len(self.pending_tasks):
+                            cur_task=self.pending_tasks[0]
+
+                            cur_task_args = gen_task_arg_list[0]
+                            _ = self._pending_tasks.pop(0)
+                            _ = gen_task_arg_list.pop(0)
+
+                            if gen_task_dir_list != None:
+                                cur_task_dir = gen_task_dir_list[0]
+                                _ = gen_task_dir_list.pop(0)
+                            else:
+                                cur_task_dir = None
+
+                            flxt = Fluxlet(self.flux_handle, self.tasks_per_job, self.cores_per_task, self.gpus_per_task)
+                            flxt.job_submit(executor, self.gen_task_cmd, cur_task, cur_task_args, cur_task_dir)
+
+                            self.futures.add(flxt.future)
+                            self._running_tasks.append(cur_task)
+                            # self.update_resources()
+
+#=====================================================================================
 
                     if len(self.completed_tasks)%self.write_restart_freq==0:
                         # self.trigger_ml=True
@@ -278,15 +298,6 @@ class SuperFluxManager():
                                          'Pending tasks': self.pending_tasks, \
                                          'Failed tasks': self.failed_tasks}
                         pickle.dump(self.task_log , open( f"restart_{len(self.completed_tasks)}.dat", "wb" ))
-                    try:
-                        print (f"Task {fut.task_} result: {fut.result(timeout=1200)}")
-                        if fut.result(timeout=1200) != 0:
-                            self.logger.info(f"Task {fut.task_} exited with ERROR CODE {fut.result()}")
-                            self._failed_tasks.append(fut.task_)
-                        self._running_tasks.remove(fut.task_)
-                    except Exception as e:
-                        print (f"Task {fut.task_}: could not process future.results() and exited with exception {e}") 
-                        self._running_tasks.remove(fut.task_)
 
                     self.logger.info(f"======COMPLETED JOBS=======RUNNING JOBS======PENDING JOBS")
                     self.logger.info(f"======{len(self.completed_tasks)}============{len(self.running_tasks)}============{len(self.pending_tasks)}")
@@ -307,7 +318,7 @@ class Fluxlet():
         launch_dir = os.getcwd()
         cmd_list = [] #['flux', 'run', '-n', str(self.tasks_per_job), '-c', str(self.cores_per_task),'-g', str(self.gpus_per_task)]
         cmd_list.extend(command.split(" "))
-        print (cmd_list)
+        # print (cmd_list)
 #        cmd_list.append(os.path.abspath(command))
         
         if task_directory != None:
