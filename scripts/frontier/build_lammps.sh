@@ -28,11 +28,13 @@
 # `amd-mixed` is compatible with Cray-PE (ie, cray-mpich, cray-libsci, etc), so this is preferred.
 # `rocm` module is built by OLCF and is not guaranteed to be compatible with everything
 
-# PrgEnv-amd uses the `amd` module to load a version of ROCm compilers, so load an `amd` version that we're happy with
-# module load amd/5.7.1
-#module load rocm/5.7.1
-## HWLOC is optional. No real performance benefit or gain
-##module load hwloc
+# load the necessary modules
+source ~/.bashrc
+module load PrgEnv-amd/8.6.0
+module load cray-mpich/8.1.31
+module load amd/6.2.4 
+module load rocm/6.2.4
+module load libfabric/1.22.0
 
 # The `cmake` module is needed for building with `cmake`
 module load cmake
@@ -40,14 +42,38 @@ module load cmake
 # FFTW3 for host-based FFT
 module load cray-fftw
 
-
 export MPICH_GPU_SUPPORT_ENABLED=1
 
-[ ! -d ./lammps ] && git clone https://github.com/lammps/lammps.git
+# Check if environment path is provided as argument
+if [ $# -ne 1 ]; then
+    echo "Usage: $0 <conda_env_path>"
+    exit 1
+fi
 
-cd lammps
+CONDA_ENV_PATH=$1
 
-rm -rf ./build ./install
+# Activate the conda environment using the provided path
+module load miniforge3
+source  activate "$CONDA_ENV_PATH"
+which python
+
+# check the moadules loaded
+echo "Loaded modules:"
+module list
+
+# Get current date in MonthName_YYYY format
+CURRENT_DATE=$(date +%B_%Y)
+LAMMPS_DIR="lammps_${CURRENT_DATE}"
+
+# Clone LAMMPS if not exists with dated directory
+if [ ! -d "./${LAMMPS_DIR}" ]; then
+    git clone https://github.com/lammps/lammps.git "${LAMMPS_DIR}"
+fi
+
+cd "${LAMMPS_DIR}"
+
+rm -rf ./build install # Remove any existing build directory
+# Create a new build directory
 
 mkdir build install
 
@@ -80,7 +106,7 @@ MPICC="hipcc -L${MPICH_DIR}/lib -lmpi ${PE_MPICH_GTL_DIR_amd_gfx90a} ${PE_MPICH_
 
 # cython is requried for packages ML-IAP
 #
-conda install -c conda-forge cython
+# conda install -c conda-forge cython
 
 # start the build process
 cd build
@@ -126,4 +152,5 @@ cmake \
        ../cmake
 
 make VERBOSE=1 -j 64
+cp liblammps.* ../python/lammps
 make install-python

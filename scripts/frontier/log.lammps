@@ -1,0 +1,4 @@
+LAMMPS (2 Apr 2025 - Development - patch_2Apr2025-223-g40d8e1b95f)
+OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (src/comm.cpp:99)
+  using 1 OpenMP thread(s) per MPI task
+Total wall time: 0:00:03
