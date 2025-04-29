@@ -29,7 +29,6 @@
 # `rocm` module is built by OLCF and is not guaranteed to be compatible with everything
 
 # load the necessary modules
-source ~/.bashrc
 module load PrgEnv-amd/8.6.0
 module load cray-mpich/8.1.31
 module load amd/6.2.4 
