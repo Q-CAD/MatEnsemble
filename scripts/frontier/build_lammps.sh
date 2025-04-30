@@ -51,9 +51,9 @@ fi
 
 CONDA_ENV_PATH=$1
 
-# Activate the conda environment using the provided path
-module load miniforge3
-source  activate "$CONDA_ENV_PATH"
+## Activate the conda environment using the provided path
+#module load miniforge3
+#source  activate "$CONDA_ENV_PATH"
 which python
 
 # check the moadules loaded
