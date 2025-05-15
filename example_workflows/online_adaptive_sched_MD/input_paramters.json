@@ -1,0 +1,19 @@
+{   "species" : ["Mo", "S"],
+    "lammps_input": "/gpfs/wolf2/cades/mat269/scratch/sny/With_MatEnsemble_MD/in.recryst",
+    "verlet_delta_t": 0.5,
+    "heat": {"T_heat":1500, "heat_timesteps": 50000},
+    "lattice_strain": 1.025,
+    "shear_strain": 1.025,  
+    "quench": {"T_quench": 10},
+    "run_on_gpus": false,
+    "total_procs": 64,
+    "md_procs": 40,
+    "i_o_freq": 1000,
+    "total_number_of_timesteps": 1000000,
+    "compute_twist": {"cutoff": 4, "reference_particle_type": 2, "num_iter": 10, "grid_resolution": 1},
+    "compute_Laue_Diffraction": true,
+    "compute_xrd":  true,
+    "full_trajectory_dump": true,
+    "trajectory_output_format": ["lammps/dump"]
+}
+
