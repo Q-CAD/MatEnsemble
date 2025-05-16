@@ -375,14 +375,18 @@ class Fluxlet():
         jobspec.cwd = os.getcwd()
         jobspec.setattr_shell_option("mpi","pmi2")
         jobspec.setattr_shell_option("cpu-affinity","per-task")
-        jobspec.setattr_shell_option("gpu-affinity","per-task")
+        # jobspec.setattr_shell_option("gpu-affinity","per-task")
 #        jobspec.setattr_shell_option("pmi","simple")
+        # os.environ['PMI_DEBUG'] = '1'
+        # os.environ['MPICH_CPUMASK_DISPLAY'] = '1'
+        # os.environ['MPICH_ENV_DISPLAY'] = '1'
         jobspec.environment = dict(os.environ)
         jobspec.stdout = os.getcwd() + '/stdout'
         jobspec.stderr = os.getcwd() + '/stderr'
 
         self.resources = jobspec.resources
-
+    
+        # time.sleep(0.1)
         self.future = executor.submit(jobspec)
         self.future.task_= task
         os.chdir(launch_dir)
