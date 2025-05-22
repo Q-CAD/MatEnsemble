@@ -4,12 +4,21 @@
 # It assumes that the user has a working installation of conda and the necessary modules loaded.
 # Usage: ./build_lammps.sh
 # Load necessary modules
-module load python
-module load gcc
-module load fftw
-module load cmake
+# module load python
+# module load gcc/12.2.0 
 
-conda install cython
+module load fftw/3.3.10
+module load cmake/3.26.3
+
+echo "Starting to Build LAMMPS at this point"
+which python
+# source activate "$ENV_PATH"
+# Avoid conflicts for mpi4py installation
+#MPICC="mpicc -shared" pip install --no-cache-dir --no-binary=mpi4py mpi4py
+
+# Install Cython using conda
+# This is necessary for building LAMMPS with Python support
+#conda install cython
 
 # Get current date in MonthName_YYYY format
 CURRENT_DATE=$(date +%B_%Y)

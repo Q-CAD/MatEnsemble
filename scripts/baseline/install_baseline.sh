@@ -1,6 +1,9 @@
 #!/bin/bash
 
+module purge
+module load gcc/12.2.0
 module load python
+
 # Check if environment path is provided
 if [ -z "$1" ]; then
     echo "Usage: $0 /path/to/conda/environment"
@@ -36,6 +39,7 @@ fi
 
 source activate "$ENV_PATH"
 
+MPICC="mpicc -shared" pip install --no-cache-dir --no-binary=mpi4py mpi4py
 # Clone and build LAMMPS (and possibly also mpi4py?) from source
 chmod +x build_lammps.sh
 ./build_lammps.sh

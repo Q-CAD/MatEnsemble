@@ -282,6 +282,8 @@ class SuperFluxManager():
                 for fut in done:
                     self._completed_tasks.append(fut.task_)
 
+                    ## Adaptive have to be implemented for heterogeneous task requirements
+
                     if len(self.completed_tasks)%self.write_restart_freq==0:
                         # self.trigger_ml=True
                         # print("Triggering ML workflow: ",len(self.completed_tasks))
