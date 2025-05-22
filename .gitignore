@@ -11,3 +11,6 @@ matensemble/__pycache__/matflux.cpython-311.pyc
 matensemble/__pycache__/__init__.cpython-311.pyc
 scripts/baseline/log.lammps
 scripts/baseline/log.lammps
+example_workflows/baseline/lammps_ensemble_FF/Bi2Se3_runs/*
+scripts/frontier/lammps_April_2025
+tests/*
