@@ -33,7 +33,7 @@ cd matensemble
 chmod +x install.sh
 ./install.sh
 ```
-### Customized Install
+<!-- ### Customized Install
 Environment Setup (`environment.yaml`)
 
 ```bash
@@ -49,7 +49,7 @@ dependencies:
   - cmake>=3.20
   - gcc>=11.0
   - make
-  ```
+  ``` -->
 
 ## Create and activate conda environment:
 ```bash
