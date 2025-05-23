@@ -31,6 +31,7 @@ def onlineMD(candidate_parameters, initial_parameters_file=None):
         input_params['shear_strain']=candidate_parameters[i]['Shear_Strain']
         sim_args_list.append(json.dumps(input_params))
         sim_dir_list.append(f'{candidate_parameters[i]["Temp_K"]}_K_{candidate_parameters[i]["Strain"]}_lattice_{candidate_parameters[i]["Shear_Strain"]}_shear')
+    
 
     edr = EnsembleDynamicsRunner(sim_list=sim_list, \
                 sim_args_list=sim_args_list, \
@@ -48,6 +49,7 @@ def onlineMD(candidate_parameters, initial_parameters_file=None):
     else:
         
         return 
+
 
 def gather_data(dirs, params):
 

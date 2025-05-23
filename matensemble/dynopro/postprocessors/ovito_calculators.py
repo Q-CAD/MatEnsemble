@@ -1,29 +1,31 @@
 
-from ovito.data import DataCollection
+from ovito.data import *
 from ovito.modifiers import  DislocationAnalysisModifier
 from ovito.io import export_file
+from ovito.io.pymatgen import ovito_to_pymatgen
 import numpy as np
 
 class OvitoCalculators():
 
-        def __init__(self, lmp_snapshot):
+        def __init__(self, lmp_snapshot, species):
                 self.timestep = lmp_snapshot['timestep']
                 self.data = DataCollection()
                 particles = self.data.create_particles(count=len(lmp_snapshot['coords']))
                 particles.create_property('Position', data=lmp_snapshot['coords'])
-                particles.create_property('Particle Type', data=lmp_snapshot['types'])
+                type_prop = particles.create_property('Particle Type')
+                type_prop[...] = lmp_snapshot['types'] 
                 particles.create_property('Particle Identifier', data=np.arange(1, 1+len(lmp_snapshot['coords'])))
-                self.data.particles['Particle Type'][self.data.particles['Particle Type']==1].name = 'Mo'
-                self.data.particles['Particle Type'][self.data.particles['Particle Type']==2].name = 'S'
+                
+                for ic, sp in enumerate(species):
+                        type_prop.types.append(ParticleType(id = ic, name = sp))
+
+                self.data.particles = particles
 
                 # Extract LAMMPS simulation cell geometry and boundary conditions.
 
                 lmp_box = lmp_snapshot['box_info'] #lmp.extract_box()
-
                 cell_matrix = np.empty((3,4))
-
                 cell_matrix[:,0] = (lmp_box[1][0] - lmp_box[0][0],0,0)
-
                 cell_matrix[:,1] = (lmp_box[2], lmp_box[1][1] - lmp_box[0][1], 0)
                 cell_matrix[:,2] = (lmp_box[4], lmp_box[3], lmp_box[1][2] - lmp_box[0][2]) #lammps_extract_box --> lo, hi, xy, yz, xz
                 cell_matrix[:,3] = (lmp_box[0][0], lmp_box[0][1], lmp_box[0][2])
@@ -32,6 +34,11 @@ class OvitoCalculators():
                 # Create the OVITO simulation cell object.
                 cell = self.data.create_cell(cell_matrix, pbc=pbc_flags)
                 cell.is2D = (dimension != 3)
+
+                # tranform into a pymatgen structure object
+                # self.structure = ovito_to_pymatgen(self.data)
+
+
 
 
 
@@ -69,3 +76,5 @@ class OvitoCalculators():
                         else:
                                 print (f"currently exporting in format: {format} is not yet implmeneted")
                 return
+
+

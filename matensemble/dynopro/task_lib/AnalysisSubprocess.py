@@ -27,7 +27,7 @@ def AnalysisSubprocess(comm, input_params):
                 
                 # Run analysis for each snapshot
                 
-                data = OvitoCalculators(lmp_snapshot=lmp_snapshot)
+                data = OvitoCalculators(lmp_snapshot=lmp_snapshot, species=input_params['species'])
 
 
                 if 'dxa_analysis' in input_params.keys():
@@ -55,6 +55,18 @@ def AnalysisSubprocess(comm, input_params):
                                 with open(f'coverage_probability_{data.timestep}', 'w') as file:
                                         file.write(f'time-step coverage_prob min_twist max_twist\n')
                                         file.write(f'{data.timestep} {prob} {input_params["compute_twist"]["target_window"][0]} {input_params["compute_twist"]["target_window"][1]}')
+
+                        if 'compute_xrd' in input_params.keys():
+                                
+                                if input_params['compute_xrd']:
+                                        filetag = f'XRD_{data.timestep}'
+                                        compute_diffraction.get_xrd_pattern(data, filetag)
+
+                        if 'compute_Laue_Diffraction' in input_params.keys():
+                                
+                                if input_params['compute_Laue_Diffraction']:
+                                        filetag = f'Laue_{data.timestep}'
+                                        compute_diffraction.get_laue_pattern(data, filetag)
 
 
                  # Execute registered analyses
