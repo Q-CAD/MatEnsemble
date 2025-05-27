@@ -27,5 +27,3 @@ pip install -r requirements.txt
 
 # Install package in development mode
 pip install -e .
-~                                                                                                                                                                                                                                                                                                                          
-~                         
