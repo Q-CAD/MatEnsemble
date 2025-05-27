@@ -2,10 +2,11 @@
 
 # Create and activate conda environment
 conda env create -f environment.yaml
+conda init
 conda activate matensemble
 
 # Clone and build LAMMPS
-git clone https://github.com/lammps/lammps.git
+#git clone https://github.com/lammps/lammps.git
 cd lammps
 mkdir build
 cd build
@@ -18,8 +19,13 @@ cmake  -D CMAKE_BUILD_TYPE=Release \
 make -j4
 make install-python
 
+# Install Ovito
+conda install --strict-channel-priority -c https://conda.ovito.org -c conda-forge ovito=3.12.1
+
 # Install Python dependencies
 pip install -r requirements.txt
 
 # Install package in development mode
 pip install -e .
+~                                                                                                                                                                                                                                                                                                                          
+~                         
