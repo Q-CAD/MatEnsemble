@@ -21,8 +21,14 @@ make install-python
 # Install Ovito (with -y flag to automatically accept prompts)
 conda install -y --strict-channel-priority -c https://conda.ovito.org -c conda-forge ovito=3.12.1
 
+<<<<<<< HEAD
 # return to the root directory
 cd ../../
+=======
+# return back to repo root
+cd ../../
+
+>>>>>>> cba0d78 (modify install.sh)
 # Install Python dependencies
 pip install -r requirements.txt
 
