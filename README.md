@@ -31,7 +31,7 @@ An adaptive and highly asynchronous ensemble simulation workflow manager
 git clone https://github.com/Q-CAD/MatEnsemble.git
 cd matensemble
 chmod +x install.sh
-./install.sh
+./install.sh <path-to-env>
 ```
 <!-- ### Customized Install
 Environment Setup (`environment.yaml`)
@@ -53,8 +53,8 @@ dependencies:
 
 ## Create and activate conda environment:
 ```bash
-conda env create -f environment.yaml
-conda activate matensemble
+conda env create -f environment.yaml --prefix <path-to-env>
+conda activate <path-to-env>
 ```
 
 ### Install Python dependencies
