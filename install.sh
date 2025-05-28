@@ -2,7 +2,7 @@
 
 # Create and activate conda environment
 conda env create -f environment.yaml --prefix $1
-conda activate $1
+source activate $1
 
 # Clone and build LAMMPS
 git clone https://github.com/lammps/lammps.git
@@ -21,6 +21,8 @@ make install-python
 # Install Ovito (with -y flag to automatically accept prompts)
 conda install -y --strict-channel-priority -c https://conda.ovito.org -c conda-forge ovito=3.12.1
 
+# return to the root directory
+cd ../../
 # Install Python dependencies
 pip install -r requirements.txt
 
