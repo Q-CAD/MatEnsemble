@@ -1,9 +1,11 @@
 name: matensemble
 channels:
+  - https://conda.ovito.org
   - conda-forge
   - defaults
 dependencies:
-  - python=3.11
+  - python=3.13
+  - ovito
   - pandas>=1.3.0
   - scipy>=1.7.0 
   - matplotlib>=3.4.0
