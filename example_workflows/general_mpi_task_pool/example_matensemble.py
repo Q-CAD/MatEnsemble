@@ -19,7 +19,7 @@ task_list = list(np.arange(N_task))
 
 # spceify the basic command/executable-filepath used to execute the task (you can skip any mpirun/srun prefixes, and also any *args, **kwargs at this point)
 
-task_command = os.path.abspath("wrapper.sh") #'sample_amd' #'mpi_helloworld.py' #make sure to make it executable by `chmod u+x <file.py>`
+task_command = os.path.abspath("mpi_helloworld.py") #'sample_amd' #'mpi_helloworld.py' #make sure to make it executable by `chmod u+x <file.py>`
 
 # task_command = os.path.abspath("sample_amd")
 
