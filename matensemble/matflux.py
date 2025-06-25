@@ -224,9 +224,14 @@ class SuperFluxManager():
 
                             flxt = Fluxlet(self.flux_handle, self.tasks_per_job, self.cores_per_task, self.gpus_per_task)
                             flxt.job_submit(executor, self.gen_task_cmd, cur_task, cur_task_args, cur_task_dir)
-
+                            
+                            
                             self.futures.add(flxt.future)
                             self._running_tasks.append(cur_task)
+                            
+                            self.check_resources()
+                            print ("resources----", "free cores: ", self.free_cores,"free gpus: ",self.free_gpus)
+                            time.sleep(buffer_time)
                             # self.update_resources()
                     
                     else:
