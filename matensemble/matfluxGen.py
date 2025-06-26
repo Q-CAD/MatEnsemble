@@ -205,7 +205,7 @@ class SuperFluxManager():
                     
                     self.flux_handle.rpc("resource.drain", {"targets": "0"}).get()
                     if self.gpus_per_task>0:
-                       
+                        self.check_resources()
                         print ("resources----", "free cores: ", self.free_cores,"free gpus: ",self.free_gpus)
                         
                         #   FOR FRONTIER FREE CORES ARE EQUIV. TO FREE "EXCESS" CORES! SO CHANGING THE LOGIC BELOW ACCORDINGLY . . . 
@@ -228,17 +228,21 @@ class SuperFluxManager():
 
                             self.futures.add(flxt.future)
                             self._running_tasks.append(cur_task)
-                            self.update_resources(int(self.tasks_per_job[0]))
+                            # self.update_resources(int(self.tasks_per_job[0]))
+
+                            self.check_resources()
                             print ("resources----", "free cores: ", self.free_cores,"free gpus: ",self.free_gpus)
                             _ = self.tasks_per_job.pop(0)
                             if len(self.tasks_per_job)==0:
                                 self.tasks_per_job = [0]
+                            time.sleep(buffer_time)
 
                     
                     else:
                         print ("resources----", "free cores: ", self.free_cores,"free gpus: ",self.free_gpus)
                         while self.free_cores>=self.tasks_per_job[0]*self.cores_per_task and len(self.pending_tasks)>0:
                             
+                            self.check_resources()
                             cur_task=self.pending_tasks[0]
 
                             cur_task_args = gen_task_arg_list[0]
@@ -257,11 +261,13 @@ class SuperFluxManager():
 
                             self.futures.add(flxt.future)
                             self._running_tasks.append(cur_task)
-                            self.update_resources(int(self.tasks_per_job[0]))
+                            # self.update_resources(int(self.tasks_per_job[0]))
+                            self.check_resources()
                             print ("resources----", "free cores: ", self.free_cores,"free gpus: ",self.free_gpus)
                             _ = self.tasks_per_job.pop(0)
                             if len(self.tasks_per_job)==0:
                                 self.tasks_per_job = [0]
+                            time.sleep(buffer_time)
 
 
                         #   TO BE IMPLEMENTED FOR THE ACTIVE LEARNING LOOP
