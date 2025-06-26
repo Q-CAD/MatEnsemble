@@ -1,15 +1,6 @@
 .DS_Store
 **/__pycache_/
-matensemble.egg-info/top_level.txt
-matensemble.egg-info/SOURCES.txt
-matensemble.egg-info/requires.txt
-matensemble.egg-info/PKG-INFO
-matensemble.egg-info/dependency_links.txt
-matensemble/dynopro/__pycache__/ensemble.cpython-311.pyc
-matensemble/dynopro/__pycache__/__init__.cpython-311.pyc
-matensemble/__pycache__/matfluxGen.cpython-311.pyc
-matensemble/__pycache__/matflux.cpython-311.pyc
-matensemble/__pycache__/__init__.cpython-311.pyc
+matensemble.egg-info/*
 scripts/baseline/log.lammps
 scripts/baseline/log.lammps
 example_workflows/baseline/lammps_ensemble_FF/Bi2Se3_runs/*
@@ -17,7 +8,5 @@ scripts/frontier/lammps_April_2025
 tests/*
 matensemble.egg-info
 lammps/*
+matensemble/__pycache__/*
 
-matensemble/__pycache__/matfluxGen.cpython-313.pyc
-matensemble/__pycache__/matfluxGen.cpython-313.pyc
-matensemble/__pycache__/__init__.cpython-313.pyc
