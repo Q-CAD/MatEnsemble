@@ -37,17 +37,25 @@ def MDSubprocess(split, comm, input_params):
                 except:
                         comm.Abort(1)
 
+        box_lo, box_hi, xy, yz, xz, _,_ = lmp.extract_box()
+ 
         if 'lattice_scale' in input_params.keys():
-                if 'shear_scale' in input_params.keys():
-                        lmp.command(f"change_box all x scale {input_params['lattice_scale']} y scale {input_params['lattice_scale']} xy scale {input_params['shear_scale']} remap units box ")
-                else:
-                        lmp.command(f"change_box all x scale {input_params['lattice_scale']} y scale {input_params['lattice_scale']} remap units box ")
-        elif 'shear_scale' in input_params.keys():
-                lmp.command(f"change_box all xy scale {input_params['shear_scale']} remap units box ")
+                lmp.command(f"change_box all x scale {input_params['lattice_scale']} y scale {input_params['lattice_scale']} remap units box ")
+        
+        if 'shear_scale' in input_params.keys():
+                
+                xy_final = xy*float(input_params['shear_scale'])
+                lmp.command(f"change_box all xy final {xy_final} remap units box ")
 
-        elif 'strain_tensor' in input_params.keys():
-                lmp.command(f"change_box all x scale {input_params['strain_tensor']['xx']} y scale {input_params['strain_tensor']['yy']} z scale {input_params['strain_tensor']['yy']} xy scale {input_params['strain_tensor']['xy']} \
-                            yz scale {input_params['strain_tensor']['yz']} xz scale {input_params['strain_tensor']['xz']} remap units box ")
+        if 'strain_tensor' in input_params.keys():
+
+
+                xy_final = xy*float(input_params['strain_tensor']['xy'])
+                yz_final = yz*float(input_params['strain_tensor']['yz'])
+                xz_final = xz*float(input_params['strain_tensor']['xz'])
+                
+                lmp.command(f"change_box all x scale {input_params['strain_tensor']['xx']} y scale {input_params['strain_tensor']['yy']} z scale {input_params['strain_tensor']['yy']} xy final {xy_final} \
+                            yz final {yz_final} xz final {xz_final} remap units box ")
 
 
         if 'heat' in input_params.keys():

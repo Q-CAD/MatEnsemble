@@ -11,3 +11,4 @@ matensemble/__pycache__/matflux.cpython-311.pyc
 matensemble/__pycache__/__init__.cpython-311.pyc
 scripts/baseline/log.lammps
 scripts/baseline/log.lammps
+matensemble/dynopro/task_lib/__pycache__/MDSubprocess.cpython-311.pyc
