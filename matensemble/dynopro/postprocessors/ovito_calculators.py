@@ -17,7 +17,7 @@ class OvitoCalculators():
                 particles.create_property('Particle Identifier', data=np.arange(1, 1+len(lmp_snapshot['coords'])))
                 
                 for ic, sp in enumerate(species):
-                        type_prop.types.append(ParticleType(id = ic, name = sp))
+                        type_prop.types.append(ParticleType(id = ic+1, name = sp))
 
                 self.data.particles = particles
 
