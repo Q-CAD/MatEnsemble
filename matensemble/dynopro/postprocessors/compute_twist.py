@@ -1,6 +1,7 @@
 from ovito.data import CutoffNeighborFinder
 from ovito.modifiers import ExpressionSelectionModifier, DeleteSelectedModifier, WrapPeriodicImagesModifier
 import numpy as np
+import copy
 
 # Taken from Soumendu's code
 def cart2pol(X):
@@ -99,35 +100,36 @@ def compute_interlayer_angle(layer_1_info, layer_2_info):
 
         return twist_angle, err_1, err_2
 
-def get_interlayer_twist(data, cutoff, grid_resolution=1, reference_particle_type=2, num_iter=10):
-        
-	modifier_select = ExpressionSelectionModifier(expression=f"ParticleType=={reference_particle_type}")
-	modifier_delete = DeleteSelectedModifier()
-	data.data.apply(modifier_select)
-	data.data.apply(modifier_delete)
-	wrap_modifier = WrapPeriodicImagesModifier()
-	data.data.apply(wrap_modifier)
+def get_interlayer_twist(matensemble_data, cutoff, grid_resolution=1, reference_particle_type=2, num_iter=10):
+
+    data = copy.deepcopy(matensemble_data)  
+    modifier_select = ExpressionSelectionModifier(expression=f"ParticleType=={reference_particle_type}")
+    modifier_delete = DeleteSelectedModifier()
+    data.data.apply(modifier_select)
+    data.data.apply(modifier_delete)
+    wrap_modifier = WrapPeriodicImagesModifier()
+    data.data.apply(wrap_modifier)
 			
-	grid_centers_info = extract_layer_grid_center_ids(data, grid_resolution=grid_resolution)
-	twist_angles = []
+    grid_centers_info = extract_layer_grid_center_ids(data, grid_resolution=grid_resolution)
+    twist_angles = []
 
-	for i in range(grid_resolution**2):
-		id_1 = grid_centers_info['upper_layer_grid_center_ids'][i]['center_id']
-		id_2 = grid_centers_info['lower_layer_grid_center_ids'][i]['center_id']
+    for i in range(grid_resolution**2):
+        id_1 = grid_centers_info['upper_layer_grid_center_ids'][i]['center_id']
+        id_2 = grid_centers_info['lower_layer_grid_center_ids'][i]['center_id']
 
-		index_1 = np.argwhere(data.data.particles["Particle Identifier"]==id_1)
+        index_1 = np.argwhere(data.data.particles["Particle Identifier"]==id_1)
 
-		assert data.data.particles["Particle Identifier"][index_1] == id_1
+        assert data.data.particles["Particle Identifier"][index_1] == id_1
 
-		index_2 = np.argwhere(data.data.particles["Particle Identifier"]==id_2)
-		assert data.data.particles["Particle Identifier"][index_1] == id_1
+        index_2 = np.argwhere(data.data.particles["Particle Identifier"]==id_2)
+        assert data.data.particles["Particle Identifier"][index_1] == id_1
 
-		finder = CutoffNeighborFinder(cutoff, data.data)
-		layer_1_info = extract_layer_alignment(finder, index_1, num_iter)
-		layer_2_info = extract_layer_alignment(finder, index_2, num_iter)
-		twist_angles.append(compute_interlayer_angle(layer_1_info, layer_2_info)[0])
+        finder = CutoffNeighborFinder(cutoff, data.data)
+        layer_1_info = extract_layer_alignment(finder, index_1, num_iter)
+        layer_2_info = extract_layer_alignment(finder, index_2, num_iter)
+        twist_angles.append(compute_interlayer_angle(layer_1_info, layer_2_info)[0])
     
-	return twist_angles
+    return twist_angles
 
 def extract_layer_grid_center_ids(data, metal_atom_type=1, grid_resolution=10, n_clusters=2):
     """

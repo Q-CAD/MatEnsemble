@@ -40,7 +40,7 @@ def AnalysisSubprocess(comm, input_params):
                 
                 if 'compute_twist' in input_params.keys():
                          
-                        twist_angle = compute_twist.get_interlayer_twist(data=data, cutoff=input_params['compute_twist']['cutoff'], \
+                        twist_angle = compute_twist.get_interlayer_twist(data, cutoff=input_params['compute_twist']['cutoff'], \
                                                                                      reference_particle_type=input_params['compute_twist']['reference_particle_type'], grid_resolution=input_params['compute_twist']['grid_resolution'], num_iter=input_params['compute_twist']['num_iter'])
                         with open(f'twist_{data.timestep}', 'w') as file:
                                 file.write(f'time-step twist-angle\n')
@@ -56,17 +56,17 @@ def AnalysisSubprocess(comm, input_params):
                                         file.write(f'time-step coverage_prob min_twist max_twist\n')
                                         file.write(f'{data.timestep} {prob} {input_params["compute_twist"]["target_window"][0]} {input_params["compute_twist"]["target_window"][1]}')
 
-                        if 'compute_xrd' in input_params.keys():
-                                
-                                if input_params['compute_xrd']:
-                                        filetag = f'XRD_{data.timestep}'
-                                        compute_diffraction.get_xrd_pattern(data, filetag)
+                if 'compute_xrd' in input_params.keys():
+                        
+                        if input_params['compute_xrd']:
+                                filetag = f'XRD_{data.timestep}'
+                                compute_diffraction.get_xrd_pattern(data, filetag)
 
-                        if 'compute_Laue_Diffraction' in input_params.keys():
-                                
-                                if input_params['compute_Laue_Diffraction']:
-                                        filetag = f'Laue_{data.timestep}'
-                                        compute_diffraction.get_laue_pattern(data, filetag)
+                if 'compute_Laue_Diffraction' in input_params.keys():
+                        
+                        if input_params['compute_Laue_Diffraction']:
+                                filetag = f'Laue_{data.timestep}'
+                                compute_diffraction.get_laue_pattern(data, filetag)
 
 
                  # Execute registered analyses
