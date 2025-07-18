@@ -14,7 +14,7 @@ def compute_rdf(matesnemble_data, cutoff=3.0, number_of_bins=100, z_min=None):
         modifier_coordination = CoordinationAnalysisModifier(cutoff=cutoff, number_of_bins=number_of_bins)
         modifier_coordination.only_selected = z_min is not None
         data.data.apply(modifier_coordination)
-        rdf = data.tables['coordination-rdf'].xy()
+        rdf = data.data.tables['coordination-rdf'].xy()
 
         del data
         gc.collect()
@@ -38,7 +38,7 @@ def compute_adf(matesnemble_data, cutoff=4.0, number_of_bins=100, z_min=None):
 
         data.data.apply(modifier_cb)
         data.data.apply(modifier_ba)
-        adf = data.tables['bond-angle-distr'].xy()
+        adf = data.data.tables['bond-angle-distr'].xy()
 
         del data
         gc.collect()
