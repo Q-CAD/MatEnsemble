@@ -75,7 +75,7 @@ def AnalysisSubprocess(comm, input_params):
                         
                         try:
                                 rdf = correlations.compute_rdf(data, cutoff=input_params['compute_rdf']['cutoff'], number_of_bins=input_params['compute_rdf']['number_of_bins'], z_min=input_params['compute_rdf']['z_min'])
-                                np.savetxt(f'rdf_{data.timestep}.txt', rdf, delmiter=' ')
+                                np.savetxt(f'rdf_{data.timestep}.txt', rdf, delimiter=' ')
                         except Exception as e:
                                 print(f"Error computing RDF at timestep {data.timestep}: {e}")
 
@@ -84,7 +84,7 @@ def AnalysisSubprocess(comm, input_params):
 
                         try:
                                 adf = correlations.compute_adf(data, cutoff=input_params['compute_adf']['cutoff'], number_of_bins=input_params['compute_adf']['number_of_bins'], z_min=input_params['compute_adf']['z_min'])
-                                np.savetxt(f'adf_{data.timestep}.txt', adf, delmiter=' ')
+                                np.savetxt(f'adf_{data.timestep}.txt', adf, delimiter=' ')
                         
                         except Exception as e:
                                 print(f"Error computing ADF at timestep {data.timestep}: {e}")
