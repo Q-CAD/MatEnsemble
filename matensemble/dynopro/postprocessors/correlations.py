@@ -34,7 +34,7 @@ def compute_adf(matesnemble_data, cutoff=4.0, number_of_bins=100, z_min=None):
 
 
         modifier_cb = CreateBondsModifier(cutoff = cutoff)
-        modifier_ba = BondAnalysisModifier(number_of_bins=number_of_bins)
+        modifier_ba = BondAnalysisModifier(bins=number_of_bins)
 
         data.data.apply(modifier_cb)
         data.data.apply(modifier_ba)
