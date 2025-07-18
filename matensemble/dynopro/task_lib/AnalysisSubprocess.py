@@ -1,7 +1,9 @@
 from matensemble.dynopro.postprocessors.ovito_calculators import OvitoCalculators
 from matensemble.dynopro.postprocessors import compute_twist, compute_diffraction
 from matensemble.dynopro.task_lib.analysis_registry import AnalysisRegistry
+import matensemble.dynopro.postprocessors.correlations as correlations
 import math
+import numpy as np
 
 def AnalysisSubprocess(comm, input_params):
 
@@ -67,6 +69,25 @@ def AnalysisSubprocess(comm, input_params):
                         if input_params['compute_Laue_Diffraction']:
                                 filetag = f'Laue_{data.timestep}'
                                 compute_diffraction.get_laue_pattern(data, filetag)
+
+                if 'compute_rdf' in input_params.keys():
+                
+                        
+                        try:
+                                rdf = correlations.compute_rdf(data, cutoff=input_params['compute_rdf']['cutoff'], number_of_bins=input_params['compute_rdf']['number_of_bins'], z_min=input_params['compute_rdf']['z_min'])
+                                np.savetxt(f'rdf_{data.timestep}.txt', rdf, delmiter=' ')
+                        except Exception as e:
+                                print(f"Error computing RDF at timestep {data.timestep}: {e}")
+
+                if 'compute_adf' in input_params.keys():
+
+
+                        try:
+                                adf = correlations.compute_adf(data, cutoff=input_params['compute_adf']['cutoff'], number_of_bins=input_params['compute_adf']['number_of_bins'], z_min=input_params['compute_adf']['z_min'])
+                                np.savetxt(f'adf_{data.timestep}.txt', adf, delmiter=' ')
+                        
+                        except Exception as e:
+                                print(f"Error computing ADF at timestep {data.timestep}: {e}")
 
 
                  # Execute registered analyses
