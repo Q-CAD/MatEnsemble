@@ -27,7 +27,7 @@ def compute_adf(matesnemble_data, cutoff=4.0, number_of_bins=100, z_min=None):
         data = copy.deepcopy(matesnemble_data)
         if z_min is not None:
                 ## Select particles with Z > z_min ##
-                selection_modifier = ExpressionSelectionModifier(expression=f"Position.Z > {z_min}")
+                selection_modifier = ExpressionSelectionModifier(expression=f"Position.Z <= {z_min}")
                 data.data.apply(selection_modifier)
                 modifier_delete = DeleteSelectedModifier()
                 data.data.apply(modifier_delete)
