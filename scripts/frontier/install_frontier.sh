@@ -81,12 +81,23 @@ echo "Activated conda environment at $CONDA_PREFIX"
 conda install --strict-channel-priority -c https://conda.ovito.org -c conda-forge ovito=3.12.2
 
 # Clone and build LAMMPS and mpi4py from source
-chmod +x build_lammps.sh
-./build_lammps.sh "$ENV_PATH"
+#chmod +x build_lammps.sh
+#./build_lammps.sh "$ENV_PATH"
 
+read -p "Do you want to build LAMMPS? (y/n): " answer
+if [[ "$answer" =~ ^[Yy]$ ]]; then
+    chmod +x build_lammps.sh
+    echo "Building LAMMPS.."
+    ./build_lammps.sh "$ENV_PATH"
+else
+    echo "Skipping LAMMPS build."
+fi
+
+# Install pytorch with rocm support (recommendation from OLCF)
+pip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm6.2
 # Install Python dependencies
-pip install -r requirements.txt
+pip3 install -r requirements.txt
 
 cd ../../
 # Install package in development mode
-pip install -e .
+pip3 install -e .
