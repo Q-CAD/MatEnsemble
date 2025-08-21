@@ -7,7 +7,7 @@ import numpy as np
 
 class OvitoCalculators():
 
-        def __init__(self, lmp_snapshot, species):
+        def __init__(self, lmp_snapshot, species, serialize=False):
                 self.timestep = lmp_snapshot['timestep']
                 self.data = DataCollection()
                 particles = self.data.create_particles(count=len(lmp_snapshot['coords']))
@@ -20,6 +20,11 @@ class OvitoCalculators():
                         type_prop.types.append(ParticleType(id = ic+1, name = sp))
 
                 self.data.particles = particles
+
+                if serialize:
+                        with open(f'lmp_snapshot_{self.timestep}.pkl', 'wb') as f:
+                                import pickle
+                                pickle.dump(lmp_snapshot, f)
 
                 # Extract LAMMPS simulation cell geometry and boundary conditions.
 
@@ -76,5 +81,4 @@ class OvitoCalculators():
                         else:
                                 print (f"currently exporting in format: {format} is not yet implmeneted")
                 return
-
 
