@@ -125,9 +125,14 @@ def get_interlayer_twist(matensemble_data, cutoff, grid_resolution=1, reference_
         assert data.data.particles["Particle Identifier"][index_1] == id_1
 
         finder = CutoffNeighborFinder(cutoff, data.data)
-        layer_1_info = extract_layer_alignment(finder, index_1, num_iter)
-        layer_2_info = extract_layer_alignment(finder, index_2, num_iter)
-        twist_angles.append(compute_interlayer_angle(layer_1_info, layer_2_info)[0])
+        
+        print ("i=",i)
+        try:
+            layer_1_info = extract_layer_alignment(finder, index_1, num_iter)
+            layer_2_info = extract_layer_alignment(finder, index_2, num_iter)
+            twist_angles.append(compute_interlayer_angle(layer_1_info, layer_2_info)[0])
+        except Exception as e:
+            print (e)
     
     return twist_angles
 

@@ -29,8 +29,8 @@ def AnalysisSubprocess(comm, input_params):
                 
                 # Run analysis for each snapshot
                 
-                data = OvitoCalculators(lmp_snapshot=lmp_snapshot, species=input_params['species'])
-
+                data = OvitoCalculators(lmp_snapshot=lmp_snapshot, species=input_params['species'], serialize=True)
+                
 
                 if 'dxa_analysis' in input_params.keys():
 
