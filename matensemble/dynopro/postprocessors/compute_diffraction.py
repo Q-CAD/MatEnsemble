@@ -21,7 +21,7 @@ def get_xrd_pattern(data, fname):
         xrd_calc = XRDCalculator()
         pattern = xrd_calc.get_pattern(struc)
 
-        pattern_dict= pattern.as_dict() 
+        pattern_dict= {} #pattern.as_dict() 
         pattern_dict['2_theta'] = pattern.x
         pattern_dict['Intensities'] = pattern.y
         pattern_dict['hkls'] = pattern.hkls
