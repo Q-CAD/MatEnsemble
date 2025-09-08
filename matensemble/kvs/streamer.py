@@ -31,10 +31,14 @@ def register_on_stream(analysis_key="timeseries", **kwargs):
         return
 
 
-def extract_from_stream(analysis_key="timeseries", sort=True, write_dataframe=True):
+def extract_from_stream(analysis_key="timeseries", sort=True, write_dataframe=True, handle=None):
         """Continuously read full series."""
-
-        kvsdir = init_kvs()
+        
+        if handle is None:
+                kvsdir = init_kvs()
+        else:
+                kvsdir = kvs.KVSDir(handle)
+                
         raw = kvsdir[analysis_key]
         series = json.loads(raw)
         packed_df = pd.DataFrame(series)

@@ -1,5 +1,5 @@
 from matensemble.matflux import SuperFluxManager
-# from matensemble.dynopro.driver import online_dynamics
+from matensemble.kvs.streamer import extract_from_stream
 
 class EnsembleDynamicsRunner():
     """
@@ -44,7 +44,7 @@ class EnsembleDynamicsRunner():
         This method initializes the SuperFluxManager and executes the simulations in parallel.
         """
         # Initialize SuperFluxManager
-        sfm = SuperFluxManager(gen_task_list=self.sim_list, \
+        self.sfm = SuperFluxManager(gen_task_list=self.sim_list, \
                                gen_task_cmd=self.sim_command, \
                                 ml_task_cmd=None, \
                                 tasks_per_job=self.tasks_per_job, \
@@ -53,6 +53,6 @@ class EnsembleDynamicsRunner():
                                 write_restart_freq=self.write_restart_freq)
         
         # Execute the simulations
-        sfm.poolexecutor(task_arg_list=self.sim_args_list, \
+        self.sfm.poolexecutor(task_arg_list=self.sim_args_list, \
                         buffer_time=self.buffer_time, \
                         task_dir_list=self.sim_dir_list, adaptive=self.adaptive)
