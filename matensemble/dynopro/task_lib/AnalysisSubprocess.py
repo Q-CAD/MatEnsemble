@@ -4,7 +4,7 @@ from matensemble.dynopro.task_lib.analysis_registry import AnalysisRegistry
 import matensemble.dynopro.postprocessors.correlations as correlations
 import math
 import numpy as np
-from matensemble.kvs.streamer import register
+from matensemble.kvs.streamer import register_on_stream
 
 def AnalysisSubprocess(comm, input_params):
 
@@ -51,7 +51,7 @@ def AnalysisSubprocess(comm, input_params):
 
 
                         # register analysis results to flux/kvs stream
-                        register(timestep = data.timestep, twist_angle = twist_angle)
+                        register_on_stream(analysis_key='twist_angle', timestep=data.timestep, twist_angle=twist_angle)
 
                         if 'target_window' in input_params['compute_twist'].keys():
                                 
@@ -70,13 +70,14 @@ def AnalysisSubprocess(comm, input_params):
                                 xrd_pattern = compute_diffraction.get_xrd_pattern(data, filetag)
 
                          # register analysis results to flux/kvs stream
-                        register(timestep = data.timestep, xrd_pattern = xrd_pattern)
+                        register_on_stream(analysis_key='xrd_pattern', timestep=data.timestep, xrd_pattern=xrd_pattern)
 
                 if 'compute_Laue_Diffraction' in input_params.keys():
                         
                         if input_params['compute_Laue_Diffraction']:
                                 filetag = f'Laue_{data.timestep}'
                                 compute_diffraction.get_laue_pattern(data, filetag)
+                        # skiping registration of Laue diffraction object for now
 
                                 
 
@@ -87,7 +88,7 @@ def AnalysisSubprocess(comm, input_params):
                                 rdf = correlations.compute_rdf(data, cutoff=input_params['compute_rdf']['cutoff'], number_of_bins=input_params['compute_rdf']['number_of_bins'], z_min=input_params['compute_rdf']['z_min'])
                                 np.savetxt(f'rdf_{data.timestep}.txt', rdf, delimiter=' ')
                                 # register analysis results to flux/kvs stream
-                                register(timestep = data.timestep, rdf = rdf)
+                                register_on_stream(analysis_key='rdf', timestep=data.timestep, rdf=rdf)
                         except Exception as e:
                                 print(f"Error computing RDF at timestep {data.timestep}: {e}")
 
@@ -98,8 +99,8 @@ def AnalysisSubprocess(comm, input_params):
                                 adf = correlations.compute_adf(data, cutoff=input_params['compute_adf']['cutoff'], number_of_bins=input_params['compute_adf']['number_of_bins'], z_min=input_params['compute_adf']['z_min'])
                                 np.savetxt(f'adf_{data.timestep}.txt', adf, delimiter=' ')
                                 # register analysis results to flux/kvs stream
-                                register(timestep = data.timestep, adf = adf)
-                        
+                                register_on_stream(analysis_key='adf', timestep=data.timestep, adf=adf)
+
                         except Exception as e:
                                 print(f"Error computing ADF at timestep {data.timestep}: {e}")
 
