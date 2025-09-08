@@ -22,9 +22,9 @@ def get_xrd_pattern(data, fname):
         pattern = xrd_calc.get_pattern(struc)
 
         pattern_dict= {} #pattern.as_dict() 
-        pattern_dict['2_theta'] = (pattern.x).to_list()
-        pattern_dict['Intensities'] = (pattern.y).to_list()
-        pattern_dict['hkls'] = (pattern.hkls).to_list()
+        pattern_dict['2_theta'] = (pattern.x).tolist()
+        pattern_dict['Intensities'] = (pattern.y).tolist()
+        pattern_dict['hkls'] = pattern.hkls
 
 
         with open(f'{fname}_XRD_Pattern.pkl','wb') as file:
