@@ -30,7 +30,7 @@ def get_xrd_pattern(data, fname):
         with open(f'{fname}_XRD_Pattern.pkl','wb') as file:
                 pickle.dump(pattern_dict, file)
 
-        return
+        return pattern_dict
 
 
 
