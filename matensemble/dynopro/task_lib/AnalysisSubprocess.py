@@ -4,6 +4,7 @@ from matensemble.dynopro.task_lib.analysis_registry import AnalysisRegistry
 import matensemble.dynopro.postprocessors.correlations as correlations
 import math
 import numpy as np
+from matensemble.kvs.streamer import register
 
 def AnalysisSubprocess(comm, input_params):
 
@@ -48,6 +49,10 @@ def AnalysisSubprocess(comm, input_params):
                                 file.write(f'time-step twist-angle\n')
                                 file.write(f'{data.timestep} {twist_angle}')
 
+
+                        # register analysis results to flux/kvs stream
+                        register(timestep = data.timestep, twist_angle = twist_angle)
+
                         if 'target_window' in input_params['compute_twist'].keys():
                                 
                                 assert input_params['compute_twist']['grid_resolution']>1, f"Grid resolution has to be greater than 1 for for a multigrid coverage analysis"
@@ -62,7 +67,10 @@ def AnalysisSubprocess(comm, input_params):
                         
                         if input_params['compute_xrd']:
                                 filetag = f'XRD_{data.timestep}'
-                                compute_diffraction.get_xrd_pattern(data, filetag)
+                                xrd_pattern = compute_diffraction.get_xrd_pattern(data, filetag)
+
+                         # register analysis results to flux/kvs stream
+                        register(timestep = data.timestep, xrd_pattern = xrd_pattern)
 
                 if 'compute_Laue_Diffraction' in input_params.keys():
                         
@@ -70,12 +78,16 @@ def AnalysisSubprocess(comm, input_params):
                                 filetag = f'Laue_{data.timestep}'
                                 compute_diffraction.get_laue_pattern(data, filetag)
 
+                                
+
                 if 'compute_rdf' in input_params.keys():
                 
                         
                         try:
                                 rdf = correlations.compute_rdf(data, cutoff=input_params['compute_rdf']['cutoff'], number_of_bins=input_params['compute_rdf']['number_of_bins'], z_min=input_params['compute_rdf']['z_min'])
                                 np.savetxt(f'rdf_{data.timestep}.txt', rdf, delimiter=' ')
+                                # register analysis results to flux/kvs stream
+                                register(timestep = data.timestep, rdf = rdf)
                         except Exception as e:
                                 print(f"Error computing RDF at timestep {data.timestep}: {e}")
 
@@ -85,6 +97,8 @@ def AnalysisSubprocess(comm, input_params):
                         try:
                                 adf = correlations.compute_adf(data, cutoff=input_params['compute_adf']['cutoff'], number_of_bins=input_params['compute_adf']['number_of_bins'], z_min=input_params['compute_adf']['z_min'])
                                 np.savetxt(f'adf_{data.timestep}.txt', adf, delimiter=' ')
+                                # register analysis results to flux/kvs stream
+                                register(timestep = data.timestep, adf = adf)
                         
                         except Exception as e:
                                 print(f"Error computing ADF at timestep {data.timestep}: {e}")
@@ -98,7 +112,8 @@ def AnalysisSubprocess(comm, input_params):
                                         analysis_data = analysis_func(data=data, params=input_params[analysis_name])
                                 
                                         
-      
+                
+
                 
                 # if 'compute_Laue_Diffraction' in input_params.keys():
                         
