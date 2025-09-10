@@ -46,12 +46,12 @@ class RedisService:
         Push data under a namespaced key.
         Example stored key: 'case1:xx'
         """
-        self.r = redis.Redis(host=self.host, port=self.port, decode_responses=True)
+        r = redis.Redis(host=self.host, port=self.port, decode_responses=True)
         full_key = self.make_key(namespace, key)
 
         # try to load existing dataset
         try:
-            raw = self.r.lrange(full_key, 0, -1)
+            raw = r.lrange(full_key, 0, -1)
             series = [json.loads(item) for item in raw]
         except Exception:
             series = []
@@ -59,14 +59,15 @@ class RedisService:
         new_point = dict(kwargs)
         series.append(new_point)
 
-        self.r.rpush(full_key, json.dumps(kwargs))
+        r.rpush(full_key, json.dumps(kwargs))
 
     def extract_from_stream(self, namespace, key="timeseries", sort=True):
         """
         Extract data from a namespaced key into a DataFrame.
         """
+        r = redis.Redis(host=self.host, port=self.port, decode_responses=True)
         full_key = self.make_key(namespace, key)
-        raw_list = self.r.lrange(full_key, 0, -1)
+        raw_list = r.lrange(full_key, 0, -1)
         series = [json.loads(item) for item in raw_list]
         df = pd.DataFrame(series)
         if sort and "timestep" in df.columns:
@@ -76,7 +77,8 @@ class RedisService:
     def shutdown(self):
 
         try:
-            self.r.shutdown()
+            r = redis.Redis(host=self.host, port=self.port, decode_responses=True)
+            r.shutdown()
             print("Redis server stopped and stream cleared")
         except Exception as e:
             print("Failed to shutdown Redis:", e)

@@ -5,7 +5,7 @@ import matensemble.dynopro.postprocessors.correlations as correlations
 import math
 import numpy as np
 
-def AnalysisSubprocess(comm, input_params):
+def AnalysisSubprocess(comm, input_params, rds=None):
 
         nprocs = comm.Get_size()
         rank = comm.Get_rank()
@@ -42,8 +42,18 @@ def AnalysisSubprocess(comm, input_params):
                 
                 if 'compute_twist' in input_params.keys():
                          
-                        twist_angle = compute_twist.get_interlayer_twist(data, cutoff=input_params['compute_twist']['cutoff'], \
-                                                                                     reference_particle_type=input_params['compute_twist']['reference_particle_type'], grid_resolution=input_params['compute_twist']['grid_resolution'], num_iter=input_params['compute_twist']['num_iter'])
+                        twist_angle = compute_twist.get_interlayer_twist(data, cutoff=input_params['compute_twist']['cutoff'],
+                                                                         reference_particle_type=input_params['compute_twist']['reference_particle_type'],
+                                                                         grid_resolution=input_params['compute_twist']['grid_resolution'],
+                                                                         num_iter=input_params['compute_twist']['num_iter'])
+                        
+                        if input_params['stream']:
+                                if rds is None:
+                                        raise ValueError("RDS object must be provided for data streaming")
+                                else:
+                                        rds.register_on_stream('30K', key='xx', timestep=1000, xx=0.0)
+                                        
+                        
                         with open(f'twist_{data.timestep}', 'w') as file:
                                 file.write(f'time-step twist-angle\n')
                                 file.write(f'{data.timestep} {twist_angle}')
