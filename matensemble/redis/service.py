@@ -1,6 +1,5 @@
 import subprocess
 import time
-import signal
 import socket
 import redis
 import json
@@ -15,14 +14,14 @@ class RedisService:
     def find_free_port(self):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.bind(('', 0))  # let OS pick a free port
-        addr, port = s.getsockname()
+        _, self.port = s.getsockname()
         s.close()
-        return self.port
+        return
 
     def launch(self):
 
         if self.port is None:
-            self.port = self.find_free_port()
+            self.find_free_port()
 
         # 1. Start server in background
         self.proc = subprocess.Popen(["flux", "run", "-N1", "--setattr=system.keep=true",
@@ -47,17 +46,27 @@ class RedisService:
         Push data under a namespaced key.
         Example stored key: 'case1:xx'
         """
-        r = redis.Redis(host=self.host, port=self.port, decode_responses=True)
+        self.r = redis.Redis(host=self.host, port=self.port, decode_responses=True)
         full_key = self.make_key(namespace, key)
-        r.rpush(full_key, json.dumps(kwargs))
+
+        # try to load existing dataset
+        try:
+            raw = self.r.lrange(full_key, 0, -1)
+            series = [json.loads(item) for item in raw]
+        except Exception:
+            series = []
+
+        new_point = dict(kwargs)
+        series.append(new_point)
+
+        self.r.rpush(full_key, json.dumps(kwargs))
 
     def extract_from_stream(self, namespace, key="timeseries", sort=True):
         """
         Extract data from a namespaced key into a DataFrame.
         """
-        r = redis.Redis(host=self.host, port=self.port, decode_responses=True)
         full_key = self.make_key(namespace, key)
-        raw_list = r.lrange(full_key, 0, -1)
+        raw_list = self.r.lrange(full_key, 0, -1)
         series = [json.loads(item) for item in raw_list]
         df = pd.DataFrame(series)
         if sort and "timestep" in df.columns:
@@ -66,9 +75,11 @@ class RedisService:
 
     def shutdown(self):
 
-        self.proc.send_signal(signal.SIGTERM)  # or proc.terminate()
-        self.proc.wait()
-        print("Redis server stopped")
+        try:
+            self.r.shutdown()
+            print("Redis server stopped and stream cleared")
+        except Exception as e:
+            print("Failed to shutdown Redis:", e)
 
 
 
