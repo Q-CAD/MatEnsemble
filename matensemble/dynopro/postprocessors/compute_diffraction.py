@@ -21,16 +21,15 @@ def get_xrd_pattern(data, fname):
         xrd_calc = XRDCalculator()
         pattern = xrd_calc.get_pattern(struc)
 
-        pattern_dict= pattern.as_dict() 
-        pattern_dict['2_theta'] = pattern.x
-        pattern_dict['Intensities'] = pattern.y
+        pattern_dict= {} #pattern.as_dict() 
+        pattern_dict['2_theta'] = pattern.x.tolist()
+        pattern_dict['Intensities'] = pattern.y.tolist()
         pattern_dict['hkls'] = pattern.hkls
 
 
         with open(f'{fname}_XRD_Pattern.pkl','wb') as file:
                 pickle.dump(pattern_dict, file)
-
-        return
+        return pattern_dict
 
 
 
