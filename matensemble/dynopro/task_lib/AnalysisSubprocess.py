@@ -57,7 +57,7 @@ def AnalysisSubprocess(comm, input_params):
                                                                          grid_resolution=input_params['compute_twist']['grid_resolution'],
                                                                          num_iter=input_params['compute_twist']['num_iter'])
 
-                        rds.register_on_stream(namespace=input_params['stream']['namespace'], key="twist_data", timestep=data.timestep, twist_angle=twist_angle)
+                        rds.register_on_stream(namespace=input_params['stream']['namespace'], key="twist_data", timestep=data.timestep, twist_data=twist_angle)
 
                         with open(f'twist_{data.timestep}', 'w') as file:
                                 file.write(f'time-step twist-angle\n')
