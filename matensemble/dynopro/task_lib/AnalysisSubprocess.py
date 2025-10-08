@@ -31,7 +31,7 @@ def AnalysisSubprocess(comm, input_params):
                 
                 data = OvitoCalculators(lmp_snapshot=lmp_snapshot, species=input_params['species'], serialize=True)
 
-                if input_params['stream']:
+                if 'stream' in input_params.keys():
                         if 'host' not in input_params['stream'].keys():
                                 raise ValueError("valid redis-host must be provided for data streaming")
                         if 'port' not in input_params['stream'].keys():
@@ -41,6 +41,8 @@ def AnalysisSubprocess(comm, input_params):
                         
                         from matensemble.redis.service import RedisService
                         rds = RedisService(host=input_params['stream']['host'], port=input_params['stream']['port'])
+                else:
+                        rds = None
 
                 if 'dxa_analysis' in input_params.keys():
 
@@ -57,7 +59,8 @@ def AnalysisSubprocess(comm, input_params):
                                                                          grid_resolution=input_params['compute_twist']['grid_resolution'],
                                                                          num_iter=input_params['compute_twist']['num_iter'])
 
-                        rds.register_on_stream(namespace=input_params['stream']['namespace'], key="twist_data", timestep=data.timestep, twist_data=twist_angle)
+                        if rds is not None:
+                                rds.register_on_stream(namespace=input_params['stream']['namespace'], key="twist_data", timestep=data.timestep, twist_data=twist_angle)
 
                         with open(f'twist_{data.timestep}', 'w') as file:
                                 file.write(f'time-step twist-angle\n')
@@ -78,7 +81,8 @@ def AnalysisSubprocess(comm, input_params):
                         if input_params['compute_xrd']:
                                 filetag = f'XRD_{data.timestep}'
                                 xrd_pattern = compute_diffraction.get_xrd_pattern(data, filetag)
-                                rds.register_on_stream(namespace=input_params['stream']['namespace'], key="xrd_data", timestep=data.timestep, xrd_pattern=xrd_pattern)
+                                if rds is not None:
+                                        rds.register_on_stream(namespace=input_params['stream']['namespace'], key="xrd_data", timestep=data.timestep, xrd_pattern=xrd_pattern)
 
                 if 'compute_Laue_Diffraction' in input_params.keys():
                         
@@ -91,7 +95,10 @@ def AnalysisSubprocess(comm, input_params):
                         
                         try:
                                 rdf = correlations.compute_rdf(data, cutoff=input_params['compute_rdf']['cutoff'], number_of_bins=input_params['compute_rdf']['number_of_bins'], z_min=input_params['compute_rdf']['z_min'])
-                                rds.register_on_stream(namespace=input_params['stream']['namespace'], key="rdf_data", timestep=data.timestep, rdf=rdf.tolist())
+
+                                if rds is not None:
+                                        rds.register_on_stream(namespace=input_params['stream']['namespace'], key="rdf_data", timestep=data.timestep, rdf=rdf.tolist())
+                                        
                                 np.savetxt(f'rdf_{data.timestep}.txt', rdf, delimiter=' ')
                         except Exception as e:
                                 print(f"Error computing RDF at timestep {data.timestep}: {e}")
@@ -101,7 +108,10 @@ def AnalysisSubprocess(comm, input_params):
 
                         try:
                                 adf = correlations.compute_adf(data, cutoff=input_params['compute_adf']['cutoff'], number_of_bins=input_params['compute_adf']['number_of_bins'], z_min=input_params['compute_adf']['z_min'])
-                                rds.register_on_stream(namespace=input_params['stream']['namespace'], key="adf_data", timestep=data.timestep, adf=adf.tolist())
+
+                                if rds is not None:
+                                        rds.register_on_stream(namespace=input_params['stream']['namespace'], key="adf_data", timestep=data.timestep, adf=adf.tolist())
+                                        
                                 np.savetxt(f'adf_{data.timestep}.txt', adf, delimiter=' ')
                         
                         except Exception as e:
