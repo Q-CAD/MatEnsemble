@@ -23,7 +23,9 @@ class SuperFluxManager():
                  ml_task_freq=100, write_restart_freq=100, \
                  tasks_per_job=32,
                  cores_per_task=1, gpus_per_task=0, \
-                 cores_per_ml_task=1, restart_filename=None):
+                 cores_per_ml_task=1,
+                 nnodes=None, gpus_per_node=None,  
+                 restart_filename=None):
 
         self._running_tasks=[]
         self._completed_tasks=[]
@@ -36,6 +38,8 @@ class SuperFluxManager():
         self.cores_per_task = cores_per_task
         self.gpus_per_task = gpus_per_task
         self.cores_per_ml_task = cores_per_ml_task
+        self.nnodes = nnodes
+        self.gpus_per_node = gpus_per_node
 
         self.gen_task_cmd = gen_task_cmd
         self.ml_task_cmd = ml_task_cmd
@@ -172,7 +176,7 @@ class SuperFluxManager():
 
 
     
-    def poolexecutor(self, task_arg_list, buffer_time=0.5, task_dir_list=None, adaptive=False):
+    def poolexecutor(self, task_arg_list, buffer_time=0.5, task_dir_list=None, adaptive=False, dynopro=False):
         """ High-throughput executor implementation """
 
         # trigger_ml = False
@@ -255,7 +259,16 @@ class SuperFluxManager():
                                 cur_task_dir = None
 
                             flxt = Fluxlet(self.flux_handle, self.tasks_per_job, self.cores_per_task, self.gpus_per_task)
-                            flxt.job_submit(executor, self.gen_task_cmd, cur_task, cur_task_args, cur_task_dir)
+                            if dynopro:
+                                if self.nnodes is None or self.gpus_per_node is None:
+                                    raise ValueError("ERROR: For dynopro provisioning, nnodes and gpus_per_node can NOT be None")
+                                else:
+                                    flxt.hetero_job_submit(executor, nnodes=self.nnodes, gpus_per_node=self.gpus_per_node, 
+                                                       command=self.gen_task_cmd, 
+                                                       task=cur_task, 
+                                                       task_args=cur_task_args, task_directory=cur_task_dir)
+                            else:
+                                flxt.job_submit(executor, self.gen_task_cmd, cur_task, cur_task_args, cur_task_dir)
 
                             self.futures.add(flxt.future)
                             self._running_tasks.append(cur_task)

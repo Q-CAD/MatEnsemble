@@ -70,3 +70,74 @@ class Fluxlet:
         self.future = executor.submit(jobspec)
         self.future.task_ = task
         os.chdir(launch_dir)
+
+    def hetero_job_submit(self, executor, nnodes, gpus_per_node, command, task, task_args, \
+                        task_directory=None, set_gpu_affinity=False,\
+                        set_cpu_affinity=True, set_mpi=None):
+
+        self.nnodes = nnodes
+        self.gpus_per_node = gpus_per_node
+        os.environ['SLURM_GPUS_PER_NODE'] = str(self.gpus_per_node)
+
+        self.build_task_command(command, task, task_args, task_directory)
+        jobspec = flux.job.JobspecV1.per_resource(
+            self.cmd,
+            ncores=int(self.tasks_per_job),
+            nnodes=self.nnodes,
+            gpus_per_node=self.gpus_per_node,
+            per_resource_type="core",
+            per_resource_count=1
+        )
+
+        jobspec.cwd = os.getcwd()
+
+        if set_mpi is not None:
+                jobspec.setattr_shell_option("mpi", "pmi2")
+        if set_cpu_affinity:
+                jobspec.setattr_shell_option("cpu-affinity", "per-task")
+        if set_gpu_affinity and self.gpus_per_task > 0:
+            jobspec.setattr_shell_option("gpu-affinity", "per-task")
+        jobspec.environment = dict(os.environ)
+
+        jobspec.stdout = os.path.join(os.getcwd(), 'stdout')
+        jobspec.stderr = os.path.join(os.getcwd(), 'stderr')
+
+        self.resources = getattr(jobspec, 'resources', None)
+        self.future = executor.submit(jobspec)
+        self.future.task_ = task
+        os.chdir(self.launch_dir)
+    
+    def build_task_command(self, command, task, task_args, task_directory=None):
+         
+        self.launch_dir = os.getcwd()
+        cmd_list = command.split(" ")
+
+        if task_directory is not None:
+            try:
+                os.chdir(os.path.abspath(task_directory))
+            except:
+                print(f"Could not find task directory {task_directory}: So, creating one instead . . .")
+                os.mkdir(os.path.abspath(task_directory))
+                os.chdir(task_directory)
+        else:
+            print("No directories are specified for the task. Task-list will serve as directory tree.")
+            try:
+                os.chdir(str(task))
+            except:
+                os.mkdir(str(task))
+                os.chdir(str(task))
+
+        print(os.getcwd())
+        if isinstance(task_args, list):
+            str_args = [str(arg) for arg in task_args]
+        elif task_args is None:
+            str_args = []
+        elif isinstance(task_args, (str, int, float, np.int64, np.float64, dict)):
+            str_args = [str(task_args)]
+        else:
+            raise TypeError(f"ERROR: Task argument can not be {type(task_args)}. Currently supports `list`, `str`, `int`, `float`, `np.int64`, `np.float64`, and `dict` types")
+
+        cmd_list.extend(str_args)
+        self.cmd = cmd_list
+
+

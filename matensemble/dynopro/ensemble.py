@@ -24,7 +24,9 @@ class EnsembleDynamicsRunner():
                 gpus_per_task=0, \
                 write_restart_freq=1000, \
                 buffer_time=0.1, \
-                adaptive=False):
+                adaptive=False,
+                nnodes=None,
+                gpus_per_node=None):
         
         self.sim_list = sim_list
         self.sim_args_list = sim_args_list
@@ -32,6 +34,8 @@ class EnsembleDynamicsRunner():
         self.tasks_per_job = tasks_per_job
         self.cores_per_task = cores_per_task
         self.gpus_per_task = gpus_per_task
+        self.nnodes = nnodes
+        self.gpus_per_node = gpus_per_node
         self.write_restart_freq = write_restart_freq
         self.buffer_time = buffer_time
         self.adaptive = adaptive
@@ -50,9 +54,11 @@ class EnsembleDynamicsRunner():
                                 tasks_per_job=self.tasks_per_job, \
                                 cores_per_task=self.cores_per_task, \
                                 gpus_per_task=self.gpus_per_task, \
-                                write_restart_freq=self.write_restart_freq)
+                                write_restart_freq=self.write_restart_freq,
+                                nnodes=self.nnodes, gpus_per_node=self.gpus_per_node)
         
         # Execute the simulations
         sfm.poolexecutor(task_arg_list=self.sim_args_list, \
                         buffer_time=self.buffer_time, \
-                        task_dir_list=self.sim_dir_list, adaptive=self.adaptive)
+                        task_dir_list=self.sim_dir_list, 
+                        adaptive=self.adaptive, dynopro=True)

@@ -1,5 +1,5 @@
 
-from lammps import lammps
+import lammps
 import numpy as np
 import math
 from matensemble.dynopro.utils import preprocessors
@@ -15,15 +15,27 @@ def MDSubprocess(split, comm, input_params):
         me = comm.Get_rank()
         nprocs = comm.Get_size()
 
+        
+        import lammps
         if input_params['run_on_gpus']:
 
-                lmp = lammps(comm=split,cmdargs=['-k', 'on', 'g', str(gpus_per_node), '-sf','kk','-pk', 'kokkos','neigh','half','newton', 'off'])
+                lmp = lammps.lammps(comm=split,cmdargs=['-k', 'on', 'g', str(gpus_per_node), '-sf','kk','-pk', 'kokkos','neigh','half','newton', 'off'])
         else:
-                lmp = lammps(comm=split) #,cmdargs=['-screen', 'off'])
+                lmp = lammps.lammps(comm=split) #,cmdargs=['-screen', 'off'])
+
+        
+        # Have to activate mliappy if running with ML-IAP 
+        if 'mliap' in input_params.keys():
+               if input_params['mliap']:
+                        import lammps
+                        import lammps.mliap
+                        lammps.mliap.activate_mliappy(lmp)
+
 
         # initialize a LAMMPS simulation from 'lammps_input' file
 
         if 'lammps_input' in input_params.keys():
+                
                 try:
                         lines = open(input_params['lammps_input'],'r').readlines()
                         for line in lines: lmp.command(line)

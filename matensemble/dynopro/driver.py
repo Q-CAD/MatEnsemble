@@ -50,8 +50,12 @@ def online_dynamics(input_params_source):
 
     # Run the tasks
     if color == 0:
+        os.environ['CUDA_VISIBLE_DEVICES'] = str(me % int(os.environ.get('SLURM_GPUS_PER_NODE')))
+        os.environ['HIP_VISIBLE_DEVICES'] = str(me % int(os.environ.get('SLURM_GPUS_PER_NODE')))
         MDSubprocess(split, comm, input_params=input_params)
     else:
+        os.environ['CUDA_VISIBLE_DEVICES'] = ''
+        os.environ['HIP_VISIBLE_DEVICES'] = ''
         AnalysisSubprocess(comm, input_params=input_params)
         print(f"shutting down rank: {comm.Get_rank()}")
 
