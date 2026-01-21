@@ -50,21 +50,22 @@ def MDSubprocess(split, comm, input_params):
                         comm.Abort(1)
 
         box_lo, box_hi, xy, yz, xz, _,_ = lmp.extract_box()
+        Ly = box_hi[1]-box_lo[1]
+        Lz = box_hi[2]-box_lo[2]
  
         if 'lattice_scale' in input_params.keys():
                 lmp.command(f"change_box all x scale {input_params['lattice_scale']} y scale {input_params['lattice_scale']} remap units box ")
         
         if 'shear_scale' in input_params.keys():
                 
-                xy_final = xy*float(input_params['shear_scale'])
+                xy_final = Ly*float(input_params['shear_scale'])
                 lmp.command(f"change_box all xy final {xy_final} remap units box ")
 
         if 'strain_tensor' in input_params.keys():
 
-
-                xy_final = xy*float(input_params['strain_tensor']['xy'])
-                yz_final = yz*float(input_params['strain_tensor']['yz'])
-                xz_final = xz*float(input_params['strain_tensor']['xz'])
+                xy_final = Ly*float(input_params['strain_tensor']['xy'])
+                yz_final = Lz*float(input_params['strain_tensor']['yz'])
+                xz_final = Lz*float(input_params['strain_tensor']['xz'])
                 
                 lmp.command(f"change_box all x scale {input_params['strain_tensor']['xx']} y scale {input_params['strain_tensor']['yy']} z scale {input_params['strain_tensor']['yy']} xy final {xy_final} \
                             yz final {yz_final} xz final {xz_final} remap units box ")
