@@ -1,6 +1,3 @@
-
-
-
 [![PyPI version](https://badge.fury.io/py/matensemble.svg)](https://badge.fury.io/py/matensemble)
 [![Documentation Status](https://readthedocs.org/projects/matensemble/badge/?version=latest)](https://matensemble.readthedocs.io/en/latest/?badge=latest)
 <!-- [![Build Status](https://github.com/username/matensemble/workflows/Build/badge.svg)](https://github.com/username/matensemble/actions) -->
@@ -17,6 +14,13 @@ An adaptive and highly asynchronous ensemble simulation workflow manager
 
 - On-the-fly streaming of materials dynamics with custom analysis algorithms
  <img src="images/Cap_2_dynopro.png" alt="on-the-fly dynamics" width="600"/>
+
+## User Guide:
+Open the documentation
+```sh
+<browser-of-choice> docs/index.html
+```
+
 
 ## Installation Guide
 
@@ -65,4 +69,16 @@ pip install -r requirements.txt
 ```bash
 pip install -e .
 ```
+
+**Links to documentation for Ease of Access: **
+* [MatEnsemble Dependency](https://github.com/BagchiS6/AutoPF)
+* [Slurm Documentation](https://slurm.schedmd.com/documentation.html)
+* [Flux Documentation](https://flux-framework.readthedocs.io/en/latest/guides/learning_guide.html)
+* [Python Flux Guide](https://flux-framework.readthedocs.io/projects/flux-core/en/latest/guide/start.html)
+* [Baseline Super-Computer User Guide](https://docs.cades.olcf.ornl.gov/baseline_user_guide/baseline_user_guide.html)
+* [Frontier Super-Computer User Guide](https://docs.olcf.ornl.gov/systems/frontier_user_guide.html#slurm)
+* [Open MPI Documentation (Message Passing Interface)](https://www.open-mpi.org/)
+* [LAMMPS Documentation](https://docs.lammps.org/Manual.html)
+
+
 

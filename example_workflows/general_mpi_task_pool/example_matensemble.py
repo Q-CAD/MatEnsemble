@@ -1,38 +1,40 @@
-from matensemble.matfluxGen import SuperFluxManager
 import numpy as np
+import time
 import os
+
+from matensemble.manager import SuperFluxManager
+
 __author__ = "Soumendu Bagchi"
 
-def get_random_task_args(N_task):
-        from random import choice
-        from string import ascii_lowercase, digits
-
-        chars = ascii_lowercase + digits
-        lst = [''.join(choice(chars) for _ in range(2)) for _ in range(N_task)]
-        return lst
-
-
-# create a list of task indicators; In the following I use integers as task-IDs. 
-
 N_task = 10
-task_list = list(np.arange(N_task))
 
-# spceify the basic command/executable-filepath used to execute the task (you can skip any mpirun/srun prefixes, and also any *args, **kwargs at this point)
+# Task IDs in order: 1, 2, 3, ... N_task
+task_list = list(range(1, N_task + 1))
 
-task_command = os.path.abspath("mpi_helloworld.py") #'sample_amd' #'mpi_helloworld.py' #make sure to make it executable by `chmod u+x <file.py>`
+# Command / executable path
+task_command = os.path.abspath("mpi_helloworld.py")
 
-# task_command = os.path.abspath("sample_amd")
+# Constant tasks_per_job for every task (match original behavior)
+# (Use 56 if you want the same as your earlier benchmark)
+TASKS_PER_JOB = 50
+tasks_per_job = TASKS_PER_JOB * np.ones(N_task, dtype=int)
 
-# Now instatiate a task_manager object which is a Superflux Manager sitting on top of evey smaller Fluxlets
+master = SuperFluxManager(
+    task_list,
+    task_command,
+    write_restart_freq=5,
+    tasks_per_job=tasks_per_job,
+    cores_per_task=1,
+    gpus_per_task=0,
+)
 
-master = SuperFluxManager(task_list, task_command, None, tasks_per_job=56*np.random.randint(1,10,N_task), cores_per_task=1, gpus_per_task=0, write_restart_freq=5)
+# Deterministic args, aligned with task order: 1..N_task
+task_arg_list = list(range(1, N_task + 1))
 
+# Run
+start_time = time.perf_counter()
+master.poolexecutor(task_arg_list=task_arg_list, buffer_time=0.1, task_dir_list=None)
+end_time = time.perf_counter()
 
-# Input argument list specific to each task in the sorted as task_ids
-# Generated random strings to serve as arguments
-
-task_arg_list = list(np.random.randint(N_task, size=N_task)) #get_random_task_args(N_task)
-
-# For multiple args per task each if the elements could be a list i.e. task_args_list = [['x0f','x14'],['xa9','xf3'],[]...]
-# finally execute the whole pool of tasks
-master.poolexecutor(task_arg_list=task_arg_list, buffer_time=1, task_dir_list=None)
+elapsed_time = end_time - start_time
+print(f"Workflow took {elapsed_time:.4f} seconds to run.")

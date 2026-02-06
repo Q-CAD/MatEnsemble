@@ -1,6 +1,4 @@
-#!//lustre/orion/mat201/world-shared/AI_Hackathon/build_matensemble_env/bin/python
-###!/lustre/orion/mat201/world-shared/QCAD/python_envs/matensemble_02252025/bin/python
-##!/autofs/nccs-svm1_proj/cph162/python_environments/matensemble_env/bin/python
+#!/lustre/orion/lrn090/scratch/kaleb/envs/matensemble-dev-clone/bin/python
 """
 Parallel Hello World
 """
