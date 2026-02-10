@@ -5,6 +5,7 @@ run time
 """
 
 import flux
+import flux.job
 
 from abc import ABC, abstractmethod
 

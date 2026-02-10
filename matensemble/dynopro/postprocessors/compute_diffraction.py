@@ -31,6 +31,21 @@ def get_xrd_pattern(data, fname):
                 pickle.dump(pattern_dict, file)
         return pattern_dict
 
+def get_xrd_ovito(data, fname):
+  
+        from ovito.modifiers import StructureFactorModifier
+        import numpy as np
+        data.data.apply(StructureFactorModifier(k_max = 40, mode=StructureFactorModifier.Mode.Debye, atomic_form_factors=True))
+
+        q = data.data.tables['structure-factor'].xy()[:,0]/2/np.pi
+        S_q = data.data.tables['structure-factor'].xy()[:,1]
+        xrd_array = np.column_stack((q, S_q))
+
+        print ("computing large-scale XRD-S(q) using Ovito . . . .")
+        np.savetxt(str(f"{fname}_xrd.dat"), xrd_array, header='q S(q)')
+
+        return {"q": q.tolist(), "S_q": S_q.tolist()}
+
 
 
 
