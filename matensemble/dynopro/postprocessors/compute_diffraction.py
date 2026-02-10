@@ -39,11 +39,12 @@ def get_xrd_ovito(data, fname):
 
         q = data.data.tables['structure-factor'].xy()[:,0]/2/np.pi
         S_q = data.data.tables['structure-factor'].xy()[:,1]
+        xrd_array = np.column_stack((q, S_q))
 
         print ("computing large-scale XRD-S(q) using Ovito . . . .")
-        np.savetxt(str(f"{fname}_xrd.dat"), np.column_stack((q, S_q)), header='q S(q)')
+        np.savetxt(str(f"{fname}_xrd.dat"), xrd_array, header='q S(q)')
 
-        return np.column_stack((q, S_q))
+        return {"q": q.tolist(), "S_q": S_q.tolist()}
 
 
 
