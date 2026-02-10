@@ -80,7 +80,7 @@ def AnalysisSubprocess(comm, input_params):
                         
                         if input_params['compute_xrd']:
                                 filetag = f'XRD_{data.timestep}'
-                                xrd_pattern = compute_diffraction.get_xrd_pattern(data, filetag)
+                                xrd_pattern = compute_diffraction.get_xrd_ovito(data, filetag)
                                 if rds is not None:
                                         rds.register_on_stream(namespace=input_params['stream']['namespace'], key="xrd_data", timestep=data.timestep, xrd_pattern=xrd_pattern)
 
