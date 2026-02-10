@@ -82,7 +82,17 @@ def AnalysisSubprocess(comm, input_params):
                                 filetag = f'XRD_{data.timestep}'
                                 xrd_pattern = compute_diffraction.get_xrd_ovito(data, filetag)
                                 if rds is not None:
-                                        rds.register_on_stream(namespace=input_params['stream']['namespace'], key="xrd_data", timestep=data.timestep, xrd_pattern=xrd_pattern)
+                                        # Ensure XRD pattern is JSON-serializable before streaming
+                                        if isinstance(xrd_pattern, np.ndarray):
+                                                xrd_pattern_stream = xrd_pattern.tolist()
+                                        else:
+                                                xrd_pattern_stream = xrd_pattern
+                                        rds.register_on_stream(
+                                                namespace=input_params['stream']['namespace'],
+                                                key="xrd_data",
+                                                timestep=data.timestep,
+                                                xrd_pattern=xrd_pattern_stream,
+                                        )
 
                 if 'compute_Laue_Diffraction' in input_params.keys():
                         
