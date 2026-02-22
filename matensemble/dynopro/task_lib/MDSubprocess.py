@@ -52,6 +52,21 @@ def MDSubprocess(split, comm, input_params):
         box_lo, box_hi, xy, yz, xz, _,_ = lmp.extract_box()
         Ly = box_hi[1]-box_lo[1]
         Lz = box_hi[2]-box_lo[2]
+
+        if 'species_fraction' in input_params.keys():
+                try:
+                        species_type = input_params['species_fraction']['species_type']
+                        species_group = input_params['species_fraction']['species_group']
+                        species_fraction = input_params['species_fraction']['fraction']
+                        species_seed = input_params['species_fraction'].get('seed', 12393)
+
+                        lmp.command(f'set group {species_group} type {species_type}')
+                        lmp.command(f'set group {species_group} type/ratio {species_type} {species_fraction} {species_seed}')
+                except Exception as e:
+                        print ("Error in setting species fraction. Please check the input parameters and try again.")
+                        print (e)
+                        comm.Abort(1)
+
  
         if 'lattice_scale' in input_params.keys():
                 lmp.command(f"change_box all x scale {input_params['lattice_scale']} y scale {input_params['lattice_scale']} remap units box ")
