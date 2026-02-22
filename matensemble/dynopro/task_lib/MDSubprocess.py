@@ -74,7 +74,10 @@ def MDSubprocess(split, comm, input_params):
         if 'heat' in input_params.keys():
 
                 T_heat =  input_params['heat']['T_heat']
-                lmp.command(f"fix heat all langevin {T_heat} {T_heat} 50 12345")
+                T_damp = input_params['heat'].get('T_damp', 50)
+                T_seed = input_params['heat'].get('T_seed', 12345)
+
+                lmp.command(f"fix heat all langevin {T_heat} {T_heat} {T_damp} {T_seed}")
                 lmp.command("fix ensemble all nve")
                 try:
                         if 'verlet_delta_t' in input_params.keys():
@@ -89,7 +92,10 @@ def MDSubprocess(split, comm, input_params):
 
         
         if 'quench' in input_params.keys():
-                lmp.command(f"fix quench all langevin {input_params['heat']['T_heat']} {input_params['quench']['T_quench']} 50 12345")
+                T_damp = input_params['quench'].get('T_damp', 50)
+                T_seed = input_params['quench'].get('T_seed', 12345)
+                
+                lmp.command(f"fix quench all langevin {input_params['heat']['T_heat']} {input_params['quench']['T_quench']} {T_damp} {T_seed}")
                 try:
                         lmp.command(f"run {input_params['quench']['quench_timesteps']}")
                 except:
