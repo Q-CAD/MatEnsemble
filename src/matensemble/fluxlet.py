@@ -62,6 +62,25 @@ def resolve_workdir(
     return p.resolve()
 
 
+def fluxlet_from_task_obj(task, handle) -> fluxlet.Fluxlet:
+    """
+    Factory method that takes a task object and produces a Fluxlet object
+
+    Parameters
+    ----------
+    task : manager.Task
+        The task object to be converted into a Fluxlet
+    handle : flux.Flux()
+        The flux handle of the task
+
+    Return
+    ------
+    fluxlet.Fluxlet
+    """
+
+    return Fluxlet(handle, task.subtasks, task.cores_per_task, task.gpus_per_task)
+
+
 class Fluxlet:
     """
     Wrapper around Flux job submission for a single 'task'.

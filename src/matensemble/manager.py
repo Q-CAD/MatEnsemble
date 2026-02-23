@@ -43,6 +43,30 @@ __author__ = ["Soumendu Bagchi", "Kaleb Duchesneau"]
 __package__ = "matensemble"
 
 
+class Task:
+    def __init__(
+        self,
+        id: int | str,
+        subtasks: list[SubTask],
+        cores_per_task: int,
+        gpus_per_task: int,
+        dependencies: list[int | str] | None = None,
+    ) -> None:
+        """
+        task objects n
+        """
+
+        self.id = id
+        self.command = command
+        self.subtasks = subtasks
+        self.cores_per_task = cores_per_task
+        self.gpus_per_task = gpus_per_task
+
+class SubTask:
+    def __init__(self, command: str) -> None:
+        self.command = commmand
+
+
 class SuperFluxManager:
     """
     Task submission manager that orchestrates high-throughput Flux jobs
