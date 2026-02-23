@@ -59,8 +59,12 @@ def MDSubprocess(split, comm, input_params):
                         species_group = input_params['species_fraction']['species_group']
                         species_fraction = input_params['species_fraction']['fraction']
                         species_seed = input_params['species_fraction'].get('seed', 12393)
+                        
+                        if species_type==1:
+                            lmp.command(f'set group {species_group} type 2')
+                        if species_type==2:
+                            lmp.command(f'set group {species_group} type 1')
 
-                        lmp.command(f'set group {species_group} type {species_type}')
                         lmp.command(f'set group {species_group} type/ratio {species_type} {species_fraction} {species_seed}')
                 except Exception as e:
                         print ("Error in setting species fraction. Please check the input parameters and try again.")
