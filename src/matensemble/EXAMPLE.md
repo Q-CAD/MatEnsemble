@@ -14,20 +14,23 @@ Find the sum of the digits of **100!**.
 
 
 
+--------------------------------------------------------------------
+
 ```python
+import # imports here
 
-import matensemble.manager.SuperFluxManager
-import matensemble.manager.Task
-import matensemble.manager.SubTask
+pipline = Pipeline()
 
-
+# @decorator here maybe 
+@pipeline.task() # or .job() idk 
 def factorial(n):
     product = 1
     for i in range(1, n + 1):
         product *= i
     return product
 
-def main(n):
+@pipeline.task() # or .job(depends on factorial)
+def factorial_digit_sum(n):
     s = f"{factorial(n)}"
     sum = 0
     for number in s:
@@ -35,5 +38,38 @@ def main(n):
     print(f"The sum of the factorial digits in 100 is {sum}")
 
 
+# then how would they put thier arguments to start. 
+
+first = factorial(100)
+second = factorial_digit_sum(first.output)
+
+
+# MatEnsemble API
+pipeline.run(second)
+
+
+--------------------------------------------------------------------
+
+
+# THis is different from Jobflow's API they have it like this
+
+from jobflow import job
+
+@job
+def add(a, b):
+    return a + b
+
+add_first = add(1, 5)
+add_second = add(add_first.output, 3)
+
+from jobflow import Flow
+
+flow = Flow([add_first, add_second])
+flow.draw_graph(figsize=(3, 3)).show()
+
+
 
  ```
+
+In the future we also should be able to use a tool like 
+graphviz to show a visual of the workflow. 

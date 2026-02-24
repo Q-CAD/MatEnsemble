@@ -1,410 +1,299 @@
-Chat with Chat:
+Absolutely — here’s a solid MVP summary you can paste into a new chat as context.
 
-okay, well is there a way that this can be done programmatically? Say the user defines some functions, could we make some decorators that handle all of the args and parsing them? 
+# MatEnsemble MVP Refactor Summary (Decorator-Defined DAG + Executables) 
 
-Then we build a task object filled with subtasks?
+**Goal**
 
-Something like this:
-
-```python
-class Task:
-    def __init__(
-        self,
-        id: int | str,
-        subtasks: list[SubTask],
-        cores_per_task: int,
-        gpus_per_task: int,
-        dependencies: list[int | str] | None = None,
-    ) -> None:
-        """
-        task objects n
-        """
-
-        self.id = id
-        self.command = command
-        self.subtasks = subtasks
-        self.cores_per_task = cores_per_task
-        self.gpus_per_task = gpus_per_task
-
-class SubTask:
-    def __init__(self, command: str) -> None:
-        self.command = commmand
-```
+Add a clean, user-friendly DAG API to MatEnsemble that supports: Executable 
+tasks (existing MatEnsemble style) Python function tasks (new decorator-based 
+API) Mixed workflows (executables + Python in the same DAG) Users should be 
+able to define tasks naturally, compose them with function calls / arguments, 
+and let MatEnsemble compile and run the DAG on Flux. Core MVP Concept We are 
+not submitting raw Python callables directly to Flux. Instead: Flux still runs 
+commands via JobspecV1.from_command(...) Python tasks are compiled into 
+commands that launch a generic worker script Executable tasks remain regular 
+executable commands So the DAG layer is a frontend API, and MatEnsemble still 
+uses native Flux jobspec execution under the hood.
 
 
-Or if there is a more generic design for tasks/jobs that would be more user friendly
+## User-Facing API (MVP)
+1) Python tasks via decorators
 
+Users define Python tasks with a decorator, e.g. @pipeline.task(...).
+Calling a decorated function should not execute it immediately.
+Instead, it returns a TaskNode (a DAG node / placeholder).
 
-Yes — that’s exactly a good design direction, and it’s a common way to make native Flux feel “Pythonic” without actually submitting Python callables.
+Example behavior:
+a = factorial(100) → returns TaskNode
+b = factorial_digit_sum(a) → returns TaskNode that depends on a
 
-You can absolutely build:
+This creates a DAG lazily.
 
-decorators to register user functions as pipeline steps
+2) Executable tasks via pipeline.exec(...)
 
-a Task / SubTask DAG model
+Users can define executable tasks with something like:
+pipeline.exec([...], outputs={...}, ...)
 
-a runner script that knows how to execute one registered step by name
+This should create the same kind of TaskNode, but with kind="executable".
+Executable tasks should support:
+ - command (prefer list[str])
+ - resource options (num_tasks, cores_per_task, gpus_per_task, mpi)
+ - declared outputs (outputs={"traj": "dump.lammpstrj"})
+ - optional explicit dependencies (depends_on=[...])
 
-automatic arg/result serialization (JSON/pickle)
+3) Dependencies should be inferred automatically where possible Python tasks
 
-That gives users a nice API like “define functions + dependencies,” while under the hood you still submit Flux Jobspec commands.
+If a Python task argument is a TaskNode, that becomes a dependency 
+automatically. Executable tasks If an executable command uses upstream.outputs
+["name"], that becomes a dependency automatically. 
 
-The key idea
+Also support explicit 
+ordering-only dependencies: 
+depends_on=[node] 
 
-Native Flux can’t run a Python function object directly, but it can run:
+## DAG Building Model TaskTemplate vs TaskNode
 
-python flux_worker.py --task-id mytask --subtask-id B --inputs ...
+We need a clear separation:
+TaskTemplate = task definition (decorated Python function or executable spec template)
+TaskNode = one invocation/call (one node in the DAG)
 
-So your framework can:
+This allows:
+calling the same function 100 times ([square(i) for i in range(100)])
 
-Capture Python functions with decorators
+each call becomes a unique node with unique node ID
 
-Build a DAG (Task, SubTask)
+## Mixed Task Support (Important)
 
-Serialize inputs/results to files
+MatEnsemble must continue to support existing executable-based workflows.
+So the DAG/compiler/scheduler must support both kinds:
+  -  kind="python" → run via worker runtime
+  -  kind="executable" → run directly as command
 
-Submit one Flux job per subtask using a generic worker script
+Both should compile into a common internal representation (e.g. TaskSpec / 
+CompiledTask) and then be executed by the same SuperFluxManager path.
 
-A user-friendly design (recommended)
-1) User defines functions with decorators
+Compile Step (MVP)
 
-Example of what the user writes:
+When the user submits a pipeline (e.g. pipeline.run(target)), MatEnsemble should:
 
-@subtask(name="A")
-def make_data():
-    return {"x": 10}
+1) Freeze and collect the DAG
+ - Start from target node(s)
+ - Walk dependencies
+ - Collect all reachable nodes
 
-@subtask(name="B", depends_on=["A"])
-def process_b(a_output):
-    return {"b": a_output["x"] * 2}
+2) Topologically sort the DAG
+ - Ensure dependency order is known before submission
+ - Scheduler can still do dynamic readiness checks, but topo order is the base
 
-@subtask(name="C", depends_on=["A"])
-def process_c(a_output):
-    return {"c": a_output["x"] + 5}
+3) Materialize run metadata
 
-@subtask(name="D", depends_on=["B", "C"])
-def combine(b_output, c_output):
-    return {"result": b_output["b"] + c_output["c"]}
+ - Create a run-level manifest/spec that describes:
+ - run_id
+ - backend (file or kvs)
+ - task nodes
+ - dependencies
+ - argument specs (literal vs references)
+ - task kinds (python/executable)
+ - serializers/resource settings
 
-This is much nicer than forcing users to write CLI parsing.
+This metadata should be written to disk (manifest + node specs) for MVP.
 
-2) Your framework stores metadata in SubTask objects
+4) Compile each node into a TaskSpec / CompiledTask
 
-Your SubTask should hold more than command — it should hold:
+Each compiled task should contain enough information for SuperFluxManager submission:
 
-name
+ - task/node ID
+ - dependencies
+ - execution kind
+ - final command list (worker command OR executable command)
+ - resource requirements
+ - env/cwd/output metadata
+ - output declarations (for executable tasks)
 
-func (Python callable, used only by the local worker/registry)
+Worker Runtime (Python Tasks)
+Static worker (recommended)
 
-depends_on
+## Use a static worker module included in MatEnsemble (not generated dynamically per run), e.g.:
+matensemble.worker
 
-resources (cores/gpus)
+## What the worker does
 
-serialization config (json/pickle)
+For a Python-task node, the worker should:
+ - Read the run/node spec metadata
+ - Import the user’s module (needed to access actual function objects)
+ - Resolve inputs:
+     - literals
+     - refs to upstream task results / output files
+ - Execute the function
+ - Store the result (file backend or KVS backend)
+ - Exit with success/failure code
 
-maybe env, timeout, etc.
+### Why import the user module?
+
+Because the compile step stores function references (module + func_name), not function code.
+At runtime the worker needs to import the module to get the actual callable object.
+
+## Result Passing / Backends (MVP)
+
+We want a pluggable result backend for Python-task return values:
+
+1) File backend (default MVP)
+    Store Python results in files (pickle/JSON)
+    Best fit: put result files in the task workdir (alongside stdout/stderr)
+
+2) Flux KVS backend (optional MVP or phase 2)
+    Store Python task results in Flux KVS (Flux-native)
+    Good for small/medium intermediate values
+    Keep interface backend-agnostic so this can be swapped in later
+    Common abstraction
+    Use a ResultStore-style interface:
+    put(run_id, node_id, value)
+    get(run_id, node_id)
+    
+## Executable Task Outputs (Dependency Model)
+For executables, dependencies should be file-output based.
+Users declare outputs explicitly:
+outputs={"result": "result.json"}
+This means:
+the executable is expected to create result.json in its task workdir
+task.outputs["result"] becomes an OutputRef placeholder
+downstream tasks use that OutputRef as an argument
+Compiler resolves OutputRef to the actual path:
+<workflow out dir>/<task-id>/result.json
+
+## Output validation (MVP strongly recommended)
+
+After an executable task finishes, MatEnsemble should verify declared outputs exist.
+If a declared output file is missing, fail the task with a clear error.
+
+Existing Output Structure (Keep This)
+
+MatEnsemble already has a good workflow path/logging system:
+
+WorkflowPaths(
+    base_dir,
+    status_file,
+    logs_dir,
+    out_dir,
+    verbose_log_file,
+)
+
+And jobs already get task-specific workdirs with:
+    jobspec.cwd = workdir
+    jobspec.stdout = workdir / "stdout"
+    jobspec.stderr = workdir / "stderr"
+
+This should remain unchanged
+The new DAG/compiler/worker system should reuse this structure.
+
+For Python worker tasks:
+same per-task workdir/log files
+worker command just becomes the task command
+For executable tasks:
+ - current behavior remains
+ - Resource Model (Per Task, Not Global)
+ - Each task (Python or executable) should be able to carry its own resource requirements:
+ - num_tasks
+ - cores_per_task
+ - gpus_per_task
+ - mpi (bool / shell option)
+ - maybe env
+
+This is important for:
+mixed serial + MPI workflows
+mixed CPU + GPU workflows
+future flexibility
+
+Python tasks are NOT limited to one core
+
+Python tasks still run as Flux jobs, so they can use:
+    multiple tasks/ranks (num_tasks)
+    MPI (mpi=True)
+    multiple cores/GPUs
+    This means mpi4py-style Python tasks are still possible in the new API.
+
+SuperFluxManager Integration (Execution Engine Reuse)
+The new DAG system should sit above SuperFluxManager, not replace it.
+**New responsibilities (pipeline layer)**
+ - decorators / pipeline.exec
+ - DAG construction
+ - topological sorting
+ - compile step (node specs + commands)
+ - result backend abstraction
+**Existing responsibilities (SuperFluxManager)**
+ - queueing
+ - Flux jobspec submission
+ - tracking futures
+ - logging/status updates
+ - failure handling
+ - resource-aware scheduling
+
+So the output of the compiler should be something SuperFluxManager can consume directly (e.g. TaskSpec / CompiledTask objects).
+job_submit(...) Refactor Direction (MVP-friendly)
+Current job_submit(...) is executable-centric (command + task_args).
+For the MVP, it should evolve toward accepting a richer task spec (or at least a final normalized cmd_list) so it can submit both:
+    executable commands
+    worker commands for Python tasks
+
+But the core jobspec setup logic (cwd/stdout/stderr/env/affinity) can stay mostly the same.
+
+## Recommended MVP API Shape
+### Python task decorator
 
 Something like:
-
-from dataclasses import dataclass, field
-from typing import Callable, Any
-
-@dataclass
-class SubTask:
-    name: str
-    func: Callable[..., Any]
-    depends_on: list[str] = field(default_factory=list)
-    cores: int = 1
-    gpus: int = 0
-    serializer: str = "json"
-3) Task is the DAG container (good idea)
-
-Your Task class is a good start. I’d tweak it a bit:
-
-@dataclass
-class Task:
-    id: str
-    subtasks: list[SubTask]
-    cores_per_task: int = 1
-    gpus_per_task: int = 0
-    dependencies: list[str] | None = None  # optional task-level deps
-    workdir: str | None = None
-
-But if subtasks can each have different resources, put resources on SubTask (more flexible).
-
-4) Use a single generic worker script
-
-Instead of generating separate scripts, use one worker:
-
-python flux_worker.py --pipeline-spec pipeline.json --subtask B --workdir /path/run123
-
-The worker:
-
-loads the pipeline spec / registry
-
-finds subtask B
-
-loads outputs of dependencies (A, etc.)
-
-calls the Python function
-
-writes result to results/B.json
-
-How results get passed around (automatically)
-
-Your framework can standardize this:
-
-each subtask writes to: workdir/results/<subtask_name>.json
-
-worker loads dependencies from those files
-
-injects them into the function call
-
-For the DAG:
-
-A writes results/A.json
-
-B and C read results/A.json
-
-D reads results/B.json, results/C.json
-
-Users don’t handle file paths manually — your framework does.
-
-Decorator pattern example (minimal)
-
-Here’s a clean starting point:
-
-# pipeline_api.py
-from dataclasses import dataclass, field
-from typing import Callable, Any
-
-REGISTRY = {}
-
-@dataclass
-class SubTaskDef:
-    name: str
-    func: Callable[..., Any]
-    depends_on: list[str] = field(default_factory=list)
-    cores: int = 1
-    gpus: int = 0
-
-def subtask(name: str | None = None, depends_on: list[str] | None = None, cores=1, gpus=0):
-    def decorator(func: Callable[..., Any]):
-        task_name = name or func.__name__
-        REGISTRY[task_name] = SubTaskDef(
-            name=task_name,
-            func=func,
-            depends_on=depends_on or [],
-            cores=cores,
-            gpus=gpus,
-        )
-        return func
-    return decorator
-
-User writes:
-
-# user_pipeline.py
-from pipeline_api import subtask
-
-@subtask(name="A")
-def A():
-    return {"x": 10}
-
-@subtask(name="B", depends_on=["A"])
-def B(A):
-    return {"b": A["x"] * 2}
-
-@subtask(name="C", depends_on=["A"])
-def C(A):
-    return {"c": A["x"] + 5}
-
-@subtask(name="D", depends_on=["B", "C"])
-def D(B, C):
-    return {"result": B["b"] + C["c"]}
-
-Note the nice trick:
-
-function parameter names match dependency names (A, B, C)
-
-worker can inject them automatically
-
-Generic worker (how the magic works)
-
-The worker can:
-
-import user_pipeline (which populates REGISTRY)
-
-get the requested subtask
-
-load dependency JSON files
-
-call function with kwargs
-
-save output
-
-Pseudo-code:
-
-# flux_worker.py
-import argparse, json, importlib
-from pathlib import Path
-from pipeline_api import REGISTRY
-
-def main():
-    p = argparse.ArgumentParser()
-    p.add_argument("--module", required=True)      # e.g. user_pipeline
-    p.add_argument("--subtask", required=True)     # e.g. B
-    p.add_argument("--workdir", required=True)
-    args = p.parse_args()
-
-    importlib.import_module(args.module)  # populates REGISTRY
-    sub = REGISTRY[args.subtask]
-
-    workdir = Path(args.workdir)
-    result_dir = workdir / "results"
-    result_dir.mkdir(parents=True, exist_ok=True)
-
-    kwargs = {}
-    for dep in sub.depends_on:
-        with open(result_dir / f"{dep}.json") as f:
-            kwargs[dep] = json.load(f)
-
-    result = sub.func(**kwargs)
-
-    with open(result_dir / f"{sub.name}.json", "w") as f:
-        json.dump(result, f, indent=2)
-
-if __name__ == "__main__":
-    main()
-
-That’s the whole pattern.
-
-Then Flux submission becomes simple
-
-Your workflow manager builds jobspecs like:
-
-A:
-
-python flux_worker.py --module user_pipeline --subtask A --workdir /run1
-
-B:
-
-python flux_worker.py --module user_pipeline --subtask B --workdir /run1
-
-C:
-
-python flux_worker.py --module user_pipeline --subtask C --workdir /run1
-
-D:
-
-python flux_worker.py --module user_pipeline --subtask D --workdir /run1
-
-The dependency ordering is handled by your scheduler/manager (as you said, assume that part is handled).
-
-Your Task/SubTask design: suggested improvements
-
-Your sketch is good, but I’d make these changes:
-
-SubTask should not just hold command
-
-If you want user-defined Python functions, SubTask should store:
-
-function metadata (or function name/module)
-
-dependencies
-
-resource needs
-
-output path
-
-Task should not store command
-
-In your sketch, Task has self.command = command but command isn’t passed in. Also, for a DAG task, the top-level Task usually has many commands (one per subtask).
-
-A stronger generic design
-from dataclasses import dataclass, field
-from typing import Any
-
-@dataclass
-class ResourceSpec:
-    cores: int = 1
-    gpus: int = 0
-    nodes: int = 1
-
-@dataclass
-class SubTask:
-    id: str
-    module: str                  # "user_pipeline"
-    func_name: str               # "B" or actual function name
-    depends_on: list[str] = field(default_factory=list)
-    resources: ResourceSpec = field(default_factory=ResourceSpec)
-    serializer: str = "json"
-
-@dataclass
-class Task:
-    id: str
-    subtasks: dict[str, SubTask]   # easier lookup than list
-    workdir: str
-
-This is nice because SubTask is now serializable and schedulable.
-
-Even more user-friendly: a Pipeline object
-
-Instead of making users build Task objects manually, let decorators build a Pipeline:
-
-pipeline = Pipeline("my_run")
-
-@pipeline.subtask()
-def A(): ...
-
-@pipeline.subtask(depends_on=["A"])
-def B(A): ...
-
-Then:
-
-pipeline.submit_with_flux()
-
-This is usually the best UX.
-
-One thing to watch out for
-
-If users define functions in arbitrary files, the worker must be able to import that module on compute nodes. So you’ll want one of:
-
-package installed in the environment
-
-submit from a shared filesystem and set cwd
-
-ship code with the job (less common)
-
-In HPC/shared FS setups, this is usually fine.
-
-Bottom line
-
-Yes — your decorator + Task/SubTask idea is a very good approach.
-
-The best pattern is:
-
-decorators register functions + metadata
-
-generic worker script executes one subtask by name
-
-JSON files pass results
-
-Flux Jobspec commands run the worker
-
-scheduler enforces dependency order
-
-It gives users a smooth Python API while staying compatible with native Flux.
-
-If you want, I can draft a small working prototype of:
-
-pipeline_api.py (decorators + registry)
-
-flux_worker.py
-
-user_pipeline.py
-
-submit_dag.py (builds Jobspecs)
-
+ @pipeline.task(...)
+
+Should support resource options, e.g.:
+num_tasks, cores_per_task, gpus_per_task, mpi, etc.
+
+### Executable task builder
+
+Something like:
+pipeline.exec(...)
+
+Should support:
+    command
+    name
+    outputs
+    depends_on
+    num_tasks, cores_per_task, gpus_per_task, mpi
+    env
+
+### Running
+
+pipeline.run(target) for one target DAG sink
+optionally pipeline.run([...]) or pipeline.run_all(nodes) for many independent targets
+Repeated Tasks / Fan-out (MVP support via normal Python)
+Users should be able to create many tasks naturally with loops/list comprehensions.
+
+Examples:
+[square(i) for i in range(100)] for Python tasks
+[pipeline.exec([...], name=f"job_{i}") for i in range(100)] for executables
+Each invocation creates a unique TaskNode, so no copy/paste is needed.
+Strategy Name (for docs / internal design)
+Decorator-Defined DAG with a Flux Worker Runtime
+
+That captures:
+    decorator-based Python API
+    DAG dependencies
+    generic worker execution for Python tasks
+    native Flux backend
+    MVP Implementation Priorities (Suggested)
+
+TaskNode / DAG core model
+    @pipeline.task() (Python task definitions + lazy calls)
+    pipeline.exec(...) (executable tasks + outputs + OutputRef)
+    DAG collection + topological sort
+    Compile step → TaskSpec/CompiledTask
+    Static worker runtime for Python tasks
+    File result backend
+
+SuperFluxManager integration (submit compiled tasks)
+Output validation for executable declared outputs
+(Optional/Next) Flux KVS backend
+If you want, I can also turn this into a concrete MVP class skeleton list (
+Pipeline, TaskNode, OutputRef, TaskSpec, PipelineCompiler, Worker, ResultStore
+) to make implementation planning easier.
 
 
 

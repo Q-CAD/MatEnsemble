@@ -73,7 +73,16 @@
 - [x] Setup action to build docs and publish them
 
 **--- Test CI/CD ---**
+- [x] Make small change to MatEnsemble and Docs
+- [x] Push to main see if dev builds succeed
+- [x] Run release.sh script to see if releases happen properly
+
+**--- Updated/Better UX ---**
 - [ ] Refactor to be built around Task/Job Objects
-- [ ] Implement a strategy that allows for tasks to have dependencies
-- [ ] Update docs accordingly 
-- [ ] Give the README a complete overhaul
+- [ ] Allow users to decorate python functions to create TaskSpec's 
+    - [ ] Allow functions to depend on other functions 
+    - [ ] Topologically sort all of the 
+    - [ ] Make compiler to take decorated functions and turn them into Flux Jobspecs' 
+- [ ] Write worker runtime that flux can target and call user defined functions
+- [ ] Have results be pickled or written to a file depending on backend flag 
+- [ ] Give 
