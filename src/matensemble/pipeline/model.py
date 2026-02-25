@@ -66,7 +66,12 @@ class TaskTemplate:
 
     # python-only reference
     module: str | None = None
+    # Runtime-resolvable dotted qualname (may be an internal impl name)
     qualname: str | None = None
+    # Human-facing name (original user qualname)
+    user_qualname: str | None = None
+    # Absolute source path used as a fallback loader (esp. when module == "__main__")
+    source_path: str | None = None
 
     # set by Pipeline when constructed
     _node_factory: Callable[..., "TaskNode"] | None = field(default=None, repr=False)
@@ -96,7 +101,12 @@ class TaskNode:
 
     # python-only
     module: str | None = None
+    # Runtime-resolvable dotted qualname (may be an internal impl name)
     qualname: str | None = None
+    # Human-facing name (original user qualname)
+    user_qualname: str | None = None
+    # Absolute source path used as a fallback loader (esp. when module == "__main__")
+    source_path: str | None = None
 
     deps: set[str] = field(default_factory=set)
     args: list[ArgSpec] = field(default_factory=list)

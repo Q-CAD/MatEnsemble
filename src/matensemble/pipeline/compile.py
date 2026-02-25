@@ -77,7 +77,12 @@ def write_node_spec(workdir: Path, node: TaskNode) -> Path:
             "mpi": node.resources.mpi,
             "env": node.resources.env,
         },
-        "python": {"module": node.module, "qualname": node.qualname},
+        "python": {
+            "module": node.module,
+            "qualname": node.qualname,
+            "user_qualname": node.user_qualname,
+            "source_path": node.source_path,
+        },
         "args": [a.__dict__ for a in node.args],
         "kwargs": {k: v.__dict__ for k, v in node.kwargs.items()},
         "command": node.command,

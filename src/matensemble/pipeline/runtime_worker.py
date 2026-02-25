@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import importlib.util
 import json
 import pickle
+import sys
+import hashlib
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +25,23 @@ def _resolve_qualname(mod: Any, qualname: str) -> Any:
     for part in qualname.split("."):
         obj = getattr(obj, part)
     return obj
+
+
+def _load_module_from_path(source_path: str) -> Any:
+    """Load a Python module from a file path under a stable synthetic name."""
+    p = Path(source_path)
+    if not p.exists():
+        raise FileNotFoundError(f"source_path does not exist: {source_path}")
+    name = "matensemble_user_" + hashlib.sha1(str(p).encode()).hexdigest()[:12]
+    if name in sys.modules:
+        return sys.modules[name]
+    spec = importlib.util.spec_from_file_location(name, str(p))
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Could not load module spec from {source_path}")
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
+    spec.loader.exec_module(mod)
+    return mod
 
 
 def _load_pickle(path: Path) -> Any:
@@ -84,13 +104,39 @@ def main(argv: list[str] | None = None) -> int:
     spec = _load_node_spec(node_spec_path)
 
     workdir = node_spec_path.parent
-    module = spec["python"]["module"]
-    qualname = spec["python"]["qualname"]
+    py = spec.get("python", {})
+    module = py.get("module")
+    qualname = py.get("qualname")
+    source_path = py.get("source_path")
 
-    if not module or not qualname:
-        raise RuntimeError("Python node spec missing module/qualname")
+    if not qualname:
+        raise RuntimeError("Python node spec missing qualname")
 
-    mod = importlib.import_module(module)
+    if "<locals>" in qualname:
+        raise RuntimeError(
+            "MatEnsemble tasks must be top-level (no nested defs/lambdas). "
+            f"Got qualname={qualname!r}"
+        )
+
+    # Prefer importing by module name when possible, but fall back to loading
+    # from an explicit source path (especially when tasks were defined in __main__).
+    mod: Any | None = None
+    if module and module != "__main__":
+        try:
+            mod = importlib.import_module(module)
+        except Exception:
+            mod = None
+
+    if mod is None:
+        if not source_path:
+            raise RuntimeError(
+                "Cannot import task function: module import failed and no source_path "
+                "was recorded. Put tasks in an importable module, or ensure the defining "
+                ".py file is available and that pipeline.run(...) is guarded by "
+                "if __name__ == '__main__':"
+            )
+        mod = _load_module_from_path(source_path)
+
     fn = _resolve_qualname(mod, qualname)
 
     pos_args = [_resolve_arg(a, workdir) for a in spec.get("args", [])]
