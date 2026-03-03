@@ -2,6 +2,7 @@ import flux
 
 from matensemble.pipeline.PIPELINE import Job
 from matensemble.strategy.process_futures_strategy_base import FutureProcessingStrategy
+from matensemble.FLUXLET import Fluxlet
 
 
 class Manager:
@@ -18,18 +19,30 @@ class Manager:
         self.fluxet = Fluxlet(self.flux_handle)
 
         self.write_restart_freq = write_restart_freq
-        self.set
+        # self.set
 
     def make_restart(self) -> None:
+        """
+        Pickle the current state of the manager and dump it to a file
+        """
         pass
 
     def load_restart(self) -> None:
+        """
+        Load the pickled restart file and pick up where it left off. 
+        """
         pass
 
     def log_progress(self) -> None:
+        """
+        Update the status file and append a progress line in the log file
+        """
         pass
 
     def check_resources(self) -> None:
+        """
+        See what resources are available with flux
+        """
         pass
 
     def poolexecutor(

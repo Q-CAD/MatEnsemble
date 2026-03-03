@@ -1,14 +1,17 @@
-import os
-import functools
-import networkx as nx
-import flux.job
+from __future__ import annotations
 
-from pathlib import Path
-from typing import Callable
-from dataclasses import dataclass
-from enum import Enum
+import os
+import json
+import functools
+import datetime
+
+import networkx as nx
+
+from typing import Callable, Any
 from collections.abc import Iterable, Mapping
-from dataclasses import is_dataclass
+from dataclasses import asdict, dataclass
+from enum import StrEnum, auto
+from pathlib import Path
 
 
 @dataclass(frozen=True)
@@ -33,18 +36,18 @@ class Resources:
     env: dict[str, str] | None = None
 
 
-class JobFlavor(Enum):
+class JobFlavor(StrEnum):
     """
     The different flavors that a job can be. As of right now there are two types
     of Jobs, Python jobs and Executable jobs. Python jobs are delayed function
     calls and executable jobs are paths to executable files.
     """
 
-    PYTHON = 1
-    EXECUTABLE = 2
+    PYTHON = auto()
+    EXECUTABLE = auto()
 
 
-def find_refs(args, kwargs):
+def _find_refs(args, kwargs):
     """
     Find all OutReference objects found anywhere inside args or kwargs
     """
@@ -118,26 +121,105 @@ class Job:
     def graph(self) -> nx.DiGraph:
         return nx.DiGraph()
 
+    def __str__(self) -> str:
+        data = {}
+        if self.flavor == JobFlavor.PYTHON:
+            data["id"] = self.id
+            data["command"] = self.command
+            data["flavor"] = self.flavor
+            data["resources"] = asdict(self.resources)
+            data["workdir"] = self.workdir
+            data["func_module"] = self.func_module
+            data["func_qualname"] = self.func_qualname
+            data["deps"] = self.deps
+            data["args"] = self.args
+            data["kwargs"] = self.kwargs
+        else:
+            data["id"] = self.id
+            data["command"] = self.command
+            data["flavor"] = self.flavor
+            data["resources"] = asdict(self.resources)
+            data["workdir"] = self.workdir
+            data["deps"] = self.deps
+        return json.dumps(data, indent=4)
+
 
 class Pipeline:
-    def __init__(self, basedir: str) -> None:
+    def __init__(self, basedir: str | None = None) -> None:
         self._counter = 1
-        self._job_list = []
+        self._job_list: list[Job] = []
+
+        if basedir is None:
+            self._base_dir = (
+                Path.cwd()
+                / f"matensemble_workflow-{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            )
+        else:
+            self._base_dir = Path(basedir)
 
     def job(
         self,
-        name: str | None,
+        name: str | None = None,
         num_tasks: int = 1,
         cores_per_task: int = 1,
         gpus_per_task: int = 0,
         mpi: bool = False,
         env: dict[str, str] | None = None,
-    ) -> Callable[..., OutReference]:
-        def decorator(func):
+    ) -> Callable[[Callable[..., Any]], Callable[..., OutReference]]:
+        """
+        Wrap a function to produce a :obj:`Job` and returns a :obj: `OutReference`
+        which other job definitions can use to define dependencies.
+
+        :obj:`Job` objects are delayed function calls that are put into the
+        :obj: `Pipeline` and are added into its graph when you run it.
+        A PYTHON :obj: `Job` contains meta-data that is needed to reproduce a function.
+        The :obj: `SuperFluxManager` will create a :obj: `Fluxlet` and submit
+        the job to flux which calls the module :py:mod: `matensemble.piepline.runtime_worker`.
+        :py:mod: `matensemble.piepline.runtime_worker` takes in two command line
+        arguments which are the :param: `job_id` and :param: `workdir` which
+        the module will use to find the JSON file containing all of the data
+        on the job, and it will use it to import the function and call it with
+        its respective arguments. The result will then be stored in the flux KVS
+
+        Parameters
+        ----------
+        name : str, optional
+            The name  that will be assigned to the job_id, defaults to the name
+            of the function.
+        num_tasks : int, optional
+            The number of tasks that will be launched with flux, defaults to 1
+        cores_per_task : int, optional
+            The number of CPU cores that are required to submit the job, defaults
+            to 1
+        gpus_per_task : int, optional
+            The number of GPUs that are required to submit the job, defaults to 0
+        mpi : bool, optional
+            Whether  or not the job will use the Message Passing Interface I think
+            defaults to False
+        env : dict[str, str], optional
+            The environment varaibles that will be set on job submission, defaults
+            to None
+
+
+        Examples
+        --------
+        >>> @job
+        ... def print_message():
+        ...     print("I am a Job")
+        >>> print_job = print_message()
+        >>> type(print_job)
+        <class 'jobflow.core.job.Job'>
+        >>> print_job.function
+        <function print_message at 0x7ff72bdf6af0>
+
+        . . .
+
+        /home/fred/Desktop/github.com/materialsproject/jobflow/core/job.py
+        """
+
+        def decorator(func: Callable[..., Any]) -> Callable[..., OutReference]:
             @functools.wraps(func)
-            def wrapper(*args, **kwargs):
-                # grab original (unwrapped) function right now
-                original = wrapper.__wrapped__  # == func
+            def wrapper(*args: Any, **kwargs: Any) -> OutReference:
                 self._counter += 1
 
                 res = Resources(
@@ -148,24 +230,28 @@ class Pipeline:
                     env=env,
                 )
 
-                if name:
-                    job_id = f"job-{name}-{self._counter:04d}"
-                else:
-                    job_id = f"job-{original.__qualname__}-{self._counter:04d}"
+                job_id = (
+                    f"job-{name}-{self._counter:04d}"
+                    if name
+                    else f"job-{func.__qualname__}-{self._counter:04d}"
+                )
 
-                # create a Job instead of running func
+                workdir = self._base_dir / job_id
+                cmd = f"python -m matensemble.pipeline.runtime_worker --job-id {job_id} --job-dir {workdir}"
+
                 job = Job(
                     id=job_id,
+                    command=cmd,
                     flavor=JobFlavor.PYTHON,
                     resources=res,
-                    func_module=original.__module__,
-                    func_qualname=original.__qualname__,
+                    workdir=workdir,
+                    func_module=func.__module__,
+                    func_qualname=func.__qualname__,
                     args=args,
                     kwargs=kwargs,
                 )
                 self._job_list.append(job)
 
-                # return a reference
                 return OutReference(job_id)
 
             return wrapper
@@ -175,13 +261,48 @@ class Pipeline:
     def exec(
         self,
         command: str,
-        name: str | None,
+        name: str | None = None,
         num_tasks: int = 1,
         cores_per_task: int = 1,
         gpus_per_task: int = 0,
         mpi: bool = False,
         env: dict[str, str] | None = None,
     ) -> Job:
+        """
+        Wrap a function to produce a :obj:`Job` and returns a :obj: `OutReference`
+        which other job definitions can use to define dependencies.
+
+        :obj:`Job` objects are delayed function calls that are put into the
+        :obj: `Pipeline` and are added into its graph when you run it.
+        A PYTHON :obj: `Job` contains meta-data that is needed to reproduce a function.
+        The :obj: `SuperFluxManager` will create a :obj: `Fluxlet` and submit
+        the job to flux which calls the module :py:mod: `matensemble.piepline.runtime_worker`.
+        :py:mod: `matensemble.piepline.runtime_worker` takes in two command line
+        arguments which are the :param: `job_id` and :param: `workdir` which
+        the module will use to find the JSON file containing all of the data
+        on the job, and it will use it to import the function and call it with
+        its respective arguments. The result will then be stored in the flux KVS
+
+        Parameters
+        ----------
+        name : str, optional
+            The name  that will be assigned to the job_id, defaults to the name
+            of the function.
+        num_tasks : int, optional
+            The number of tasks that will be launched with flux, defaults to 1
+        cores_per_task : int, optional
+            The number of CPU cores that are required to submit the job, defaults
+            to 1
+        gpus_per_task : int, optional
+            The number of GPUs that are required to submit the job, defaults to 0
+        mpi : bool, optional
+            Whether  or not the job will use the Message Passing Interface I think
+            defaults to False
+        env : dict[str, str], optional
+            The environment varaibles that will be set on job submission, defaults
+            to None
+        """
+
         res = Resources(
             num_tasks=num_tasks,
             cores_per_task=cores_per_task,
@@ -189,13 +310,23 @@ class Pipeline:
             mpi=mpi,
             env=env,
         )
-        if name:
-            job_id = f"job-{name}-{self._counter:04d}"
-        else:
-            job_id = f"job-exec-{self._counter:04d}"
-        return Job(
-            id=job_id, command=command, flavor=JobFlavor.EXECUTABLE, resources=res
+
+        self._counter += 1  # you probably want exec jobs counted too
+        job_id = (
+            f"job-{name}-{self._counter:04d}"
+            if name
+            else f"job-exec-{self._counter:04d}"
         )
+
+        job = Job(
+            id=job_id,
+            command=command,
+            flavor=JobFlavor.EXECUTABLE,
+            resources=res,
+            workdir=self._base_dir / job_id,
+        )
+        self._job_list.append(job)  # optional: include exec jobs in DAG
+        return job
 
     def _create_graph(self):
         G = nx.DiGraph()
@@ -210,21 +341,18 @@ class Pipeline:
     def _sort_graph(self, G: nx.DiGraph) -> list:
         if not nx.is_directed_acyclic_graph(G):
             raise Exception(
-                "Error: The graph contains a cycle. A topological sort is not possible. MatEnsemble Workflow cannot contain cycles"
+                "Error: MatEnsemble workflow graph cannot contain cycles, topological sort not possible"
             )
         else:
-            # Perform the topological sort
-            # nx.topological_sort returns a generator, so convert to a list to view the order
             try:
                 return list(nx.topological_sort(G))
             except nx.NetworkXUnfeasible:
-                # This exception is also raised by topological_sort if a cycle is found
                 raise Exception(
-                    "Error: The graph contains a cycle (caught by topological_sort). MatEnsemble workflow cannot contain cycles"
+                    "Error: MatEnsemble workflow graph cannot contain cycles, cycle found by topological sort"
                 )
 
     def submit(self) -> None:
         pass
 
     def graph(self) -> nx.DiGraph:
-        pass
+        return nx.DiGraph()
