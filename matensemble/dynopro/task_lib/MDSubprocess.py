@@ -183,6 +183,9 @@ def extract_lammps_attr(lmp):
         types.shape = (Natoms,)
         box_info = lmp.extract_box()
         dim = lmp.extract_setting('dimension')
+
+        lmp.command("thermo_style custom step temp press pe")
+        lmp.command("run 0") # to update thermo values
         timestep = int(lmp.get_thermo('step'))
         temperature = lmp.get_thermo('temp')
         pressure = lmp.get_thermo('press')
