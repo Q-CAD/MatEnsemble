@@ -31,6 +31,29 @@ def AnalysisSubprocess(comm, input_params):
                 
                 data = OvitoCalculators(lmp_snapshot=lmp_snapshot, species=input_params['species'], serialize=True)
 
+                if input_params.get('include_metadata', False):
+                        metadata = {
+                                "timestep": data.timestep,
+                                "species": input_params['species'],
+                                "lammps_input": input_params['lammps_input'],
+                                "lammps_datafile": input_params['lammps_datafile'],
+                                "force-field": input_params['force-field'],
+                                "resurce_allocation": {"nnodes":input_params['nnodes'],
+                                "gpus_per_node": input_params['gpus_per_node'],
+                                "total_procs": input_params['total_procs'],
+                                "md_procs": input_params['md_procs']},
+                        }
+                        if 'heat' in input_params.keys():
+                                metadata['heat_temperature'] = input_params['heat']['T_heat']
+                        if 'quench' in input_params.keys():
+                                metadata['quench_temperature'] = input_params['quench']['T_quench']
+                        
+                        metadata['current_temperature'] = lmp_snapshot['temperature']
+                        metadata['current_pressure'] = lmp_snapshot['pressure']
+                        metadata['current_potential_energy'] = lmp_snapshot['potential_energy']
+                else:
+                        metadata = None
+
                 if 'stream' in input_params.keys():
                         if 'host' not in input_params['stream'].keys():
                                 raise ValueError("valid redis-host must be provided for data streaming")
@@ -51,6 +74,9 @@ def AnalysisSubprocess(comm, input_params):
                 
                 if input_params["full_trajectory_dump"]:
                         data.dump_trajectories(export_formats=input_params["trajectory_output_format"])
+
+                        if metadata is not None:
+                                metadata['dump'] = f'Ovito_dump.{data.timestep}.lmp'
                 
                 if 'compute_twist' in input_params.keys():
                          
@@ -61,6 +87,9 @@ def AnalysisSubprocess(comm, input_params):
 
                         if rds is not None:
                                 rds.register_on_stream(namespace=input_params['stream']['namespace'], key="twist_data", timestep=data.timestep, twist_data=twist_angle)
+                        
+                        if metadata is not None:
+                                metadata['twist_angle'] = f'twist_{data.timestep}'
 
                         with open(f'twist_{data.timestep}', 'w') as file:
                                 file.write(f'time-step twist-angle\n')
@@ -93,6 +122,8 @@ def AnalysisSubprocess(comm, input_params):
                                                 timestep=data.timestep,
                                                 xrd_pattern=xrd_pattern_stream,
                                         )
+                                if metadata is not None:
+                                        metadata['xrd_pattern'] = f"{filetag}_xrd.dat"
 
                 if 'compute_Laue_Diffraction' in input_params.keys():
                         
@@ -108,6 +139,9 @@ def AnalysisSubprocess(comm, input_params):
 
                                 if rds is not None:
                                         rds.register_on_stream(namespace=input_params['stream']['namespace'], key="rdf_data", timestep=data.timestep, rdf=rdf.tolist())
+                                
+                                if metadata is not None:
+                                        metadata['rdf'] = f'rdf_{data.timestep}.txt'
                                         
                                 np.savetxt(f'rdf_{data.timestep}.txt', rdf, delimiter=' ')
                         except Exception as e:
@@ -121,11 +155,19 @@ def AnalysisSubprocess(comm, input_params):
 
                                 if rds is not None:
                                         rds.register_on_stream(namespace=input_params['stream']['namespace'], key="adf_data", timestep=data.timestep, adf=adf.tolist())
+                                
+                                if metadata is not None:
+                                        metadata['adf'] = f'adf_{data.timestep}.txt'
                                         
                                 np.savetxt(f'adf_{data.timestep}.txt', adf, delimiter=' ')
                         
                         except Exception as e:
                                 print(f"Error computing ADF at timestep {data.timestep}: {e}")
+                
+                if metadata is not None:
+                        with open(f'metadata_{data.timestep}.json', 'w') as file:
+                                import json
+                                json.dump(metadata, file, indent=4)
 
 
                  # Execute registered analyses

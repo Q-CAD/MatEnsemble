@@ -184,8 +184,11 @@ def extract_lammps_attr(lmp):
         box_info = lmp.extract_box()
         dim = lmp.extract_setting('dimension')
         timestep = int(lmp.get_thermo('step'))
+        temperature = lmp.get_thermo('temp')
+        pressure = lmp.get_thermo('press')
+        potential_energy = lmp.get_thermo('pe')
         
-        lmp_snapshot = {'coords': coords, 'box_info': box_info, 'dim': dim, 'timestep':timestep, "types": types}
+        lmp_snapshot = {'coords': coords, 'box_info': box_info, 'dim': dim, 'timestep':timestep, "types": types, "temperature": temperature, "pressure": pressure, "potential_energy": potential_energy}
 
         return lmp_snapshot
 
