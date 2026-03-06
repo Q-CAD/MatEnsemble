@@ -9,15 +9,15 @@ from matensemble.FLUXLET import Fluxlet
 
 class Manager:
     def __init__(
-        self, 
+        self,
         base_dir: Path,
-        write_restart_freq: int | None = 100, 
+        write_restart_freq: int | None = 100,
         set_cpu_affinity: bool = True,
         set_gpu_affinity: bool = True,
-        restart_file: str | None = None
+        restart_file: str | None = None,
     ) -> None:
-        self.flux_handle = flux.Flux
-        self.fluxet = Fluxlet(self.flux_handle)
+        self.flux_handle = flux.Flux()
+        self.fluxlet = Fluxlet(self.flux_handle)
 
         self.write_restart_freq = write_restart_freq
         # self.set
@@ -30,7 +30,7 @@ class Manager:
 
     def load_restart(self) -> None:
         """
-        Load the pickled restart file and pick up where it left off. 
+        Load the pickled restart file and pick up where it left off.
         """
         pass
 
@@ -55,3 +55,4 @@ class Manager:
         dynopro: bool = False,
         processing_strategy: FutureProcessingStrategy | None = None,
     ) -> None:
+        pass

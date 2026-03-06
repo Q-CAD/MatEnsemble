@@ -1,21 +1,22 @@
 from __future__ import annotations
 
-import os
 import sys
 import json
 import functools
 import datetime
 
 import networkx as nx
+import shlex
 
 from typing import Callable, Any
 from collections.abc import Iterable, Mapping
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, is_dataclass
 from enum import StrEnum, auto
 from pathlib import Path
 
 # TODO: Make these imports work when everything is working
 from matensemble.MANAGER import Manager
+from matensemble.strategy.process_futures_strategy_base import FutureProcessingStrategy
 
 
 @dataclass(frozen=True)
@@ -112,7 +113,9 @@ class Job:
         kwargs: dict | None = None,
     ) -> None:
         self.id = id
-        self.command = command.split()
+        self.command = (
+            shlex.split(command) if isinstance(command, str) else list(command)
+        )
         self.flavor = flavor
         self.resources = resources
         self.workdir = str(workdir.resolve())
@@ -150,7 +153,7 @@ class Job:
 
 class Pipeline:
     def __init__(self, basedir: str | None = None) -> None:
-        self._counter = 1
+        self._counter = 0
         self._job_list: list[Job] = []
 
         if basedir is None:
@@ -245,7 +248,7 @@ class Pipeline:
                     else f"job-{func.__qualname__}-{self._counter:04d}"
                 )
 
-                workdir = self._base_dir / job_id
+                workdir = self._out_dir / job_id
                 cmd = f"python -m matensemble.pipeline.runtime_worker --job-id {job_id} --job-dir {workdir}"
 
                 job = Job(
@@ -332,7 +335,7 @@ class Pipeline:
             command=command,
             flavor=JobFlavor.EXECUTABLE,
             resources=res,
-            workdir=self._base_dir / job_id,
+            workdir=self._out_dir / job_id,
         )
         self._job_list.append(job)  # optional: include exec jobs in DAG
         return job
@@ -368,8 +371,12 @@ class Pipeline:
     def submit(
         self,
         write_restart_freq: int | None = 100,
+        buffer_time: int | None = 1,
         set_cpu_affinity: bool = True,
         set_gpu_affinity: bool = False,
+        adaptive: bool = True,
+        dynopro: bool = False,
+        processing_strategy: FutureProcessingStrategy | None = None,
     ) -> None:
         """
         - Builds the workflow DAG and topologically sorts it
@@ -384,8 +391,16 @@ class Pipeline:
             print(f"Exiting due to Exception: {e}")
             sys.exit(1)
         self._creat_out_structure()
+
         manager = Manager(
             self._base_dir, write_restart_freq, set_cpu_affinity, set_gpu_affinity
+        )
+        manager.poolexecutor(
+            workflow_dag,
+            buffer_time=buffer_time,
+            adaptive=adaptive,
+            dynopro=dynopro,
+            processing_strategy=processing_strategy,
         )
 
     def graph(self) -> nx.DiGraph:
