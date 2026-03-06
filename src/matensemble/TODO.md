@@ -81,8 +81,7 @@
 - [ ] Refactor to be built around Task/Job Objects
 - [ ] Allow users to decorate python functions to create TaskSpec's 
     - [ ] Allow functions to depend on other functions 
-    - [ ] Topologically sort all of the 
-    - [ ] Make compiler to take decorated functions and turn them into Flux Jobspecs' 
+    - [ ] Topologically sort all of the Jobs based on dependencies
 - [ ] Write worker runtime that flux can target and call user defined functions
-- [ ] Have results be pickled or written to a file depending on backend flag 
-- [ ] Give 
+- [ ] Write the Job objects specification to a file in their direcotry 
+- [ ] Write 

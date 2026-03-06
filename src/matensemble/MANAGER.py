@@ -1,5 +1,7 @@
 import flux
+import flux.job
 
+from pathlib import Path
 from matensemble.pipeline.PIPELINE import Job
 from matensemble.strategy.process_futures_strategy_base import FutureProcessingStrategy
 from matensemble.FLUXLET import Fluxlet
@@ -8,12 +10,11 @@ from matensemble.FLUXLET import Fluxlet
 class Manager:
     def __init__(
         self, 
-        *, 
+        base_dir: Path,
         write_restart_freq: int | None = 100, 
-        nnodes: int | None = None, 
-        gpus_per_node: int | None = None, 
         set_cpu_affinity: bool = True,
         set_gpu_affinity: bool = True,
+        restart_file: str | None = None
     ) -> None:
         self.flux_handle = flux.Flux
         self.fluxet = Fluxlet(self.flux_handle)

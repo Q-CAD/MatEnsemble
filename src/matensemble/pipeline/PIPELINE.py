@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import sys
 import json
 import functools
 import datetime
@@ -13,9 +14,12 @@ from dataclasses import asdict, dataclass
 from enum import StrEnum, auto
 from pathlib import Path
 
+# TODO: Make these imports work when everything is working
+from matensemble.MANAGER import Manager
+
 
 @dataclass(frozen=True)
-class OutReference:
+class OutputReference:
     """
     An object to encapsulate the result of a job as the input to another job
     """
@@ -60,7 +64,7 @@ def _find_refs(args, kwargs):
             return
         seen.add(obj_id)
 
-        if isinstance(x, OutReference):
+        if isinstance(x, OutputReference):
             yield x
             return
 
@@ -155,7 +159,12 @@ class Pipeline:
                 / f"matensemble_workflow-{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
             )
         else:
-            self._base_dir = Path(basedir)
+            self._base_dir = (
+                Path(basedir)
+                / f"matensemble_workflow-{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+            )
+
+        self._out_dir = self._base_dir / "out"
 
     def job(
         self,
@@ -165,7 +174,7 @@ class Pipeline:
         gpus_per_task: int = 0,
         mpi: bool = False,
         env: dict[str, str] | None = None,
-    ) -> Callable[[Callable[..., Any]], Callable[..., OutReference]]:
+    ) -> Callable[[Callable[..., Any]], Callable[..., OutputReference]]:
         """
         Wrap a function to produce a :obj:`Job` and returns a :obj: `OutReference`
         which other job definitions can use to define dependencies.
@@ -217,9 +226,9 @@ class Pipeline:
         /home/fred/Desktop/github.com/materialsproject/jobflow/core/job.py
         """
 
-        def decorator(func: Callable[..., Any]) -> Callable[..., OutReference]:
+        def decorator(func: Callable[..., Any]) -> Callable[..., OutputReference]:
             @functools.wraps(func)
-            def wrapper(*args: Any, **kwargs: Any) -> OutReference:
+            def wrapper(*args: Any, **kwargs: Any) -> OutputReference:
                 self._counter += 1
 
                 res = Resources(
@@ -252,7 +261,7 @@ class Pipeline:
                 )
                 self._job_list.append(job)
 
-                return OutReference(job_id)
+                return OutputReference(job_id)
 
             return wrapper
 
@@ -341,18 +350,43 @@ class Pipeline:
     def _sort_graph(self, G: nx.DiGraph) -> list:
         if not nx.is_directed_acyclic_graph(G):
             raise Exception(
-                "Error: MatEnsemble workflow graph cannot contain cycles, topological sort not possible"
+                "Error: MatEnsemble workflow graph cannot contain cycles, \
+                        topological sort not possible"
             )
         else:
             try:
                 return list(nx.topological_sort(G))
             except nx.NetworkXUnfeasible:
                 raise Exception(
-                    "Error: MatEnsemble workflow graph cannot contain cycles, cycle found by topological sort"
+                    "Error: MatEnsemble workflow graph cannot contain cycles, \
+                            cycle found by topological sort"
                 )
 
-    def submit(self) -> None:
+    def _creat_out_structure(self) -> None:
         pass
+
+    def submit(
+        self,
+        write_restart_freq: int | None = 100,
+        set_cpu_affinity: bool = True,
+        set_gpu_affinity: bool = False,
+    ) -> None:
+        """
+        - Builds the workflow DAG and topologically sorts it
+        - Creates the output structure and writes all of the Jobspecs as json
+          into thier directories
+        - Sends the sorted workflow graph to the manager which runs the workflow
+        """
+        dag = self._create_graph()
+        try:
+            workflow_dag = self._sort_graph(dag)
+        except Exception as e:
+            print(f"Exiting due to Exception: {e}")
+            sys.exit(1)
+        self._creat_out_structure()
+        manager = Manager(
+            self._base_dir, write_restart_freq, set_cpu_affinity, set_gpu_affinity
+        )
 
     def graph(self) -> nx.DiGraph:
         return nx.DiGraph()

@@ -1,4 +1,5 @@
 import logging
+import json
 import sys
 import os
 
@@ -30,69 +31,28 @@ def update_status(path: Path, text: str) -> None:
 
 class StatusWriter:
     """
-    Class to handle writing to the status file
+    Class to handle updating the status file
 
     Attributes
     ----------
-    path: Path
+    path : Path
         the path to the status file
+    nnodes : int
+        The number of nodes that flux is managing (total_allocation - 1 for flux borker)
+    cores_per_node : int
+        The number of CPU cores that are available on each node
+    gpus_per_node : int
+        The number of GPUs that are available on each node
 
-    Methods
-    -------
-    render(
-        pending: int,
-        running: int,
-        completed: int,
-        failed: int,
-        free_cores: int,
-        free_gpus: int,
-        include_updated_line: bool = True,
-    )
-        Creates the output for the status of the program as a str and returns it
-    update(
-        self,
-        pending: int,
-        running: int,
-        completed: int,
-        failed: int,
-        free_cores: int,
-        free_gpus: int,
-    )
-        Calls the render method to create the text and then calls
-        atomic_write_text to write to the status file
     """
 
-    def __init__(self, path: Path):
+    def __init__(
+        self, path: Path, allocation_information: tuple[int, int, int]
+    ) -> None:
         self.path = path
-
-    @staticmethod
-    def render(
-        pending: int,
-        running: int,
-        completed: int,
-        failed: int,
-        free_cores: int,
-        free_gpus: int,
-        include_updated_line: bool = True,
-    ) -> str:
-        updated = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        # fixed-width columns to keep it stable in watch/tmux
-        lines = []
-        if include_updated_line:
-            lines.append(f"UPDATED:   {updated}")
-            lines.append("")
-
-        lines.append("JOBS:        Pending     Running   Completed     Failed")
-        lines.append(
-            f"            {pending:>8}   {running:>8}   {completed:>8}   {failed:>8}"
-        )
-        lines.append("")
-        lines.append("RESOURCES:  Free Cores   Free GPUs")
-        lines.append(f"            {free_cores:>8}   {free_gpus:>8}")
-        lines.append("")  # trailing newline-friendly
-
-        return "\n".join(lines)
+        self.nnodes = allocation_information[0]
+        self.cores_per_node = allocation_information[1]
+        self.gpus_per_node = allocation_information[2]
 
     def update(
         self,
@@ -103,5 +63,15 @@ class StatusWriter:
         free_cores: int,
         free_gpus: int,
     ) -> None:
-        text = self.render(pending, running, completed, failed, free_cores, free_gpus)
-        atomic_write_text(self.path, text)
+        data = {
+            "nodes": self.nnodes,
+            "coresPerNode": self.cores_per_node,
+            "gpusPerNode": self.gpus_per_node,
+            "pending": pending,
+            "running": running,
+            "completed": completed,
+            "failed": failed,
+            "freeCores": free_cores,
+            "freeGpus": free_gpus,
+        }
+        self.path.write_text(json.dumps(data))
