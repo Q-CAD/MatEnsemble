@@ -108,9 +108,9 @@ class Job:
         workdir: Path,
         func_module: str | None = None,
         func_qualname: str | None = None,
-        deps: tuple | None = None,
-        args: tuple | None = None,
-        kwargs: dict | None = None,
+        deps: tuple = (),
+        args: tuple = (),
+        kwargs: dict = {},
     ) -> None:
         self.id = id
         self.command = (

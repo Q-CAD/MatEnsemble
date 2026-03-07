@@ -75,3 +75,77 @@ class StatusWriter:
             "freeGpus": free_gpus,
         }
         self.path.write_text(json.dumps(data))
+
+
+def setup_workflow_logging(
+    logger_name: str = "matensemble",
+    base_dir: str | Path | None = None,
+    console: bool | None = None,
+) -> tuple[logging.Logger, StatusWriter, WorkflowPaths]:
+    """
+    Creates:
+      - workflow directory tree
+      - status writer (status.log)
+      - verbose python logger (timestamped file, optional console)
+
+    Parameters
+    ----------
+    logger_name: str
+        The name of the logger
+    base_dir: str | Path
+        Where the matensemble_workflow directory will be setup
+    console: bool | None
+        Whether or not we are in an interactive environment
+
+    Return
+    ------
+    tuple
+        a three element tuple with the logger, StatusWriter and WorkflowPaths
+
+
+    """
+    paths = create_workflow_paths(base_dir)
+    status = StatusWriter(paths.status_file)
+
+    logger = logging.getLogger(logger_name)
+    logger.setLevel(
+        logging.DEBUG
+    )  # file gets everything; handler levels control output
+    logger.propagate = False
+
+    # Prevent duplicate handlers if setup is called twice
+    if logger.handlers:
+        logger.handlers.clear()
+
+    fmt = logging.Formatter(
+        fmt="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+
+    file_handler = logging.FileHandler(paths.verbose_log_file, encoding="utf-8")
+    file_handler.setLevel(logging.DEBUG)
+    file_handler.setFormatter(fmt)
+    logger.addHandler(file_handler)
+
+    if console is None:
+        console = sys.stderr.isatty()
+
+    if console:
+        console_handler = logging.StreamHandler(stream=sys.stderr)
+        console_handler.setLevel(logging.INFO)
+        console_handler.setFormatter(fmt)
+        logger.addHandler(console_handler)
+    else:
+        pass
+
+    # print hint for user to watch the file
+    hint = (
+        f"Status file: {paths.status_file}\n"
+        f"Watch it with: watch -n 1 cat {paths.status_file}\n"
+        f"Verbose log: {paths.verbose_log_file}\n"
+        f"Task outputs: {paths.out_dir}\n"
+    )
+    print(hint, file=sys.stderr)
+
+    logger.info("Workflow initialized at %s", paths.base_dir)
+    return logger, status, paths
