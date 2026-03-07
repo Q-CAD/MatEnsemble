@@ -47,12 +47,12 @@ class StatusWriter:
     """
 
     def __init__(
-        self, path: Path, allocation_information: tuple[int, int, int]
+        self, path: Path, nnodes: int, cores_per_node: int, gpus_per_node: int
     ) -> None:
         self.path = path
-        self.nnodes = allocation_information[0]
-        self.cores_per_node = allocation_information[1]
-        self.gpus_per_node = allocation_information[2]
+        self.nnodes = nnodes
+        self.cores_per_node = cores_per_node
+        self.gpus_per_node = gpus_per_node
 
     def update(
         self,
