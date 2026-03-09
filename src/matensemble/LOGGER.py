@@ -2,31 +2,10 @@ import logging
 import json
 import sys
 import os
+import tempfile
 
-from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-
-
-def update_status(path: Path, text: str) -> None:
-    """
-    Helper function so `watch cat status.log` never sees a half-written file.
-
-    Parameters
-    ---------
-    path: Path
-        The path to the status file
-    text: str
-        The str to write to the status file
-
-    Return
-    ------
-    None
-    """
-
-    tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(text, encoding="utf-8")
-    os.replace(tmp, path)
 
 
 class StatusWriter:
@@ -54,6 +33,14 @@ class StatusWriter:
         self.cores_per_node = cores_per_node
         self.gpus_per_node = gpus_per_node
 
+    # def atomic_write(file_path, data):
+    #     # 1. Create a temp file in the same directory
+    #     dir_name = os.path.dirname(file_path)
+    #     with tempfile.NamedTemporaryFile('w', dir=dir_name, delete=False) as tf:
+    #         tf.write(data)
+    #         temp_name = tf.name
+    #     os.replace(temp_name, file_path)
+
     def update(
         self,
         pending: int,
@@ -74,43 +61,28 @@ class StatusWriter:
             "freeCores": free_cores,
             "freeGpus": free_gpus,
         }
-        self.path.write_text(json.dumps(data))
+
+        with tempfile.NamedTemporaryFile("w", dir=self.path.parent, delete=False) as tf:
+            tf.write(json.dumps(data))
+            temp_name = tf.name
+
+        os.replace(temp_name, self.path)
 
 
-def setup_workflow_logging(
-    logger_name: str = "matensemble",
-    base_dir: str | Path | None = None,
-    console: bool | None = None,
-) -> tuple[logging.Logger, StatusWriter, WorkflowPaths]:
-    """
-    Creates:
-      - workflow directory tree
-      - status writer (status.log)
-      - verbose python logger (timestamped file, optional console)
-
-    Parameters
-    ----------
-    logger_name: str
-        The name of the logger
-    base_dir: str | Path
-        Where the matensemble_workflow directory will be setup
-    console: bool | None
-        Whether or not we are in an interactive environment
-
-    Return
-    ------
-    tuple
-        a three element tuple with the logger, StatusWriter and WorkflowPaths
+def _setup_status_writer(
+    path: Path, nnodes: int, cores_per_node: int, gpus_per_node: int
+):  # -> StatusWriter
+    return StatusWriter(
+        path=path,
+        nnodes=nnodes,
+        cores_per_node=cores_per_node,
+        gpus_per_node=gpus_per_node,
+    )
 
 
-    """
-    paths = create_workflow_paths(base_dir)
-    status = StatusWriter(paths.status_file)
-
-    logger = logging.getLogger(logger_name)
-    logger.setLevel(
-        logging.DEBUG
-    )  # file gets everything; handler levels control output
+def _setup_logger(base_dir: Path) -> logging.Logger:
+    logger = logging.getLogger("matensemble")
+    logger.setLevel(logging.DEBUG)
     logger.propagate = False
 
     # Prevent duplicate handlers if setup is called twice
@@ -122,30 +94,18 @@ def setup_workflow_logging(
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    file_handler = logging.FileHandler(paths.verbose_log_file, encoding="utf-8")
+    log_file = base_dir / f"matensemble-{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+    file_handler = logging.FileHandler(log_file, encoding="utf-8")
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(fmt)
     logger.addHandler(file_handler)
 
-    if console is None:
-        console = sys.stderr.isatty()
-
-    if console:
-        console_handler = logging.StreamHandler(stream=sys.stderr)
-        console_handler.setLevel(logging.INFO)
-        console_handler.setFormatter(fmt)
-        logger.addHandler(console_handler)
-    else:
-        pass
-
-    # print hint for user to watch the file
     hint = (
-        f"Status file: {paths.status_file}\n"
-        f"Watch it with: watch -n 1 cat {paths.status_file}\n"
-        f"Verbose log: {paths.verbose_log_file}\n"
-        f"Task outputs: {paths.out_dir}\n"
+        f"Status file: {base_dir}/status.json\n"
+        f"Verbose log: {base_dir}/matensemble_workflow.log\n"
+        f"Job outputs: {base_dir}/out\n"
     )
     print(hint, file=sys.stderr)
 
-    logger.info("Workflow initialized at %s", paths.base_dir)
-    return logger, status, paths
+    logger.info(f"Workflow initialized at {base_dir}")
+    return logger

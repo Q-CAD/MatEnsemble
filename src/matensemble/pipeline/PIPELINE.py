@@ -105,7 +105,7 @@ class Job:
         command: str,
         flavor: JobFlavor,
         resources: Resources,
-        workdir: Path,
+        spec_file: Path,
         func_module: str | None = None,
         func_qualname: str | None = None,
         deps: tuple = (),
@@ -118,7 +118,7 @@ class Job:
         )
         self.flavor = flavor
         self.resources = resources
-        self.workdir = str(workdir.resolve())
+        self.spec_file = spec_file.resolve()
         self.func_module = func_module
         self.func_qualname = func_qualname
         self.deps = deps
@@ -135,7 +135,7 @@ class Job:
             data["command"] = self.command
             data["flavor"] = self.flavor
             data["resources"] = asdict(self.resources)
-            data["workdir"] = self.workdir
+            data["spec_file"] = str(self.spec_file)
             data["func_module"] = self.func_module
             data["func_qualname"] = self.func_qualname
             data["deps"] = self.deps
@@ -146,7 +146,7 @@ class Job:
             data["command"] = self.command
             data["flavor"] = self.flavor
             data["resources"] = asdict(self.resources)
-            data["workdir"] = self.workdir
+            data["spec_file"] = str(self.spec_file)
             data["deps"] = self.deps
         return json.dumps(data, indent=4)
 
@@ -188,7 +188,7 @@ class Pipeline:
         The :obj: `SuperFluxManager` will create a :obj: `Fluxlet` and submit
         the job to flux which calls the module :py:mod: `matensemble.piepline.runtime_worker`.
         :py:mod: `matensemble.piepline.runtime_worker` takes in two command line
-        arguments which are the :param: `job_id` and :param: `workdir` which
+        arguments which are the :param: `job_id` and :param: `spec_file` which
         the module will use to find the JSON file containing all of the data
         on the job, and it will use it to import the function and call it with
         its respective arguments. The result will then be stored in the flux KVS
@@ -248,15 +248,15 @@ class Pipeline:
                     else f"job-{func.__qualname__}-{self._counter:04d}"
                 )
 
-                workdir = self._out_dir / job_id
-                cmd = f"python -m matensemble.pipeline.runtime_worker --job-id {job_id} --job-dir {workdir}"
+                spec_file = self._out_dir / job_id
+                cmd = f"python -m matensemble.pipeline.runtime_worker --job-id {job_id} --job-dir {spec_file}"
 
                 job = Job(
                     id=job_id,
                     command=cmd,
                     flavor=JobFlavor.PYTHON,
                     resources=res,
-                    workdir=workdir,
+                    spec_file=spec_file,
                     func_module=func.__module__,
                     func_qualname=func.__qualname__,
                     args=args,
@@ -290,7 +290,7 @@ class Pipeline:
         The :obj: `SuperFluxManager` will create a :obj: `Fluxlet` and submit
         the job to flux which calls the module :py:mod: `matensemble.piepline.runtime_worker`.
         :py:mod: `matensemble.piepline.runtime_worker` takes in two command line
-        arguments which are the :param: `job_id` and :param: `workdir` which
+        arguments which are the :param: `job_id` and :param: `spec_file` which
         the module will use to find the JSON file containing all of the data
         on the job, and it will use it to import the function and call it with
         its respective arguments. The result will then be stored in the flux KVS
@@ -335,7 +335,7 @@ class Pipeline:
             command=command,
             flavor=JobFlavor.EXECUTABLE,
             resources=res,
-            workdir=self._out_dir / job_id,
+            spec_file=self._out_dir / job_id,
         )
         self._job_list.append(job)  # optional: include exec jobs in DAG
         return job

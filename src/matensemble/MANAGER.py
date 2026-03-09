@@ -7,7 +7,7 @@ import flux.job
 from pathlib import Path
 from collections import deque
 
-from matensemble.LOGGER import StatusWriter
+from matensemble.LOGGER import _setup_logger, _setup_status_writer
 from matensemble.pipeline.PIPELINE import Job
 from matensemble.strategy.adaptive_strategy import AdaptiveStrategy
 from matensemble.strategy.process_futures_strategy_base import FutureProcessingStrategy
@@ -25,7 +25,7 @@ class FluxManager:
         restart_file: str | None = None,
     ) -> None:
         self._base_dir = base_dir
-        
+
         self._jobs_by_id = {job.id: job for job in job_list}
         self._dependents = {job.id: [] for job in job_list}
         self._remaining_deps = {job.id: len(job.deps) for job in job_list}
@@ -44,43 +44,23 @@ class FluxManager:
         self._blocked = set(self._jobs_by_id.keys()) - set(self._ready)
 
         self._running_jobs = set()
-        self._completed_tasks = []
-        self._failed_tasks = []
+        self._completed_jobs = []
+        self._failed_jobs = []
         self._futures = set()
 
         self._flux_handle = flux.Flux()
         self._fluxlet = Fluxlet(self._flux_handle)
 
         self._write_restart_freq = write_restart_freq
-        self._status_writer = self._setup_status_writer()
-        self._logger = self._setup_logger()
 
-    def _setup_status_writer(self)""" -> StatusWriter""":
-        pass
-
-
-
-    def _setup_logger(self) -> logging.Logger:
-        logger = logging.getLogger("matensemble")
-        logger.setLevel(logging.DEBUG)
-        logger.propagate = False
-
-        # Prevent duplicate handlers if setup is called twice
-        if logger.handlers:
-            logger.handlers.clear()
-
-        fmt = logging.Formatter(
-            fmt="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
+        allocation_information = self._get_nnodes()
+        self._status_writer = _setup_status_writer(
+            self._base_dir / "status.json", *allocation_information
         )
+        self._logger = _setup_logger(self._base_dir)
 
-        log_file = self._base_dir / f"{matensemble-datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
-        file_handler = logging.FileHandler(log_file, encoding="utf-8")
-        file_handler.setLevel(logging.DEBUG)
-        file_handler.setFormatter(fmt)
-        logger.addHandler(file_handler)
-
-        return logger
+        self._free_cores = allocation_information[0] * allocation_information[1]
+        self._free_gpus = allocation_information[0] * allocation_information[2]
 
     def _make_restart(self) -> None:
         """
@@ -98,7 +78,25 @@ class FluxManager:
         """
         Update the status file and append a progress line in the log file
         """
-        pass
+        pending = len(self._ready) + len(self._blocked)
+        self._status_writer.update(
+            pending=pending,
+            running=len(self._running_jobs),
+            completed=len(self._completed_jobs),
+            failed=len(self._failed_jobs),
+            free_cores=self._free_cores,
+            free_gpus=self._free_gpus,
+        )
+
+        self._logger.info(
+            "JOBS: Pending=%d Running=%d Completed=%d Failed=%d | RESOURCES: Free_cores=%d Free_gpus=%d",
+            pending,
+            len(self._running_jobs),
+            len(self._completed_jobs),
+            len(self._failed_jobs),
+            self._free_cores,
+            self._free_gpus,
+        )
 
     def _get_nnodes(self) -> tuple:
         """
@@ -137,6 +135,27 @@ class FluxManager:
         self._free_cores = resources.free.ncores
         self._free_gpus = resources.free.ngpus
 
+    def _submit_one(self, job_id) -> None:
+        fut = self._fluxlet.su
+
+
+
+    # PERF: Currently this doesn't check all of the Jobs in the ready queue
+    #       later could have it loop through the entire ready queue and check 
+    #       all of them to make sure that none can be submitted 
+    def _submit_until_ooresources(self) -> None:
+        while self._ready:
+            job_id = self._ready[0]
+            spec = self._jobs_by_id[job_id]
+            if self._free_cores > spec.resources.cores_per_task and 
+            self._free_gpus > spec.resources.gpus_per_task:
+                self._ready.popleft()
+                self._blocked.discard(job_id)
+                self._submit_one(job_id)
+            else:
+                break
+
+            
     def run(
         self,
         buffer_time: int | None = None,
@@ -160,5 +179,11 @@ class FluxManager:
             self._logger.info("=== ENTERING WORKFLOW ENVIRONMENT ===")
             start = time.perf_counter()
 
-            # done = len
-            # while not done:
+            done = (
+                len(self._ready) == 0
+                and len(self._running_jobs) == 0
+                and len(self._blocked) == 0
+            )
+            while not done:
+                self._check_resources()
+                self._log_progress()

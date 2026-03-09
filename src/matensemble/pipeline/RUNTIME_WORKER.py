@@ -11,14 +11,14 @@ def main():
                      KVS"
     )
     parser.add_argument(
-        "--job-id",
+        "--jobid",
         "-id",
         type=str,
         required=True,
         help="The identification of the Job object",
     )
     parser.add_argument(
-        "--job-dir",
+        "--jobdir",
         "-d",
         type=str,
         required=True,
@@ -27,11 +27,52 @@ def main():
 
     # Parse the arguments
     args = parser.parse_args()
-    spec_file = Path(args.)
+    job_id = args.jobid
+    spec_file = Path(args.jobdir)
 
     # TODO: get the job_spec object by loading the json spec file
     #       then import the function, call it with the args and
     #       store the results in the flux KVS
+    try:
+        with open(spec_file, "r") as file:
+            job = json.load(file)
+    except FileNotFoundError:
+        print(f"Error: The file '{spec_file}' was not found.")
+        exit(1)
+    except json.JSONDecodeError:
+        print("Error: Could not decode JSON. Check the file format.")
+        exit(1)
+
+    module_name = importlib.import_module(job.func_module)
+    func_name = job.func_qualname
+
+    try:
+        module = importlib.import_module(module_name)
+    except Exception as e:
+        print(f"Error: could not import the module {module_name}")
+        print(e)
+        exit(1)
+
+    try:
+        func = getattr(module, func_name)
+    except Exception as e:
+        print(f"Error: could not find function '{func_name}'")
+        print(e)
+        exit(1)
+
+    try:
+        result = func(*job.args, **job.kwargs)
+    except Exception as e:
+        print(f"Error: calling funcition '{func}' failed")
+        print(e)
+        exit(1)
+
+    result_file = Path(f"{spec_file.parent}/result.pkl")
+    with open(file_path, "wb") as file:
+        # Use pickle.dump() to serialize the object and write it to the file
+        pickle.dump(data_to_save, file)
+
+    print(f"Object successfully dumped to {file_path}")
 
 
 if __name__ == "__main__":
