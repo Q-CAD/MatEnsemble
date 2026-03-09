@@ -17,6 +17,7 @@ from datetime import datetime
 from pathlib import Path
 
 
+# TODO: Update this to be consistent with new API
 class AdaptiveStrategy(FutureProcessingStrategy):
     """
     Implements the FutureProcessingStrategy interface. Processes futures

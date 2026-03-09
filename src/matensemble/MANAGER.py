@@ -136,26 +136,27 @@ class FluxManager:
         self._free_gpus = resources.free.ngpus
 
     def _submit_one(self, job_id) -> None:
-        fut = self._fluxlet.su
-
-
+        fut = self._fluxlet.submit(self._jobs_by_id[job_id])
+        self._futures.add(fut)
 
     # PERF: Currently this doesn't check all of the Jobs in the ready queue
-    #       later could have it loop through the entire ready queue and check 
-    #       all of them to make sure that none can be submitted 
+    #       later could have it loop through the entire ready queue and check
+    #       all of them to make sure that none can be submitted in case one ready
+    #       job takes less resources than another
     def _submit_until_ooresources(self) -> None:
         while self._ready:
             job_id = self._ready[0]
             spec = self._jobs_by_id[job_id]
-            if self._free_cores > spec.resources.cores_per_task and 
-            self._free_gpus > spec.resources.gpus_per_task:
+            if (
+                self._free_cores > spec.resources.cores_per_task
+                and self._free_gpus > spec.resources.gpus_per_task
+            ):
                 self._ready.popleft()
                 self._blocked.discard(job_id)
                 self._submit_one(job_id)
             else:
                 break
 
-            
     def run(
         self,
         buffer_time: int | None = None,
@@ -187,3 +188,15 @@ class FluxManager:
             while not done:
                 self._check_resources()
                 self._log_progress()
+                self._submit_until_ooresources()
+                proc_strat.process_futures(buffer_time=buffer_time)
+
+                done = (
+                    len(self._ready) == 0
+                    and len(self._running_jobs) == 0
+                    and len(self._blocked) == 0
+                )
+
+            end = time.perf_counter()
+            self._logger.info("=== EXITING WORKFLOW ENVIRONMENT  ===")
+            self._logger.info(f"Workflow took {(end - start):.4f} seconds to run.")
