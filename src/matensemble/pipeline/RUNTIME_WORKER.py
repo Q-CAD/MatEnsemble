@@ -1,4 +1,5 @@
 import argparse
+import pickle
 import importlib
 import json
 from pathlib import Path
@@ -68,11 +69,11 @@ def main():
         exit(1)
 
     result_file = Path(f"{spec_file.parent}/result.pkl")
-    with open(file_path, "wb") as file:
+    with open(result_file, "wb") as file:
         # Use pickle.dump() to serialize the object and write it to the file
-        pickle.dump(data_to_save, file)
+        pickle.dump(result, file)
 
-    print(f"Object successfully dumped to {file_path}")
+    print(f"result successfully dumped to {result_file}")
 
 
 if __name__ == "__main__":
