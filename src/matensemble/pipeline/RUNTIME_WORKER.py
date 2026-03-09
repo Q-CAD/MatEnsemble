@@ -20,13 +20,12 @@ def main():
     )
     parser.add_argument(
         "--jobdir",
-        "-d",
+        "-dir",
         type=str,
         required=True,
         help="The directory where the <job_id>.json lives",
     )
 
-    # Parse the arguments
     args = parser.parse_args()
     job_id = args.jobid
     spec_file = Path(args.jobdir)
@@ -60,6 +59,21 @@ def main():
         print(f"Error: could not find function '{func_name}'")
         print(e)
         exit(1)
+
+    if job.deps:
+        deps_results = []
+        for dep in job.deps:
+            try:
+                with open(f"../{dep}/result.pkl", "rb") as file:
+                    result = pickle.load(file)
+                    deps_results.append(result)
+            except FileNotFoundError:
+                print(f"Error: The file '{spec_file}' was not found.")
+                exit(1)
+            except pickle.UnpicklingError as e:
+                print(f"Error: couldn't load pickled object")
+                print(e)
+                exit(1)
 
     try:
         result = func(*job.args, **job.kwargs)
