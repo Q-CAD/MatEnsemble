@@ -1,186 +1,205 @@
-# matensemble/manager.py
+import time
+import logging
 
-from __future__ import annotations
+import flux
+import flux.job
 
-# import time
-import pickle
-
-# import flux
-import concurrent.futures
-from collections import deque
 from pathlib import Path
-# from typing import TYPE_CHECKING
+from collections import deque
 
-# from matensemble.logger import setup_workflow_logging
-# from matensemble.fluxlet import Fluxlet
+from matensemble.logger import _setup_logger, _setup_status_writer
+from matensemble.pipeline.pipeline import Job
+from matensemble.strategy.adaptive_strategy import AdaptiveStrategy
+from matensemble.strategy.process_futures_strategy_base import FutureProcessingStrategy
+from matensemble.fluxlet import Fluxlet
 
-# if TYPE_CHECKING:
-# from matensemble.pipeline.compile import TaskSpec
 
-
-class SuperFluxManager:
-    """
-    DAG-aware Flux submission manager (MVP).
-
-    Takes compiled TaskSpecs, submits tasks when dependencies are satisfied,
-    and tracks completion/failure.
-    """
-
+class FluxManager:
     def __init__(
         self,
-        tasks,
-        *,
-        base_dir: str | Path | None = None,
-        write_restart_freq: int = 100,
+        job_list: list[Job],
+        base_dir: Path,
+        write_restart_freq: int | None = 100,
         set_cpu_affinity: bool = True,
         set_gpu_affinity: bool = True,
+        restart_file: str | None = None,
     ) -> None:
-        self.tasks_by_id = {t.id: t for t in tasks}
-        self.dependents: dict[str, list[str]] = {t.id: [] for t in tasks}
-        self.remaining_deps: dict[str, int] = {t.id: len(t.deps) for t in tasks}
+        self._base_dir = base_dir
 
-        for t in tasks:
-            for dep in t.deps:
-                self.dependents[dep].append(t.id)
+        self._jobs_by_id = {job.id: job for job in job_list}
+        self._dependents = {job.id: [] for job in job_list}
+        self._remaining_deps = {job.id: len(job.deps) for job in job_list}
 
-        self.ready = deque([tid for tid, n in self.remaining_deps.items() if n == 0])
-        self.blocked = set(self.tasks_by_id.keys()) - set(self.ready)
+        for job in job_list:
+            for dep in job.deps:
+                self._dependents[dep].append(job.id)
 
-        self.running_tasks: set[str] = set()
-        self.completed_tasks: list[str] = []
-        self.failed_tasks: list[tuple[str, object]] = []
-        self.futures: set = set()
+        self._ready = deque(
+            [
+                job_id
+                for job_id, num_deps in self._remaining_deps.items()
+                if num_deps == 0
+            ]
+        )
+        self._blocked = set(self._jobs_by_id.keys()) - set(self._ready)
 
-        self.flux_handle = flux.Flux()
-        self.fluxlet = Fluxlet(self.flux_handle)
+        self._running_jobs = set()
+        self._completed_jobs = []
+        self._failed_jobs = []
+        self._futures = set()
 
-        self.write_restart_freq = write_restart_freq
-        self.set_cpu_affinity = set_cpu_affinity
-        self.set_gpu_affinity = set_gpu_affinity
+        self._flux_handle = flux.Flux()
+        self._fluxlet = Fluxlet(self._flux_handle)
 
-        self.logger, self.status, self.paths = setup_workflow_logging(base_dir=base_dir)
+        self._write_restart_freq = write_restart_freq
 
-    def create_restart_file(self) -> None:
+        allocation_information = self._get_nnodes()
+        self._status_writer = _setup_status_writer(
+            self._base_dir / "status.json", *allocation_information
+        )
+        self._logger = _setup_logger(self._base_dir)
+
+        self._free_cores = allocation_information[0] * allocation_information[1]
+        self._free_gpus = allocation_information[0] * allocation_information[2]
+
+        if restart_file:
+            self._load_restart(restart_file)
+
+    def _make_restart(self) -> None:
         """
-        MVP restart: store completed/running/ready/blocked/failed.
+        Pickle the current state of the manager and dump it to a file
         """
-        state = {
-            "completed": self.completed_tasks,
-            "running": list(self.running_tasks),
-            "ready": list(self.ready),
-            "blocked": list(self.blocked),
-            "failed": self.failed_tasks,
-        }
-        out = self.paths.base_dir / f"restart_{len(self.completed_tasks)}.dat"
-        pickle.dump(state, open(out, "wb"))
+        pass
 
-    def check_resources(self) -> None:
+    def _load_restart(self, path: str | Path) -> None:
         """
-        Same as your existing implementation (free cores/gpus from Flux).
+        Load the pickled restart file and pick up where it left off.
         """
-        res = flux.resource.list.resource_list(self.flux_handle).get()
-        self.free_gpus = res.free.ngpus
-        self.free_cores = res.free.ncores
+        pass
 
-    def log_progress(self) -> None:
-        pending = len(self.ready) + len(self.blocked)
-        self.status.update(
+    def _log_progress(self) -> None:
+        """
+        Update the status file and append a progress line in the log file
+        """
+        pending = len(self._ready) + len(self._blocked)
+        self._status_writer.update(
             pending=pending,
-            running=len(self.running_tasks),
-            completed=len(self.completed_tasks),
-            failed=len(self.failed_tasks),
-            free_cores=self.free_cores,
-            free_gpus=self.free_gpus,
+            running=len(self._running_jobs),
+            completed=len(self._completed_jobs),
+            failed=len(self._failed_jobs),
+            free_cores=self._free_cores,
+            free_gpus=self._free_gpus,
         )
 
-    def _can_submit(self, spec: "TaskSpec") -> bool:
-        need_cores = int(spec.resources.cores_per_task) * int(spec.resources.num_tasks)
-        need_gpus = int(spec.resources.gpus_per_task) * int(spec.resources.num_tasks)
-        return self.free_cores >= need_cores and self.free_gpus >= need_gpus
-
-    def _submit_one(self, spec: "TaskSpec") -> None:
-        fut = self.fluxlet.submit_spec(
-            self.executor,
-            spec,
-            set_cpu_affinity=self.set_cpu_affinity,
-            set_gpu_affinity=self.set_gpu_affinity,
-        )
-        self.futures.add(fut)
-        self.running_tasks.add(spec.id)
-
-        # optimistic local decrement (next loop refreshes from Flux anyway)
-        self.free_cores -= int(spec.resources.cores_per_task) * int(
-            spec.resources.num_tasks
-        )
-        self.free_gpus -= int(spec.resources.gpus_per_task) * int(
-            spec.resources.num_tasks
+        self._logger.info(
+            "JOBS: Pending=%d Running=%d Completed=%d Failed=%d | RESOURCES: Free_cores=%d Free_gpus=%d",
+            pending,
+            len(self._running_jobs),
+            len(self._completed_jobs),
+            len(self._failed_jobs),
+            self._free_cores,
+            self._free_gpus,
         )
 
-    def run(self, *, buffer_time: float = 0.2) -> None:
+    def _get_nnodes(self) -> tuple:
         """
-        Minimal DAG scheduler loop:
-        - submit from ready while resources allow
-        - wait for completions
-        - on completion: mark done, unlock dependents
+        Gets the total number of nodes (minus one for the flux broker) and the
+        number of cores and gpus per node.
+
+        Return
+        ------
+        tuple
+            Each of the computed values (nnodes, cores_per_node, gpus_per_node)
         """
+
+        rpc = flux.resource.list.resource_list(self._flux_handle)
+        resources = rpc.get()
+
+        nnodes = len(resources.all.ranks)
+        total_cores = resources.all.ncores
+        total_gpus = resources.all.ngpus
+
+        cores_per_node = total_cores // nnodes
+        gpus_per_node = total_gpus // nnodes
+
+        return (nnodes - 1, cores_per_node, gpus_per_node)
+
+    def _check_resources(self) -> None:
+        """
+        Gets the available resources from Flux's Remote Procedure Call (RPC)
+        and sets them as private fields
+
+        Return
+        ------
+        None
+        """
+
+        resources = flux.resource.list.resource_list(self._flux_handle).get()
+        self._free_cores = resources.free.ncores
+        self._free_gpus = resources.free.ngpus
+
+    def _submit_one(self, job_id) -> None:
+        fut = self._fluxlet.submit(self._jobs_by_id[job_id])
+        self._futures.add(fut)
+
+    # PERF: Currently this doesn't check all of the Jobs in the ready queue
+    #       later could have it loop through the entire ready queue and check
+    #       all of them to make sure that none can be submitted in case one ready
+    #       job takes less resources than another
+    def _submit_until_ooresources(self) -> None:
+        while self._ready:
+            job_id = self._ready[0]
+            spec = self._jobs_by_id[job_id]
+            if (
+                self._free_cores > spec.resources.cores_per_task
+                and self._free_gpus > spec.resources.gpus_per_task
+            ):
+                self._ready.popleft()
+                self._blocked.discard(job_id)
+                self._submit_one(job_id)
+            else:
+                break
+
+    def run(
+        self,
+        buffer_time: int | None = None,
+        adaptive: bool = True,
+        dynopro: bool = False,
+        processing_strategy: FutureProcessingStrategy | None = None,
+    ) -> None:
+        """ """
+
+        if processing_strategy:
+            proc_strat = processing_strategy
+        else:
+            # TODO: Update the adaptive strategy to work with the new API
+            proc_strat = AdaptiveStrategy(self)
+
+        self._flux_handle.rpc("resource.drain", {"targets": "0"}).get()
         with flux.job.FluxExecutor() as executor:
-            self.executor = executor
+            # set executor in manager so that strategies can access it
+            self._executor = executor
+
+            self._logger.info("=== ENTERING WORKFLOW ENVIRONMENT ===")
+            start = time.perf_counter()
 
             done = (
-                (len(self.ready) == 0)
-                and (len(self.running_tasks) == 0)
-                and (len(self.blocked) == 0)
+                len(self._ready) == 0
+                and len(self._running_jobs) == 0
+                and len(self._blocked) == 0
             )
             while not done:
-                self.check_resources()
-                self.log_progress()
-
-                # submit as many READY tasks as possible
-                while self.ready:
-                    tid = self.ready[0]
-                    spec = self.tasks_by_id[tid]
-                    if not self._can_submit(spec):
-                        break
-                    self.ready.popleft()
-                    self.blocked.discard(tid)
-                    self._submit_one(spec)
-
-                # process futures
-                completed, self.futures = concurrent.futures.wait(
-                    self.futures, timeout=buffer_time
-                )
-                for fut in completed:
-                    tid = fut.task
-                    self.running_tasks.remove(tid)
-
-                    try:
-                        rc = fut.result()
-                    except Exception:
-                        self.failed_tasks.append((tid, fut.job_spec))
-                        self.logger.exception("TASK FAILED: task=%s", tid)
-                        continue
-
-                    if rc != 0:
-                        self.failed_tasks.append((tid, fut.job_spec))
-                        self.logger.error("TASK NONZERO EXIT: task=%s rc=%s", tid, rc)
-                        continue
-
-                    self.completed_tasks.append(tid)
-
-                    # unlock dependents
-                    for dep_id in self.dependents.get(tid, []):
-                        self.remaining_deps[dep_id] -= 1
-                        if self.remaining_deps[dep_id] == 0:
-                            self.ready.append(dep_id)
-                            self.blocked.discard(dep_id)
-
-                    if self.write_restart_freq and (
-                        len(self.completed_tasks) % self.write_restart_freq == 0
-                    ):
-                        self.create_restart_file()
+                self._check_resources()
+                self._log_progress()
+                self._submit_until_ooresources()
+                proc_strat.process_futures(buffer_time=buffer_time)
 
                 done = (
-                    (len(self.ready) == 0)
-                    and (len(self.running_tasks) == 0)
-                    and (len(self.blocked) == 0)
+                    len(self._ready) == 0
+                    and len(self._running_jobs) == 0
+                    and len(self._blocked) == 0
                 )
+
+            end = time.perf_counter()
+            self._logger.info("=== EXITING WORKFLOW ENVIRONMENT  ===")
+            self._logger.info(f"Workflow took {(end - start):.4f} seconds to run.")
