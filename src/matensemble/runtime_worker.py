@@ -61,8 +61,6 @@ def main():
     with (spec_file.parent / "result.pkl").open("wb") as f:
         pickle.dump(result, f)
 
-    try_write_result_json(result, spec_file.parent / "result.json")
-
 
 if __name__ == "__main__":
     main()

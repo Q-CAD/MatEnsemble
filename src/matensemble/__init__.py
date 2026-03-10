@@ -20,8 +20,8 @@ how jobs are submitted and how the Future objects are processed.
 __author__ = ["Soumendu Bagchi", "Kaleb Duchesneau"]
 __package__ = "matensemble"
 
-from . import manager
-from . import fluxlet
-from . import logger
+from .pipeline import Pipeline
+from .job import Job
+from .model import Resources, OutputReference, JobFlavor
 
-__all__ = ["manager", "fluxlet", "logger"]
+__all__ = ["Pipeline", "Job", "Resources", "OutputReference", "JobFlavor"]

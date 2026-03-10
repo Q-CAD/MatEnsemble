@@ -90,6 +90,11 @@ class Pipeline:
         def decorator(func: Callable[..., Any]) -> Callable[..., OutputReference]:
             @functools.wraps(func)
             def wrapper(*args: Any, **kwargs: Any) -> OutputReference:
+                if "<locals>" in func.__qualname__:
+                    raise ValueError(
+                        "MatEnsemble jobs must wrap importable top-level callables, not nested/local functions."
+                    )
+
                 self._counter += 1
 
                 res = Resources(
