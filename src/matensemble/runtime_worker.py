@@ -1,10 +1,13 @@
 # runtime_worker.py
 import argparse
 import importlib
+import json
 import pickle
+
 from pathlib import Path
 
-from matensemble.pipeline.pipeline import Job, OutputReference
+from matensemble.job import Job
+from matensemble.utils import _json_safe, _resolve_output_references
 
 
 def _resolve_qualname(module, qualname: str):
@@ -22,16 +25,12 @@ def _load_dep_result(spec_file: Path, dep_id: str):
         return pickle.load(f)
 
 
-def _resolve_refs(value, dep_results):
-    if isinstance(value, OutputReference):
-        return dep_results[value.job_id]
-    if isinstance(value, tuple):
-        return tuple(_resolve_refs(v, dep_results) for v in value)
-    if isinstance(value, list):
-        return [_resolve_refs(v, dep_results) for v in value]
-    if isinstance(value, dict):
-        return {k: _resolve_refs(v, dep_results) for k, v in value.items()}
-    return value
+def try_write_result_json(result, out_file):
+    try:
+        with out_file.open("w") as f:
+            json.dump(_json_safe(result), f, indent=2)
+    except Exception:
+        pass
 
 
 def main():
@@ -43,19 +42,26 @@ def main():
     spec_file = Path(ns.job_dir)
 
     with spec_file.open("rb") as f:
-        job: Job = pickle.load(f)
+        job = pickle.load(f)
+
+    if ns.job_id != job.id:
+        raise ValueError(
+            f"Job ID mismatch: CLI job_id={ns.job_id!r}, spec job_id={job.id!r}"
+        )
 
     module = importlib.import_module(job.func_module)
     func = _resolve_qualname(module, job.func_qualname)
 
     dep_results = {dep: _load_dep_result(spec_file, dep) for dep in job.deps}
-    args = _resolve_refs(job.args, dep_results)
-    kwargs = _resolve_refs(job.kwargs, dep_results)
+    args = _resolve_output_references(job.args, dep_results)
+    kwargs = _resolve_output_references(job.kwargs, dep_results)
 
     result = func(*args, **kwargs)
 
     with (spec_file.parent / "result.pkl").open("wb") as f:
         pickle.dump(result, f)
+
+    try_write_result_json(result, spec_file.parent / "result.json")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 import os
+import pickle
 import json
 import tempfile
 
@@ -6,7 +7,7 @@ import flux
 import flux.job
 
 from pathlib import Path
-from matensemble.pipeline.PIPELINE import Job
+from matensemble.job import Job
 
 
 class Fluxlet:
@@ -24,7 +25,6 @@ class Fluxlet:
         set_gpu_affinity: bool | None = None,
         nnodes: int | None = None,
     ) -> flux.job.FluxExecutorFuture:
-
         jobspec = flux.job.JobspecV1.from_command(
             job.command,
             job.resources.num_tasks,
@@ -32,19 +32,21 @@ class Fluxlet:
             job.resources.gpus_per_task,
         )
 
-        # create workflow dir only when needed
-        job.spec_file.mkdir(parents=True, exist_ok=True)
-        job.spec_file.touch()
+        job.workdir.mkdir(parents=True, exist_ok=True)
 
-        # atomically write the spec file to avoid partial writes
-        with tempfile.NamedTemporaryFile("w", dir=job.spec_file, delete=False) as tf:
-            tf.write(job.__str__())
+        with tempfile.NamedTemporaryFile(
+            "wb", dir=job.spec_path.parent, delete=False
+        ) as tf:
+            pickle.dump(job, tf)
             temp_name = tf.name
-        os.replace(temp_name, job.spec_file)
+        os.replace(temp_name, job.spec_path)
 
-        jobspec.cwd = str(job.spec_file)
-        jobspec.stdout = str(job.spec_file / "stdout")
-        jobspec.stderr = str(job.spec_file / "stderr")
+        # helpful for debugging
+        job._write_debug_json()
+
+        jobspec.cwd = str(job.workdir)
+        jobspec.stdout = str(job.workdir / "stdout")
+        jobspec.stderr = str(job.workdir / "stderr")
 
         if job.resources.mpi:
             jobspec.setattr_shell_option("mpi", "pmi2")
@@ -56,13 +58,13 @@ class Fluxlet:
         if job.resources.env:
             jobspec.env = job.resources.env
 
-        if nnodes:
+        # only set this if you truly want every job to span a fixed node count
+        if nnodes is not None:
             jobspec.num_nodes = nnodes
 
         fut = executor.submit(jobspec)
-
+        fut.job_id = job.id
         fut.job_obj = job
         fut.job_spec = jobspec
-        fut.workdir = str(job.spec_file)
-
+        fut.workdir = str(job.workdir)
         return fut

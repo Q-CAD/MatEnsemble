@@ -1,5 +1,4 @@
 import time
-import logging
 
 import flux
 import flux.job
@@ -8,7 +7,7 @@ from pathlib import Path
 from collections import deque
 
 from matensemble.logger import _setup_logger, _setup_status_writer
-from matensemble.pipeline.pipeline import Job
+from matensemble.job import Job
 from matensemble.strategy.adaptive_strategy import AdaptiveStrategy
 from matensemble.strategy.process_futures_strategy_base import FutureProcessingStrategy
 from matensemble.fluxlet import Fluxlet
@@ -24,7 +23,8 @@ class FluxManager:
         set_gpu_affinity: bool = True,
         restart_file: str | None = None,
     ) -> None:
-        self._base_dir = base_dir
+        self._base_dir = Path(base_dir)
+        self._base_dir.mkdir(parents=True, exist_ok=True)
 
         self._jobs_by_id = {job.id: job for job in job_list}
         self._dependents = {job.id: [] for job in job_list}
@@ -53,14 +53,19 @@ class FluxManager:
 
         self._write_restart_freq = write_restart_freq
 
-        allocation_information = self._get_nnodes()
+        self._nnodes, self._cores_per_node, self._gpus_per_node = (
+            self._get_allocation_info()
+        )
         self._status_writer = _setup_status_writer(
-            self._base_dir / "status.json", *allocation_information
+            self._base_dir / "status.json",
+            nnodes=self._nnodes,
+            cores_per_node=self._cores_per_node,
+            gpus_per_node=self._gpus_per_node,
         )
         self._logger = _setup_logger(self._base_dir)
 
-        self._free_cores = allocation_information[0] * allocation_information[1]
-        self._free_gpus = allocation_information[0] * allocation_information[2]
+        self._set_cpu_affinity = set_cpu_affinity
+        self._set_gpu_affinity = set_gpu_affinity
 
         if restart_file:
             self._load_restart(restart_file)
@@ -101,7 +106,7 @@ class FluxManager:
             self._free_gpus,
         )
 
-    def _get_nnodes(self) -> tuple:
+    def _get_allocation_info(self) -> tuple:
         """
         Gets the total number of nodes (minus one for the flux broker) and the
         number of cores and gpus per node.
@@ -138,8 +143,16 @@ class FluxManager:
         self._free_cores = resources.free.ncores
         self._free_gpus = resources.free.ngpus
 
-    def _submit_one(self, job_id) -> None:
-        fut = self._fluxlet.submit(self._jobs_by_id[job_id])
+    def _submit_one(self, job_id: str) -> None:
+        fut = self._fluxlet.submit(
+            self._executor,
+            self._jobs_by_id[job_id],
+            set_cpu_affinity=self._set_cpu_affinity,
+            set_gpu_affinity=self._set_gpu_affinity,
+            nnodes=None,  # see next point
+        )
+        fut.job_id = job_id
+        self._running_jobs.add(job_id)
         self._futures.add(fut)
 
     # PERF: Currently this doesn't check all of the Jobs in the ready queue
@@ -151,12 +164,20 @@ class FluxManager:
             job_id = self._ready[0]
             spec = self._jobs_by_id[job_id]
             if (
-                self._free_cores > spec.resources.cores_per_task
-                and self._free_gpus > spec.resources.gpus_per_task
+                self._free_cores
+                >= spec.resources.num_tasks * spec.resources.cores_per_task
+                and self._free_gpus
+                >= spec.resources.num_tasks * spec.resources.gpus_per_task
             ):
                 self._ready.popleft()
                 self._blocked.discard(job_id)
                 self._submit_one(job_id)
+                self._free_cores -= (
+                    spec.resources.num_tasks * spec.resources.cores_per_task
+                )
+                self._free_gpus -= (
+                    spec.resources.num_tasks * spec.resources.gpus_per_task
+                )
             else:
                 break
 
