@@ -39,7 +39,7 @@ class Job:
         self.flavor = flavor
         self.resources = resources
         self.workdir = workdir.resolve()
-        self.spec_path = workdir / "job.pkl"
+        self.spec_path = self.workdir / "job.pkl"
         self.func_module = func_module
         self.func_qualname = func_qualname
         self.deps = deps

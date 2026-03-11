@@ -10,7 +10,7 @@ from typing import Callable, Any
 from pathlib import Path
 
 from matensemble.manager import FluxManager
-from matensemble.strategy.process_futures_strategy_base import FutureProcessingStrategy
+from matensemble.strategy import FutureProcessingStrategy
 from matensemble.job import Job
 from matensemble.model import OutputReference, Resources, JobFlavor
 from matensemble.utils import _collect_dep_ids

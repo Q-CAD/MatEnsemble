@@ -49,7 +49,7 @@ class AdaptiveStrategy(FutureProcessingStrategy):
         for fut in completed:
             job_id = fut.job_id
             job = fut.job_obj
-            self.manager._running_tasks.remove(job_id)
+            self.manager._running_jobs.remove(job_id)
 
             try:
                 rc = fut.result()
@@ -58,7 +58,7 @@ class AdaptiveStrategy(FutureProcessingStrategy):
                 stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
                 append_text(
-                    job.out_dir / "stderr",
+                    job.workdir / "stderr",
                     (
                         f"\n\n===== MATENSEMBLE WRAPPER ERROR ({stamp}) =====\n"
                         f"job={job_id}\n"
@@ -67,22 +67,27 @@ class AdaptiveStrategy(FutureProcessingStrategy):
                         f"{tb}\n"
                     ),
                 )
-                self.manager.logger.error("JOB FAILED: job=%s", job_id)
+                self.manager._logger.error("JOB FAILED: job=%s", job_id)
 
                 self.manager._failed_jobs.append((job_id, fut.job_spec))
-                self.manager.logger.exception("JOB FAILED: job=%s", job_id)
+                self.manager._logger.exception("JOB FAILED: job=%s", job_id)
+                self.manager._record_failure(
+                    job_id,
+                    reason="exception",
+                    exception=repr(e),
+                )
+                self.manager._fail_dependents(job_id)
                 continue
 
             if rc != 0:
                 append_text(
-                    job.out_dir / "stderr",
+                    job.workdir / "stderr",
                     f"\n\n===== MATENSEMBLE: NONZERO EXIT =====\n"
-                    f"job={job_id} rc={rc}\n"
-                    f"See workflow log for details: {self.manager.paths.verbose_log_file}\n",
+                    f"job={job_id} rc={rc}\n",
                 )
 
                 self.manager._failed_jobs.append((job_id, fut.job_spec))
-                self.manager.logger.error(
+                self.manager._logger.error(
                     "JOB NONZERO EXIT: job=%s rc=%s | workdir=%s | stdout=%s | stderr=%s",
                     job_id,
                     rc,
@@ -90,9 +95,14 @@ class AdaptiveStrategy(FutureProcessingStrategy):
                     job.workdir / "stdout",
                     job.workdir / "stderr",
                 )
+                self.manager._record_failure(
+                    job_id,
+                    reason=f"nonzero_exit:{rc}",
+                )
+                self.manager._fail_dependents(job_id)
                 continue
 
-            self.manager._completed_tasks.append(job_id)
+            self.manager._completed_jobs.append(job_id)
 
             # unlock dependents
             for dep_id in self.manager._dependents.get(job_id, []):
@@ -105,7 +115,7 @@ class AdaptiveStrategy(FutureProcessingStrategy):
             self.manager._submit_one(buffer_time)
 
             if self.manager._write_restart_freq and (
-                len(self.manager._completed_tasks) % self.manager._write_restart_freq
+                len(self.manager._completed_jobs) % self.manager._write_restart_freq
                 == 0
             ):
                 self.manager._create_restart_file()
@@ -139,7 +149,7 @@ class NonAdaptiveStrategy(FutureProcessingStrategy):
         for fut in completed:
             job_id = fut.job_id
             job = fut.job_obj
-            self.manager._running_tasks.remove(job_id)
+            self.manager._running_jobs.remove(job_id)
 
             try:
                 rc = fut.result()
@@ -148,7 +158,7 @@ class NonAdaptiveStrategy(FutureProcessingStrategy):
                 stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
                 append_text(
-                    job.out_dir / "stderr",
+                    job.workdir / "stderr",
                     (
                         f"\n\n===== MATENSEMBLE WRAPPER ERROR ({stamp}) =====\n"
                         f"job={job_id}\n"
@@ -157,22 +167,22 @@ class NonAdaptiveStrategy(FutureProcessingStrategy):
                         f"{tb}\n"
                     ),
                 )
-                self.manager.logger.error("JOB FAILED: job=%s", job_id)
+                self.manager._logger.error("JOB FAILED: job=%s", job_id)
 
                 self.manager._failed_jobs.append((job_id, fut.job_spec))
-                self.manager.logger.exception("JOB FAILED: job=%s", job_id)
+                self.manager._logger.exception("JOB FAILED: job=%s", job_id)
                 continue
 
             if rc != 0:
                 append_text(
-                    job.out_dir / "stderr",
+                    job.workdir / "stderr",
                     f"\n\n===== MATENSEMBLE: NONZERO EXIT =====\n"
                     f"job={job_id} rc={rc}\n"
                     f"See workflow log for details: {self.manager.paths.verbose_log_file}\n",
                 )
 
                 self.manager._failed_jobs.append((job_id, fut.job_spec))
-                self.manager.logger.error(
+                self.manager._logger.error(
                     "JOB NONZERO EXIT: job=%s rc=%s | workdir=%s | stdout=%s | stderr=%s",
                     job_id,
                     rc,
@@ -182,7 +192,7 @@ class NonAdaptiveStrategy(FutureProcessingStrategy):
                 )
                 continue
 
-            self.manager._completed_tasks.append(job_id)
+            self.manager._completed_jobs.append(job_id)
 
             # unlock dependents
             for dep_id in self.manager._dependents.get(job_id, []):
@@ -192,16 +202,16 @@ class NonAdaptiveStrategy(FutureProcessingStrategy):
                     self.manager._blocked.discard(dep_id)
 
             if self.manager._write_restart_freq and (
-                len(self.manager._completed_tasks) % self.manager._write_restart_freq
+                len(self.manager._completed_jobs) % self.manager._write_restart_freq
                 == 0
             ):
-                self.manager._create_restart_file()
+                self.manager._make_restart()
 
 
 def append_text(path: Path, text: str) -> None:
     """
     Append some text to the end of a given file. Used for writing error messages
-    to stderr on a specific task
+    to stderr on a specific job
 
     Parameters
     ----------

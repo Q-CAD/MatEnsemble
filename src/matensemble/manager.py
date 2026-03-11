@@ -132,6 +132,81 @@ class FluxManager:
 
         return (nnodes - 1, cores_per_node, gpus_per_node)
 
+    def _record_failure(
+        self,
+        job_id: str,
+        reason: str,
+        *,
+        upstream: str | None = None,
+        exception: str | None = None,
+    ) -> None:
+        self._failed_jobs.append(
+            {
+                "job_id": job_id,
+                "reason": reason,
+                "upstream": upstream,
+                "exception": exception,
+            }
+        )
+
+    def _fail_dependents(self, failed_job_id: str) -> None:
+        for dep_id in self._dependents.get(failed_job_id, []):
+            if dep_id in self._completed_jobs or dep_id in self._running_jobs:
+                continue
+
+            # remove from pending structures
+            try:
+                self._ready.remove(dep_id)
+            except ValueError:
+                pass
+            self._blocked.discard(dep_id)
+
+            # avoid duplicate entries
+            already_failed = any(item["job_id"] == dep_id for item in self._failed_jobs)
+            if not already_failed:
+                self._record_failure(
+                    dep_id,
+                    reason="dependency_failed",
+                    upstream=failed_job_id,
+                )
+                self._logger.error(
+                    "JOB SKIPPED: job=%s because dependency %s failed",
+                    dep_id,
+                    failed_job_id,
+                )
+
+            # recurse downward
+            self._fail_dependents(dep_id)
+
+    def _job_fits_allocation(self, job: Job) -> bool:
+        needed_cores = job.resources.num_tasks * job.resources.cores_per_task
+        needed_gpus = job.resources.num_tasks * job.resources.gpus_per_task
+
+        total_cores = self._nnodes * self._cores_per_node
+        total_gpus = self._nnodes * self._gpus_per_node
+
+        return needed_cores <= total_cores and needed_gpus <= total_gpus
+
+    def _validate_jobs(self) -> None:
+        for job_id, job in self._jobs_by_id.items():
+            if not self._job_fits_allocation(job):
+                self._record_failure(
+                    job_id,
+                    reason="job_exceeds_allocation",
+                )
+
+                try:
+                    self._ready.remove(job_id)
+                except ValueError:
+                    pass
+                self._blocked.discard(job_id)
+
+                self._logger.error(
+                    "JOB INVALID: job=%s requires more resources than the allocation can provide",
+                    job_id,
+                )
+                self._fail_dependents(job_id)
+
     def _check_resources(self) -> None:
         """
         Gets the available resources from Flux's Remote Procedure Call (RPC)
@@ -148,6 +223,8 @@ class FluxManager:
 
     def _submit_one(self, job_id: str, buffer_time: float) -> None:
         spec = self._jobs_by_id[job_id]
+        self._ready.popleft()
+        self._blocked.discard(job_id)
         fut = self._fluxlet.submit(
             self._executor,
             self._jobs_by_id[job_id],
@@ -162,29 +239,32 @@ class FluxManager:
         self._free_gpus -= spec.resources.num_tasks * spec.resources.gpus_per_task
         time.sleep(buffer_time)
 
-    # PERF: Currently this doesn't check all of the Jobs in the ready queue
-    #       later could have it loop through the entire ready queue and check
-    #       all of them to make sure that none can be submitted in case one ready
-    #       job takes less resources than another
-    def _submit_until_ooresources(self, buffer_time) -> None:
+    def _can_submit_now(self, job: Job) -> bool:
+        needed_cores = job.resources.num_tasks * job.resources.cores_per_task
+        needed_gpus = job.resources.num_tasks * job.resources.gpus_per_task
+        return self._free_cores >= needed_cores and self._free_gpus >= needed_gpus
+
+    def _submit_until_ooresources(self, buffer_time: float) -> None:
+        deferred = deque()
+        submitted_any = False
+
         while self._ready:
-            job_id = self._ready[0]
-            spec = self._jobs_by_id[job_id]
-            if (
-                self._free_cores
-                >= spec.resources.num_tasks * spec.resources.cores_per_task
-                and self._free_gpus
-                >= spec.resources.num_tasks * spec.resources.gpus_per_task
-            ):
-                self._ready.popleft()
+            job_id = self._ready.popleft()
+            job = self._jobs_by_id[job_id]
+
+            if self._can_submit_now(job):
                 self._blocked.discard(job_id)
                 self._submit_one(job_id, buffer_time)
+                submitted_any = True
             else:
-                break
+                deferred.append(job_id)
+
+        self._ready = deferred
+        return submitted_any
 
     def run(
         self,
-        buffer_time: int | None = None,
+        buffer_time: int = 1,
         adaptive: bool = True,
         dynopro: bool = False,
         processing_strategy: FutureProcessingStrategy | None = None,
@@ -193,11 +273,7 @@ class FluxManager:
 
         if processing_strategy:
             proc_strat = processing_strategy
-        else:
-            # TODO: Update the adaptive strategy to work with the new API
-            proc_strat = AdaptiveStrategy(self)
-
-        if adaptive:
+        elif adaptive:
             proc_strat = AdaptiveStrategy(self)
         else:
             proc_strat = NonAdaptiveStrategy(self)
@@ -218,7 +294,7 @@ class FluxManager:
             while not done:
                 self._check_resources()
                 self._log_progress()
-                self._submit_until_ooresources()
+                self._submit_until_ooresources(buffer_time=buffer_time)
                 proc_strat.process_futures(buffer_time=buffer_time)
 
                 done = (
