@@ -73,3 +73,26 @@ flow.draw_graph(figsize=(3, 3)).show()
 
 In the future we also should be able to use a tool like 
 graphviz to show a visual of the workflow. 
+
+
+```python
+import matensemble.pipeline
+
+pipeline = Pipeline()
+
+@pipeline.task()
+def factorial(n):
+    product = 1
+    for i in range(1, n+1):
+        product *= i
+    return product
+
+@pipeline.task()
+def digit_sum(n):
+    return sum(int(d) for d in str(n))
+
+n = factorial(100)
+sum = digit_sum(n)
+result = pipeline.run(sum)
+print(result)
+```

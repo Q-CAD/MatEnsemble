@@ -33,14 +33,6 @@ class StatusWriter:
         self.cores_per_node = cores_per_node
         self.gpus_per_node = gpus_per_node
 
-    # def atomic_write(file_path, data):
-    #     # 1. Create a temp file in the same directory
-    #     dir_name = os.path.dirname(file_path)
-    #     with tempfile.NamedTemporaryFile('w', dir=dir_name, delete=False) as tf:
-    #         tf.write(data)
-    #         temp_name = tf.name
-    #     os.replace(temp_name, file_path)
-
     def update(
         self,
         pending: int,

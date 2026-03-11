@@ -32,7 +32,7 @@ class Job:
 
         if flavor == JobFlavor.PYTHON:
             if not func_module:
-                raise ValueError("Python jobs require func_module")
+                raise ValueError("Python jobs require importable func_module")
             if not func_qualname:
                 raise ValueError("Python jobs require func_qualname")
 

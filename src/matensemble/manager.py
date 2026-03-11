@@ -8,8 +8,11 @@ from collections import deque
 
 from matensemble.logger import _setup_logger, _setup_status_writer
 from matensemble.job import Job
-from matensemble.strategy.adaptive_strategy import AdaptiveStrategy
-from matensemble.strategy.process_futures_strategy_base import FutureProcessingStrategy
+from matensemble.strategy import (
+    AdaptiveStrategy,
+    NonAdaptiveStrategy,
+    FutureProcessingStrategy,
+)
 from matensemble.fluxlet import Fluxlet
 
 
@@ -143,23 +146,27 @@ class FluxManager:
         self._free_cores = resources.free.ncores
         self._free_gpus = resources.free.ngpus
 
-    def _submit_one(self, job_id: str) -> None:
+    def _submit_one(self, job_id: str, buffer_time: float) -> None:
+        spec = self._jobs_by_id[job_id]
         fut = self._fluxlet.submit(
             self._executor,
             self._jobs_by_id[job_id],
             set_cpu_affinity=self._set_cpu_affinity,
             set_gpu_affinity=self._set_gpu_affinity,
-            nnodes=None,  # see next point
+            nnodes=None,
         )
         fut.job_id = job_id
         self._running_jobs.add(job_id)
         self._futures.add(fut)
+        self._free_cores -= spec.resources.num_tasks * spec.resources.cores_per_task
+        self._free_gpus -= spec.resources.num_tasks * spec.resources.gpus_per_task
+        time.sleep(buffer_time)
 
     # PERF: Currently this doesn't check all of the Jobs in the ready queue
     #       later could have it loop through the entire ready queue and check
     #       all of them to make sure that none can be submitted in case one ready
     #       job takes less resources than another
-    def _submit_until_ooresources(self) -> None:
+    def _submit_until_ooresources(self, buffer_time) -> None:
         while self._ready:
             job_id = self._ready[0]
             spec = self._jobs_by_id[job_id]
@@ -171,13 +178,7 @@ class FluxManager:
             ):
                 self._ready.popleft()
                 self._blocked.discard(job_id)
-                self._submit_one(job_id)
-                self._free_cores -= (
-                    spec.resources.num_tasks * spec.resources.cores_per_task
-                )
-                self._free_gpus -= (
-                    spec.resources.num_tasks * spec.resources.gpus_per_task
-                )
+                self._submit_one(job_id, buffer_time)
             else:
                 break
 
@@ -195,6 +196,11 @@ class FluxManager:
         else:
             # TODO: Update the adaptive strategy to work with the new API
             proc_strat = AdaptiveStrategy(self)
+
+        if adaptive:
+            proc_strat = AdaptiveStrategy(self)
+        else:
+            proc_strat = NonAdaptiveStrategy(self)
 
         self._flux_handle.rpc("resource.drain", {"targets": "0"}).get()
         with flux.job.FluxExecutor() as executor:

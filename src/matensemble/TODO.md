@@ -78,10 +78,10 @@
 - [x] Run release.sh script to see if releases happen properly
 
 **--- Updated/Better UX ---**
-- [ ] Refactor to be built around Task/Job Objects
-- [ ] Allow users to decorate python functions to create TaskSpec's 
-    - [ ] Allow functions to depend on other functions 
-    - [ ] Topologically sort all of the Jobs based on dependencies
-- [ ] Write worker runtime that flux can target and call user defined functions
-- [ ] Write the Job objects specification to a file in their direcotry 
+- [x] Refactor to be built around Task/Job Objects
+- [x] Allow users to decorate python functions to create TaskSpec's 
+    - [x] Allow functions to depend on other functions 
+    - [x] Topologically sort all of the Jobs based on dependencies
+- [x] Write worker runtime that flux can target and call user defined functions
+- [x] Write the Job objects specification to a file in their direcotry 
 - [ ] Write 

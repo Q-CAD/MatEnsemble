@@ -37,19 +37,20 @@ class Pipeline:
         env: dict[str, str] | None = None,
     ) -> Callable[[Callable[..., Any]], Callable[..., OutputReference]]:
         """
-        Wrap a function to produce a :obj:`Job` and returns a :obj: `OutReference`
+        Wrap a function to produce a :obj:`Job` and returns a :obj: `OutputReference`
         which other job definitions can use to define dependencies.
 
         :obj:`Job` objects are delayed function calls that are put into the
         :obj: `Pipeline` and are added into its graph when you run it.
-        A PYTHON :obj: `Job` contains meta-data that is needed to reproduce a function.
-        The :obj: `SuperFluxManager` will create a :obj: `Fluxlet` and submit
-        the job to flux which calls the module :py:mod: `matensemble.piepline.runtime_worker`.
-        :py:mod: `matensemble.piepline.runtime_worker` takes in two command line
+        A PYTHON :obj: `Job` contains meta-data that is needed to reproduce a
+        function. The :obj: `FluxManager` will create a :obj: `Fluxlet` and
+        submit the job to flux which calls the module :py:mod: `matensemble.runtime_worker`.
+        :py:mod: `matensemble.runtime_worker` takes in two command line
         arguments which are the :param: `job_id` and :param: `spec_file` which
-        the module will use to find the JSON file containing all of the data
-        on the job, and it will use it to import the function and call it with
-        its respective arguments. The result will then be stored in the flux KVS
+        the module will use to find the *pickled* python object containing all
+        of the data on the job, and it will use it to import the function and
+        call it with its respective arguments. The result will then be stored
+        in the flux KVS
 
         Parameters
         ----------
@@ -73,18 +74,8 @@ class Pipeline:
 
         Examples
         --------
-        >>> @job
-        ... def print_message():
-        ...     print("I am a Job")
-        >>> print_job = print_message()
-        >>> type(print_job)
-        <class 'jobflow.core.job.Job'>
-        >>> print_job.function
-        <function print_message at 0x7ff72bdf6af0>
-
         . . .
 
-        /home/fred/Desktop/github.com/materialsproject/jobflow/core/job.py
         """
 
         def decorator(func: Callable[..., Any]) -> Callable[..., OutputReference]:
