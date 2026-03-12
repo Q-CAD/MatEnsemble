@@ -86,7 +86,7 @@ def _setup_logger(base_dir: Path) -> logging.Logger:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    log_file = base_dir / f"matensemble-{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+    log_file = base_dir / f"matensemble_workflow.log"
     file_handler = logging.FileHandler(log_file, encoding="utf-8")
     file_handler.setLevel(logging.DEBUG)
     file_handler.setFormatter(fmt)

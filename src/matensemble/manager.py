@@ -77,13 +77,13 @@ class FluxManager:
         """
         Pickle the current state of the manager and dump it to a file
         """
-        pass
+        raise NotImplementedError("Restart checkpoints are not implemented yet")
 
     def _load_restart(self, path: str | Path) -> None:
         """
         Load the pickled restart file and pick up where it left off.
         """
-        pass
+        raise NotImplementedError("Restart checkpoints are not implemented yet")
 
     def _log_progress(self) -> None:
         """
@@ -109,74 +109,21 @@ class FluxManager:
             self._free_gpus,
         )
 
-    def _get_allocation_info(self) -> tuple:
-        """
-        Gets the total number of nodes (minus one for the flux broker) and the
-        number of cores and gpus per node.
+    def _get_allocation_info(self) -> tuple[int, int, int]:
+        # drain broker rank first, then measure what is actually usable
+        self._flux_handle.rpc("resource.drain", {"targets": "0"}).get()
 
-        Return
-        ------
-        tuple
-            Each of the computed values (nnodes, cores_per_node, gpus_per_node)
-        """
+        resources = flux.resource.list.resource_list(self._flux_handle).get()
+        nnodes = len(resources.free.ranks)
+        total_cores = resources.free.ncores
+        total_gpus = resources.free.ngpus
 
-        rpc = flux.resource.list.resource_list(self._flux_handle)
-        resources = rpc.get()
-
-        nnodes = len(resources.all.ranks)
-        total_cores = resources.all.ncores
-        total_gpus = resources.all.ngpus
+        if nnodes == 0:
+            return 0, 0, 0
 
         cores_per_node = total_cores // nnodes
         gpus_per_node = total_gpus // nnodes
-
-        return (nnodes - 1, cores_per_node, gpus_per_node)
-
-    def _record_failure(
-        self,
-        job_id: str,
-        reason: str,
-        *,
-        upstream: str | None = None,
-        exception: str | None = None,
-    ) -> None:
-        self._failed_jobs.append(
-            {
-                "job_id": job_id,
-                "reason": reason,
-                "upstream": upstream,
-                "exception": exception,
-            }
-        )
-
-    def _fail_dependents(self, failed_job_id: str) -> None:
-        for dep_id in self._dependents.get(failed_job_id, []):
-            if dep_id in self._completed_jobs or dep_id in self._running_jobs:
-                continue
-
-            # remove from pending structures
-            try:
-                self._ready.remove(dep_id)
-            except ValueError:
-                pass
-            self._blocked.discard(dep_id)
-
-            # avoid duplicate entries
-            already_failed = any(item["job_id"] == dep_id for item in self._failed_jobs)
-            if not already_failed:
-                self._record_failure(
-                    dep_id,
-                    reason="dependency_failed",
-                    upstream=failed_job_id,
-                )
-                self._logger.error(
-                    "JOB SKIPPED: job=%s because dependency %s failed",
-                    dep_id,
-                    failed_job_id,
-                )
-
-            # recurse downward
-            self._fail_dependents(dep_id)
+        return nnodes, cores_per_node, gpus_per_node
 
     def _job_fits_allocation(self, job: Job) -> bool:
         needed_cores = job.resources.num_tasks * job.resources.cores_per_task
@@ -221,30 +168,92 @@ class FluxManager:
         self._free_cores = resources.free.ncores
         self._free_gpus = resources.free.ngpus
 
-    def _submit_one(self, job_id: str, buffer_time: float) -> None:
-        spec = self._jobs_by_id[job_id]
-        self._ready.popleft()
-        self._blocked.discard(job_id)
-        fut = self._fluxlet.submit(
-            self._executor,
-            self._jobs_by_id[job_id],
-            set_cpu_affinity=self._set_cpu_affinity,
-            set_gpu_affinity=self._set_gpu_affinity,
-            nnodes=None,
-        )
-        fut.job_id = job_id
-        self._running_jobs.add(job_id)
-        self._futures.add(fut)
-        self._free_cores -= spec.resources.num_tasks * spec.resources.cores_per_task
-        self._free_gpus -= spec.resources.num_tasks * spec.resources.gpus_per_task
-        time.sleep(buffer_time)
-
     def _can_submit_now(self, job: Job) -> bool:
         needed_cores = job.resources.num_tasks * job.resources.cores_per_task
         needed_gpus = job.resources.num_tasks * job.resources.gpus_per_task
         return self._free_cores >= needed_cores and self._free_gpus >= needed_gpus
 
-    def _submit_until_ooresources(self, buffer_time: float) -> None:
+    def _has_failed(self, job_id: str) -> bool:
+        return any(item["job_id"] == job_id for item in self._failed_jobs)
+
+    def _record_failure(
+        self,
+        job_id: str,
+        reason: str,
+        *,
+        upstream: str | None = None,
+        exception: str | None = None,
+    ) -> None:
+        if self._has_failed(job_id):
+            return
+
+        self._failed_jobs.append(
+            {
+                "job_id": job_id,
+                "reason": reason,
+                "upstream": upstream,
+                "exception": exception,
+            }
+        )
+
+    def _fail_dependents(self, failed_job_id: str) -> None:
+        for dep_id in self._dependents.get(failed_job_id, []):
+            if dep_id in self._completed_jobs or dep_id in self._running_jobs:
+                continue
+
+            try:
+                self._ready.remove(dep_id)
+            except ValueError:
+                pass
+            self._blocked.discard(dep_id)
+
+            if not self._has_failed(dep_id):
+                self._record_failure(
+                    dep_id,
+                    reason="dependency_failed",
+                    upstream=failed_job_id,
+                )
+                self._logger.error(
+                    "JOB SKIPPED: job=%s because dependency %s failed",
+                    dep_id,
+                    failed_job_id,
+                )
+
+            self._fail_dependents(dep_id)
+
+    def _submit_one(self, job_id: str, buffer_time: float) -> None:
+        job = self._jobs_by_id[job_id]
+
+        try:
+            fut = self._fluxlet.submit(
+                self._executor,
+                job,
+                set_cpu_affinity=self._set_cpu_affinity,
+                set_gpu_affinity=self._set_gpu_affinity,
+                nnodes=None,
+            )
+        except Exception as e:
+            self._logger.exception("JOB SUBMIT FAILED: job=%s", job_id)
+            self._record_failure(
+                job_id,
+                reason="submit_exception",
+                exception=repr(e),
+            )
+            self._fail_dependents(job_id)
+            self._blocked.discard(job_id)
+            return
+
+        self._blocked.discard(job_id)
+        fut.job_id = job_id
+        fut.job_obj = job
+        self._running_jobs.add(job_id)
+        self._futures.add(fut)
+
+        self._free_cores -= job.resources.num_tasks * job.resources.cores_per_task
+        self._free_gpus -= job.resources.num_tasks * job.resources.gpus_per_task
+        time.sleep(buffer_time)
+
+    def _submit_until_ooresources(self, buffer_time: float) -> bool:
         deferred = deque()
         submitted_any = False
 
@@ -253,7 +262,6 @@ class FluxManager:
             job = self._jobs_by_id[job_id]
 
             if self._can_submit_now(job):
-                self._blocked.discard(job_id)
                 self._submit_one(job_id, buffer_time)
                 submitted_any = True
             else:
@@ -269,8 +277,6 @@ class FluxManager:
         dynopro: bool = False,
         processing_strategy: FutureProcessingStrategy | None = None,
     ) -> None:
-        """ """
-
         if processing_strategy:
             proc_strat = processing_strategy
         elif adaptive:
@@ -278,19 +284,23 @@ class FluxManager:
         else:
             proc_strat = NonAdaptiveStrategy(self)
 
+        buffer_time = 0.0 if buffer_time is None else float(buffer_time)
+
         self._flux_handle.rpc("resource.drain", {"targets": "0"}).get()
         with flux.job.FluxExecutor() as executor:
-            # set executor in manager so that strategies can access it
             self._executor = executor
 
             self._logger.info("=== ENTERING WORKFLOW ENVIRONMENT ===")
             start = time.perf_counter()
+
+            self._validate_jobs()
 
             done = (
                 len(self._ready) == 0
                 and len(self._running_jobs) == 0
                 and len(self._blocked) == 0
             )
+
             while not done:
                 self._check_resources()
                 self._log_progress()
@@ -304,5 +314,5 @@ class FluxManager:
                 )
 
             end = time.perf_counter()
-            self._logger.info("=== EXITING WORKFLOW ENVIRONMENT  ===")
-            self._logger.info(f"Workflow took {(end - start):.4f} seconds to run.")
+            self._logger.info("=== EXITING WORKFLOW ENVIRONMENT ===")
+            self._logger.info("Workflow took %.4f seconds to run.", end - start)

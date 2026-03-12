@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import functools
 import datetime
 import sys
@@ -87,13 +88,12 @@ class Pipeline:
                     )
 
                 self._counter += 1
-
                 res = Resources(
                     num_tasks=num_tasks,
                     cores_per_task=cores_per_task,
                     gpus_per_task=gpus_per_task,
                     mpi=mpi,
-                    env=env,
+                    env=None if env is None else dict(env),
                 )
 
                 job_id = (
@@ -112,7 +112,7 @@ class Pipeline:
                     "matensemble.runtime_worker",
                     "--job-id",
                     job_id,
-                    "--job-dir",
+                    "--spec-file",
                     str(spec_file),
                 ]
 
@@ -125,8 +125,8 @@ class Pipeline:
                     func_module=func.__module__,
                     func_qualname=func.__qualname__,
                     deps=deps,
-                    args=args,
-                    kwargs=kwargs,
+                    args=copy.deepcopy(args),
+                    kwargs=copy.deepcopy(kwargs),
                 )
                 self._job_list.append(job)
                 return OutputReference(job_id)
@@ -173,11 +173,18 @@ class Pipeline:
 
     def _create_graph(self) -> nx.DiGraph:
         G = nx.DiGraph()
+        known_ids = {job.id for job in self._job_list}
+
         for job in self._job_list:
             G.add_node(job.id, job=job)
+
         for job in self._job_list:
+            missing = [dep_id for dep_id in job.deps if dep_id not in known_ids]
+            if missing:
+                raise ValueError(f"Job {job.id} has unknown dependencies: {missing}")
             for dep_id in job.deps:
                 G.add_edge(dep_id, job.id)
+
         return G
 
     def _sort_graph(self, G: nx.DiGraph) -> list:

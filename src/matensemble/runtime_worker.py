@@ -25,7 +25,7 @@ def _load_dep_result(spec_file: Path, dep_id: str):
         return pickle.load(f)
 
 
-def try_write_result_json(result, out_file):
+def _try_write_result_json(result, out_file):
     try:
         with out_file.open("w") as f:
             json.dump(_json_safe(result), f, indent=2)
@@ -36,10 +36,16 @@ def try_write_result_json(result, out_file):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--job-id", "--jobid", dest="job_id", required=True)
-    parser.add_argument("--job-dir", "--jobdir", dest="job_dir", required=True)
+    parser.add_argument(
+        "--spec-file",
+        "--job-dir",
+        "--jobdir",
+        dest="spec_file",
+        required=True,
+    )
     ns = parser.parse_args()
 
-    spec_file = Path(ns.job_dir)
+    spec_file = Path(ns.spec_file)
 
     with spec_file.open("rb") as f:
         job = pickle.load(f)
@@ -60,6 +66,8 @@ def main():
 
     with (spec_file.parent / "result.pkl").open("wb") as f:
         pickle.dump(result, f)
+
+    _try_write_result_json(result, spec_file.parent / "result.json")
 
 
 if __name__ == "__main__":
