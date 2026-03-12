@@ -1,12 +1,12 @@
-# runtime_worker.py
 import argparse
 import importlib
 import json
+import inspect
 import pickle
+import sys
 
 from pathlib import Path
 
-from matensemble.job import Job
 from matensemble.utils import _json_safe, _resolve_output_references
 
 
@@ -16,7 +16,7 @@ def _resolve_qualname(module, qualname: str):
         if part == "<locals>":
             raise ValueError("Jobs must reference importable top-level callables")
         obj = getattr(obj, part)
-    return obj
+    return inspect.unwrap(obj)
 
 
 def _load_dep_result(spec_file: Path, dep_id: str):
@@ -45,7 +45,7 @@ def main():
     )
     ns = parser.parse_args()
 
-    spec_file = Path(ns.spec_file)
+    spec_file = Path(ns.spec_file).resolve()
 
     with spec_file.open("rb") as f:
         job = pickle.load(f)
@@ -54,6 +54,13 @@ def main():
         raise ValueError(
             f"Job ID mismatch: CLI job_id={ns.job_id!r}, spec job_id={job.id!r}"
         )
+
+    # spec_file:
+    #   <source_root>/matensemble_workflow-.../out/<job_id>/job.pkl
+    # so source_root is four parents up from the spec file
+    source_root = spec_file.parent.parent.parent.parent
+    if str(source_root) not in sys.path:
+        sys.path.insert(0, str(source_root))
 
     module = importlib.import_module(job.func_module)
     func = _resolve_qualname(module, job.func_qualname)

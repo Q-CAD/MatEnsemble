@@ -88,12 +88,22 @@ class Pipeline:
                     )
 
                 self._counter += 1
+
+                source_root = str(self._base_dir.parent.resolve())
+                merged_env = dict(env or {})
+                old_pythonpath = merged_env.get("PYTHONPATH")
+
+                if old_pythonpath:
+                    merged_env["PYTHONPATH"] = f"{source_root}:{old_pythonpath}"
+                else:
+                    merged_env["PYTHONPATH"] = source_root
+
                 res = Resources(
                     num_tasks=num_tasks,
                     cores_per_task=cores_per_task,
                     gpus_per_task=gpus_per_task,
                     mpi=mpi,
-                    env=None if env is None else dict(env),
+                    env=merged_env,
                 )
 
                 job_id = (
