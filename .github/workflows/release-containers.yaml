@@ -13,6 +13,29 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --dev
+
+      - name: Run tests
+        run: uv run pytest -q
+
   # Optional guard: ensure the tag commit is on main
   # Remove this whole job if you don't care / your release.sh guarantees it.
   ensure-tag-on-main:
@@ -36,7 +59,7 @@ jobs:
 
   build-and-push-versioned-containers:
     runs-on: ubuntu-latest
-    needs: ensure-tag-on-main
+    needs: [ensure-tag-on-main, tests]
     if: needs.ensure-tag-on-main.outputs.ok == 'true'
 
     strategy:

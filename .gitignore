@@ -1,5 +1,6 @@
 /logs
 /sphinx
+/tmp
 
 # Python bytecode files
 __pycache__/
