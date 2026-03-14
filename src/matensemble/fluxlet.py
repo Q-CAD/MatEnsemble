@@ -11,6 +11,15 @@ from matensemble.job import Job
 
 
 class Fluxlet:
+    """
+    A class that encapsulates the launching of flux jobs.
+
+    Attributes
+    ----------
+    handle : flux.Flux
+        A flux handle to be used to submit jobs
+    """
+
     def __init__(
         self,
         handle: flux.Flux,
@@ -25,6 +34,31 @@ class Fluxlet:
         set_gpu_affinity: bool | None = None,
         nnodes: int | None = None,
     ) -> flux.job.FluxExecutorFuture:
+        """
+        Creates a :obj:`Jobspec` useing the a :obj:`Job`. Submits the :obj:`Jobspec`
+        to flux and adds some metadata to the future object that is returned.
+
+        Parameters
+        ----------
+        executor : flux.job.FluxExecutor
+            The :obj:`FluxExecutor` to use to submit the flux job
+        job : Job
+            The :obj:`Job` to be submitted to flux.
+        set_cpu_affinity : bool, optional
+            Whether cpu-affinity should be set in the :obj:`Jobspec`. Defaults
+            to None.
+        set_gpu_affinity : bool, optional
+            Whether gpu-affinity should be set in the :obj:`Jobspec`. Defaults
+            to None.
+        nnodes : int, optional
+            The number of nodes that the given job needs to be able to run. Defaults
+            to None.
+
+        Returns
+        -------
+        flux.job.FluxExecutorFuture
+        """
+
         jobspec = flux.job.JobspecV1.from_command(
             job.command,
             job.resources.num_tasks,

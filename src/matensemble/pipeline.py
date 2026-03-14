@@ -19,6 +19,14 @@ from matensemble.utils import _collect_dep_ids
 
 class Pipeline:
     def __init__(self, basedir: str | None = None) -> None:
+        """
+        Parameters
+        ----------
+        basedir : str, optional
+            The root directory of the workflow. Defaults to the current working
+            directory
+        """
+
         self._counter = 0
         self._job_list: list[Job] = []
 
@@ -75,8 +83,7 @@ class Pipeline:
 
         Examples
         --------
-        . . .
-
+        ...
         """
 
         def decorator(func: Callable[..., Any]) -> Callable[..., OutputReference]:
@@ -155,6 +162,32 @@ class Pipeline:
         mpi: bool = False,
         env: dict[str, str] | None = None,
     ) -> Job:
+        """
+        Create a :obj:`Job` with a path to an executable rather than a delayed
+        python function call.
+
+        Parameters
+        ----------
+        command : str | list[str]
+            The command to be run when the :obj:`Job` runs
+        name : str, optional
+            The name  that will be assigned to the job_id, defaults to the name
+            of the function.
+        num_tasks : int, optional
+            The number of tasks that will be launched with flux, defaults to 1
+        cores_per_task : int, optional
+            The number of CPU cores that are required to submit the job, defaults
+            to 1
+        gpus_per_task : int, optional
+            The number of GPUs that are required to submit the job, defaults to 0
+        mpi : bool, optional
+            Whether  or not the job will use the Message Passing Interface I think
+            defaults to False
+        env : dict[str, str], optional
+            The environment varaibles that will be set on job submission, defaults
+            to None
+        """
+
         res = Resources(
             num_tasks=num_tasks,
             cores_per_task=cores_per_task,
@@ -182,6 +215,14 @@ class Pipeline:
         return job
 
     def _create_graph(self) -> nx.DiGraph:
+        """
+        Build the graph to of :obj:`Job`'s with edges representing dependencies
+
+        Return
+        ------
+        nx.DiGraph
+        """
+
         G = nx.DiGraph()
         known_ids = {job.id for job in self._job_list}
 
@@ -198,6 +239,11 @@ class Pipeline:
         return G
 
     def _sort_graph(self, G: nx.DiGraph) -> list:
+        """
+        Topologically sorts the graph into a list of :obj:`Job`'s to have the
+        least dependent jobs in the front of the list.
+        """
+
         if not nx.is_directed_acyclic_graph(G):
             raise Exception(
                 "Error: MatEnsemble workflow graph cannot contain cycles, \
@@ -215,13 +261,18 @@ class Pipeline:
     def submit(
         self,
         write_restart_freq: int | None = 100,
-        buffer_time: int | None = 1,
+        buffer_time: float | None = 1.0,
         set_cpu_affinity: bool = True,
         set_gpu_affinity: bool = False,
         adaptive: bool = True,
         dynopro: bool = False,
         processing_strategy: FutureProcessingStrategy | None = None,
     ) -> None:
+        """
+        Submit the current number of jobs. Builds the graph, sorts the graph, and
+        creates a :obj:`FluxManager` and runs the workflow with that.
+        """
+
         dag = self._create_graph()
         ordered_ids = self._sort_graph(dag)
         ordered_jobs = [dag.nodes[job_id]["job"] for job_id in ordered_ids]

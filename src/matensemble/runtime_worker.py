@@ -11,6 +11,10 @@ from matensemble.utils import _json_safe, _resolve_output_references
 
 
 def _resolve_qualname(module, qualname: str):
+    """
+    Gets the function name from the module
+    """
+
     obj = module
     for part in qualname.split("."):
         if part == "<locals>":
@@ -20,12 +24,20 @@ def _resolve_qualname(module, qualname: str):
 
 
 def _load_dep_result(spec_file: Path, dep_id: str):
+    """
+    Loads the results of the dependencies and returns them
+    """
+
     dep_result = spec_file.parent.parent / dep_id / "result.pkl"
     with dep_result.open("rb") as f:
         return pickle.load(f)
 
 
 def _try_write_result_json(result, out_file):
+    """
+    Tries to write a human readable version of the result
+    """
+
     try:
         with out_file.open("w") as f:
             json.dump(_json_safe(result), f, indent=2)
@@ -34,6 +46,12 @@ def _try_write_result_json(result, out_file):
 
 
 def main():
+    """
+    Takes in the command line arguements and uses them find the :obj:`Job`, import
+    the module where the user defined the funciton, import it then run the funciton
+    with the arguments and key-word arguments. Then pickles the result into the outdir.
+    """
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--job-id", "--jobid", dest="job_id", required=True)
     parser.add_argument(
