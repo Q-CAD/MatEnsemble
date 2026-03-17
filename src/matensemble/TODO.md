@@ -41,7 +41,7 @@
 - [x] Make sure the simple hello world tests work
 - [x] Figure out what is going on with the GPU tasks
 - [x] Make some tests that have failures to make sure the failed tasks get logged appropriately 
-- [ ] NOTE: Come back later -- Unit tests | Integration Tests --
+- [x] NOTE: Come back later -- Unit tests | Integration Tests --
 
 ### Find Solution For Distribution 
 
@@ -84,4 +84,17 @@
     - [x] Topologically sort all of the Jobs based on dependencies
 - [x] Write worker runtime that flux can target and call user defined functions
 - [x] Write the Job objects specification to a file in their direcotry 
-- [ ] Write 
+
+**--- Status Dashboard ---**
+- [ ] Update the Pipeline.run() method to have a dashboard flag 
+- [ ] Add logic to launch the dashboard when the user runs the workflow 
+
+**--- Polish Everything ---**
+- [ ] Update all the documentation 
+- [ ] Update the example workflows 
+- [ ] Provide tutorials for how to run the example workflows 
+- [ ] Test the real science example that Soumendu provided 
+- [ ] 
+
+**--- Model Context Protocol ---**
+- [ ] IDK just do the MCP implementation 

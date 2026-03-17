@@ -1,4 +1,5 @@
-{   "species" : ["Mo", "S"],
+{
+    "species" : ["Mo", "S"],
     "lammps_input": "/gpfs/wolf2/cades/mat269/scratch/sny/With_MatEnsemble_MD/in.recryst",
     "verlet_delta_t": 0.5,
     "heat": {"T_heat":1500, "heat_timesteps": 50000},
@@ -16,4 +17,6 @@
     "full_trajectory_dump": true,
     "trajectory_output_format": ["lammps/dump"]
 }
+
+
 

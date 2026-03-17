@@ -261,7 +261,7 @@ class Pipeline:
     def submit(
         self,
         write_restart_freq: int | None = 100,
-        buffer_time: float | None = 1.0,
+        buffer_time: float = 1.0,
         set_cpu_affinity: bool = True,
         set_gpu_affinity: bool = False,
         adaptive: bool = True,
