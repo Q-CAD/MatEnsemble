@@ -89,8 +89,9 @@ class Fluxlet:
         if set_gpu_affinity and job.resources.gpus_per_task > 0:
             jobspec.setattr_shell_option("gpu-affinity", "per-task")
 
+        jobspec.env = os.environ.copy()
         if job.resources.env:
-            jobspec.env = job.resources.env
+            jobspec.env.update(job.resources.env or {})
 
         # only set this if you truly want every job to span a fixed node count
         if nnodes is not None:
