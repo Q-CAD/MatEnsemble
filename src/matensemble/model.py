@@ -22,7 +22,7 @@ class Resources:
     gpus_per_task: int = 0
     mpi: bool = False
     env: dict[str, str] | None = None
-    inherit_env: bool = False
+    inherit_env: bool = True
 
     def __post_init__(self) -> None:
         if not isinstance(self.num_tasks, int) or self.num_tasks < 1:

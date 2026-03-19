@@ -42,7 +42,7 @@ class AdaptiveStrategy(FutureProcessingStrategy):
                         f"\n\n===== MATENSEMBLE WRAPPER ERROR ({stamp}) =====\n"
                         f"job={job_id}\n"
                         f"workdir={job.workdir}\n"
-                        f"exception={repr(e)}\n"
+                        f"{type(e).__name__}: {e}"
                         f"{tb}\n"
                     ),
                 )
@@ -50,7 +50,7 @@ class AdaptiveStrategy(FutureProcessingStrategy):
                 self.manager._record_failure(
                     job_id,
                     reason="exception",
-                    exception=repr(e),
+                    exception=f"{type(e).__name__}: {e}",
                 )
                 self.manager._fail_dependents(job_id)
                 continue
@@ -119,7 +119,7 @@ class NonAdaptiveStrategy(FutureProcessingStrategy):
                         f"\n\n===== MATENSEMBLE WRAPPER ERROR ({stamp}) =====\n"
                         f"job={job_id}\n"
                         f"workdir={job.workdir}\n"
-                        f"exception={repr(e)}\n"
+                        f"{type(e).__name__}: {e}"
                         f"{tb}\n"
                     ),
                 )
@@ -127,7 +127,7 @@ class NonAdaptiveStrategy(FutureProcessingStrategy):
                 self.manager._record_failure(
                     job_id,
                     reason="exception",
-                    exception=repr(e),
+                    exception=f"{type(e).__name__}: {e}",
                 )
                 self.manager._fail_dependents(job_id)
                 continue

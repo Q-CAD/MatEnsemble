@@ -44,7 +44,7 @@ class Pipeline:
         gpus_per_task: int = 0,
         mpi: bool = False,
         env: dict[str, str] | None = None,
-        inherit_env: bool = False,
+        inherit_env: bool = True,
     ) -> Callable[[Callable[..., Any]], Callable[..., OutputReference]]:
         """
         Wrap a function to produce a :obj:`Job` and returns a :obj: `OutputReference`
@@ -163,7 +163,7 @@ class Pipeline:
         gpus_per_task: int = 0,
         mpi: bool = False,
         env: dict[str, str] | None = None,
-        inherit_env: bool = False,
+        inherit_env: bool = True,
     ) -> Job:
         """
         Create a :obj:`Job` with a path to an executable rather than a delayed
@@ -208,6 +208,7 @@ class Pipeline:
         )
         workdir = self._out_dir / job_id
 
+        # TODO: make sure that the command paths are absolute paths
         job = Job(
             id=job_id,
             command=command,
