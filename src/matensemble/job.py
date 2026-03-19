@@ -64,6 +64,7 @@ class Job:
                 "gpus_per_task": self.resources.gpus_per_task,
                 "mpi": self.resources.mpi,
                 "env": _json_safe(self.resources.env),
+                "inherit_env": self.resources.inherit_env,
             },
             "spec_file": str(self.spec_path),
             "func_module": self.func_module,
