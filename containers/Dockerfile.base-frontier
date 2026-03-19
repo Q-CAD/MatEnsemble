@@ -122,30 +122,42 @@ RUN set -euo pipefail; \
     "${VIRTUAL_ENV}/bin/python" -c "import lammps; print('lammps:', lammps.__file__)"
 
 
-FROM savannah.ornl.gov/olcf-container-images/cpe:25.03_gnu_ubuntu 
+FROM savannah.ornl.gov/olcf-container-images/cpe:25.03_gnu_ubuntu
 ENV DEBIAN_FRONTEND=noninteractive
 SHELL ["/bin/bash", "-c"]
 
-# install run-time dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates 		libzmq5 			libuuid1 \
-    libjansson4 		liblz4-1 			libarchive13 \
-    libhwloc15 		  	libsqlite3-0 			lua5.1 \
-    lua-posix 		  	libyaml-cpp0.8 			libedit2 \
-    mpich 		  	libboost-graph1.83.0 		libboost-system1.83.0 \
-    libboost-thread1.83.0 	libboost-filesystem1.83.0 	libboost-program-options1.83.0 \
-    libboost-regex1.83.0 	libboost-serialization1.83.0 \
+    ca-certificates libzmq5 libuuid1 \
+    libjansson4 liblz4-1 libarchive13 \
+    libhwloc15 libsqlite3-0 lua5.1 \
+    lua-posix libyaml-cpp0.8 libedit2 \
+    mpich libboost-graph1.83.0 libboost-system1.83.0 \
+    libboost-thread1.83.0 libboost-filesystem1.83.0 libboost-program-options1.83.0 \
+    libboost-regex1.83.0 libboost-serialization1.83.0 \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /opt/flux /opt/flux
 COPY --from=builder /opt/venv /opt/venv
 COPY --from=builder /opt/lammps /opt/lammps
 
+RUN printf '%s\n' \
+    /opt/lammps/lib \
+    /opt/lammps/lib64 \
+    /opt/rocm-6.3.1/lib \
+    /opt/rocm/lib/llvm/lib \
+    > /etc/ld.so.conf.d/matensemble.conf \
+ && ldconfig
+
 ENV PATH="/opt/flux/bin:/opt/venv/bin:/opt/lammps/bin:${PATH}"
-ENV LD_LIBRARY_PATH="/opt/flux/lib:/opt/flux/lib64:/opt/lammps/lib:/opt/lammps/lib64:/opt/rocm/lib/llvm/lib:${LD_LIBRARY_PATH}"
+ENV LD_LIBRARY_PATH="/opt/flux/lib:/opt/flux/lib64:/opt/lammps/lib:/opt/lammps/lib64:/opt/rocm-6.3.1/lib:/opt/rocm/lib/llvm/lib:${LD_LIBRARY_PATH}"
 ENV LAMMPS_LIBRARY="/opt/lammps/lib/liblammps.so"
 
-# quick test of lammps and flux bindings
 RUN set -euo pipefail; \
-    /opt/venv/bin/python -c "import flux, lammps; print('ok')" \
-    && flux --version
+    /opt/venv/bin/python - <<'PY'
+import ctypes
+import lammps
+ctypes.CDLL("/opt/lammps/lib/liblammps.so")
+lmp = lammps.lammps()
+print("ok")
+PY
+RUN flux --version

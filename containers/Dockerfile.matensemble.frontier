@@ -24,4 +24,12 @@ RUN set -euo pipefail; \
     uv export --format requirements.txt --output-file requirements.txt; \ 
     uv pip install -r requirements.txt
 
+RUN printf '%s\n' \
+    /opt/lammps/lib \
+    /opt/lammps/lib64 \
+    /opt/rocm-6.3.1/lib \
+    /opt/rocm/lib/llvm/lib \
+    > /etc/ld.so.conf.d/matensemble.conf \
+ && ldconfig
+
 ENV PATH="/opt/venv/bin:${PATH}"
