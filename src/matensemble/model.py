@@ -22,6 +22,7 @@ class Resources:
     gpus_per_task: int = 0
     mpi: bool = False
     env: dict[str, str] | None = None
+    inherit_env: bool = False
 
     def __post_init__(self) -> None:
         if not isinstance(self.num_tasks, int) or self.num_tasks < 1:
@@ -42,6 +43,9 @@ class Resources:
             for k, v in self.env.items():
                 if not isinstance(k, str) or not isinstance(v, str):
                     raise TypeError("env must be a dict[str, str]")
+
+        if not isinstance(self.inherit_env, bool):
+            raise TypeError("inherit_env must be a bool")
 
 
 class JobFlavor(StrEnum):

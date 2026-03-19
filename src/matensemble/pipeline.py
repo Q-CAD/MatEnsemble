@@ -44,6 +44,7 @@ class Pipeline:
         gpus_per_task: int = 0,
         mpi: bool = False,
         env: dict[str, str] | None = None,
+        inherit_env: bool = False,
     ) -> Callable[[Callable[..., Any]], Callable[..., OutputReference]]:
         """
         Wrap a function to produce a :obj:`Job` and returns a :obj: `OutputReference`
@@ -111,6 +112,7 @@ class Pipeline:
                     gpus_per_task=gpus_per_task,
                     mpi=mpi,
                     env=merged_env,
+                    inherit_env=inherit_env,
                 )
 
                 job_id = (
@@ -161,6 +163,7 @@ class Pipeline:
         gpus_per_task: int = 0,
         mpi: bool = False,
         env: dict[str, str] | None = None,
+        inherit_env: bool = False,
     ) -> Job:
         """
         Create a :obj:`Job` with a path to an executable rather than a delayed
@@ -194,6 +197,7 @@ class Pipeline:
             gpus_per_task=gpus_per_task,
             mpi=mpi,
             env=env,
+            inherit_env=inherit_env,
         )
 
         self._counter += 1
