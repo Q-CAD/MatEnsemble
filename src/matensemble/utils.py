@@ -1,9 +1,18 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+import json
+import threading
+
+import uvicorn
+
 from pathlib import Path
 from dataclasses import fields, is_dataclass, replace
 from enum import Enum
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from collections.abc import Iterable, Mapping
 
 from matensemble.model import OutputReference
 
@@ -119,3 +128,43 @@ def _resolve_output_references(value, dep_results):
         return frozenset(_resolve_output_references(v, dep_results) for v in value)
 
     return value
+
+
+def setup_dashboard(status_file: str) -> None:
+    app = create_app(status_file)
+
+    thread = threading.Thread(
+        target=uvicorn.run,
+        args=(app,),
+        kwargs={"host": "0.0.0.0", "port": 8000, "log_level": "warning"},
+        daemon=True,
+    )
+
+    thread.start()
+
+
+def create_app(status_file: str) -> FastAPI:
+    app = FastAPI()
+    app.add_middleware(CORSMiddleware, allow_origins=["*"])
+
+    status_path = Path(status_file)
+
+    @app.get("/api/status")
+    def get_status():
+        try:
+            return json.loads(status_path.read_text())
+        except FileNotFoundError:
+            return {
+                "pending": 0,
+                "running": 0,
+                "completed": 0,
+                "failed": 0,
+                "freeCores": 0,
+                "freeGpus": 0,
+            }
+
+    BASE_DIR = Path(__file__).resolve().parent
+    DIST_DIR = BASE_DIR / "dash"
+    app.mount("/", StaticFiles(directory=DIST_DIR, html=True), name="static")
+
+    return app

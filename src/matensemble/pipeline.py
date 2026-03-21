@@ -272,6 +272,7 @@ class Pipeline:
         adaptive: bool = True,
         dynopro: bool = False,
         processing_strategy: FutureProcessingStrategy | None = None,
+        dashboard: bool = False,
     ) -> None:
         """
         Submit the current number of jobs. Builds the graph, sorts the graph, and
@@ -296,6 +297,7 @@ class Pipeline:
             adaptive=adaptive,
             dynopro=dynopro,
             processing_strategy=processing_strategy,
+            dashboard=dashboard,
         )
 
     def graph(self) -> nx.DiGraph:

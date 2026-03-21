@@ -14,6 +14,7 @@ from matensemble.strategy import (
     FutureProcessingStrategy,
 )
 from matensemble.fluxlet import Fluxlet
+from matensemble.utils.import setup_dashboard
 
 
 class FluxManager:
@@ -406,6 +407,7 @@ class FluxManager:
         adaptive: bool = True,
         dynopro: bool = False,
         processing_strategy: FutureProcessingStrategy | None = None,
+        dashboard: bool = False,
     ) -> None:
         """
         Runs the 'Super Loop' until there are no more ready, running or blocked
@@ -433,6 +435,10 @@ class FluxManager:
             * AdaptiveStrategy if adaptive=True
             * NonAdaptiveStrategy otherwise
         """
+
+        if dashboard:
+            status_file = self._base_dir / "status.json"
+            setup_dashboard(str(status_file))
 
         if processing_strategy:
             proc_strat = processing_strategy
