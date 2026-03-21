@@ -91,10 +91,12 @@
 
 **--- Polish Everything ---**
 - [ ] Update all the documentation 
-- [ ] Update the example workflows 
+- [x] Update the example workflows 
 - [ ] Provide tutorials for how to run the example workflows 
-- [ ] Test the real science example that Soumendu provided 
-- [ ] 
+
+**--- Science Example ---**
+- [x] Test the real science example that Soumendu provided 
+- [ ] Update version of LAMMPS
 
 **--- Model Context Protocol ---**
-- [ ] IDK just do the MCP implementation 
+- [ ] MCP implementation 

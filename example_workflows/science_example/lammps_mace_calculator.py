@@ -1,6 +1,8 @@
 import numpy as np
 import lammps
 import lammps.mliap
+import os
+import shutil
 
 from matensemble.pipeline import Pipeline
 
@@ -12,9 +14,16 @@ pipe = Pipeline()
     num_tasks=1,
     cores_per_task=1,
     gpus_per_task=4,
-    mpi=False,
+    mpi=True,
+    inherit_env=True,
 )
 def run_lammps_mace(output_file: str, ff_file: str):
+    print("LAMMPS executable:", shutil.which("lmp"))
+    print("PATH:", os.environ.get("PATH"))
+    print("LD_LIBRARY_PATH:", os.environ.get("LD_LIBRARY_PATH"))
+    print("CUDA_VISIBLE_DEVICES:", os.environ.get("CUDA_VISIBLE_DEVICES"))
+    print("ROCR_VISIBLE_DEVICES:", os.environ.get("ROCR_VISIBLE_DEVICES"))
+
     lmp = lammps.lammps(
         cmdargs=[
             "-k",

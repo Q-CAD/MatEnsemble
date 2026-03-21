@@ -8,19 +8,19 @@ ARG LAMMPS_TAG=stable_2Aug2023_update3
 
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    autoconf  	   	automake 		libtool \
-    make 	   	pkg-config 	      	libc6-dev \
-    libzmq3-dev    	uuid-dev 	      	libjansson-dev \
-    liblz4-dev 	   	libarchive-dev     	libhwloc-dev \
-    libsqlite3-dev 	lua5.1 	      		liblua5.1-dev \
-    lua-posix 	   	python3-dev 	      	python3-cffi \
-    python3-ply    	python3-setuptools 	python3-yaml \
-    python3-sphinx 	aspell 	      		aspell-en \
-    time 	   	valgrind   	      	libmpich-dev jq \
-    libhwloc-dev 	libboost-dev 		libboost-graph-dev \
-    libedit-dev 	libyaml-cpp-dev 	python3-yaml \
-    git	 	   	curl		      	build-essential \
-    wget 		ninja-build		cmake \
+    autoconf            automake                libtool \
+    make                pkg-config              libc6-dev \
+    libzmq3-dev         uuid-dev                libjansson-dev \
+    liblz4-dev          libarchive-dev          libhwloc-dev \
+    libsqlite3-dev      lua5.1                  liblua5.1-dev \
+    lua-posix           python3-dev             python3-cffi \
+    python3-ply         python3-setuptools      python3-yaml \
+    python3-sphinx      aspell                  aspell-en \
+    time                valgrind                libmpich-dev jq \
+    libhwloc-dev        libboost-dev            libboost-graph-dev \
+    libedit-dev         libyaml-cpp-dev         python3-yaml \
+    git                 curl                    build-essential \
+    wget                ninja-build             cmake \
     python3.12-venv \
     && rm -rf /var/lib/apt/lists/*
 
@@ -50,7 +50,7 @@ ENV PATH="${FLUX_PREFIX}/bin:${PATH}"
 ENV LD_LIBRARY_PATH="${FLUX_PREFIX}/lib:${FLUX_PREFIX}/lib64"
 ENV PKG_CONFIG_PATH="${FLUX_PREFIX}/lib/pkgconfig:${FLUX_PREFIX}/lib64/pkgconfig"
 
-# creating a .pth file to the flux-python bindings 
+# creating a .pth file to the flux-python bindings
 # check https://docs.python.org/3/library/site.html for more info
 RUN set -euo pipefail; \
     site="$("${VIRTUAL_ENV}/bin/python" -c 'import site; print(site.getsitepackages()[0])')"; \
@@ -129,7 +129,8 @@ SHELL ["/bin/bash", "-c"]
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates libzmq5 libuuid1 \
     libjansson4 liblz4-1 libarchive13 \
-    libhwloc15 libsqlite3-0 lua5.1 \
+    libhwloc15 libsqlite3-0 \
+    lua5.1 liblua5.1-0 \
     lua-posix libyaml-cpp0.8 libedit2 \
     mpich libboost-graph1.83.0 libboost-system1.83.0 \
     libboost-thread1.83.0 libboost-filesystem1.83.0 libboost-program-options1.83.0 \
