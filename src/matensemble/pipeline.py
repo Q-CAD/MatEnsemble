@@ -84,7 +84,31 @@ class Pipeline:
 
         Examples
         --------
-        ...
+
+
+        .. code-block:: python
+            :caption: job_definitions.py
+            :linenos:
+            :emphasize-lines: 5, 6
+
+            from matensemble.pipeline import Pipeline
+
+            pipe = Pipeline()
+
+            @pipe.job()
+            def run_mpi_hello(task_id: int):
+                size = MPI.COMM_WORLD.Get_size()
+                rank = MPI.COMM_WORLD.Get_rank()
+                name = MPI.Get_processor_name()
+
+                with open(f"task_{task_id}_rank_{rank}.txt", "w") as f:
+                    f.write(f"Hello from rank {rank}/{size} on {name}, task={task_id}\n")
+
+                return rank
+
+        You can define a simple job by simply decorating a regular python function.
+        But the function **must be defined in an importable module that is NOT __main__**.
+
         """
 
         def decorator(func: Callable[..., Any]) -> Callable[..., OutputReference]:
@@ -189,6 +213,10 @@ class Pipeline:
         env : dict[str, str], optional
             The environment varaibles that will be set on job submission, defaults
             to None
+
+        Return
+        ------
+        :obj:`Job`
         """
 
         res = Resources(
@@ -247,8 +275,20 @@ class Pipeline:
         """
         Topologically sorts the graph into a list of :obj:`Job`'s to have the
         least dependent jobs in the front of the list.
-        """
 
+        Parameters
+        ----------
+        G : ns.DiGraph
+            A directed graph representing the workflow
+
+        Return
+        ------
+        list, The sorted graph in topological order
+
+        Raises
+        ------
+
+        """
         if not nx.is_directed_acyclic_graph(G):
             raise Exception(
                 "Error: MatEnsemble workflow graph cannot contain cycles, \
@@ -277,6 +317,31 @@ class Pipeline:
         """
         Submit the current number of jobs. Builds the graph, sorts the graph, and
         creates a :obj:`FluxManager` and runs the workflow with that.
+
+        Parameters
+        ----------
+        write_restart_freq : int
+            The number of jobs that need to complete before pickleing the state
+            of the :obj:`FluxManager` into a restart file, defaulst to 100.
+        buffer_time : float
+            The amount of seconds that the :obj:`FluxManager` should wait between
+            submission of jobs, defaults to 1.0s.
+        set_cpu_affinity : bool
+            Whether CPU affinity should be set for flux jobspecs, defaults to True.
+        set_gpu_affinity : bool
+            Whether GPU affinity should be set for flux jobspecs, defaults to False.
+        adaptive : bool
+            Whether the :obj:`FluxManager` should adaptively submit other jobs
+            as resources become available, defaults to True.
+        dynopro : bool
+            Literally does nothing right now, need to ask what this is for.
+        processing_strategy : FutureProcessingStrategy
+            The strategy that should be used to process the future objects as :obj:`Job`'s
+            complete.
+        dashboard : bool
+            Whether or not MatEnsemble will server a GUI Dashboard on port 8000
+            as the workflow runs. Defaults to False.
+
         """
 
         dag = self._create_graph()
