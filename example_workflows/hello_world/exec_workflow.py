@@ -1,6 +1,7 @@
 # run_workflow.py
-from matensemble.pipeline import Pipeline
 import sys
+
+from matensemble.pipeline import Pipeline
 from pathlib import Path
 
 pipe = Pipeline()
