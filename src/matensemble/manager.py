@@ -72,7 +72,7 @@ class FluxManager:
         base_dir: Path,
         write_restart_freq: int | None = 100,
         set_cpu_affinity: bool = True,
-        set_gpu_affinity: bool = False,
+        set_gpu_affinity: bool = True,
         restart_file: str | None = None,
     ) -> None:
         """
@@ -87,7 +87,7 @@ class FluxManager:
         set_cpu_affinity : bool, optional
             Whther affinity to the CPU should be set, defaults to True
         set_gpu_affinity : bool, optional
-            Whether affinity to the GPU should be set, defulat to False 
+            Whether affinity to the GPU should be set, defulat to True
         restart_file : str
             The path to a restart file which will be loaded and restart the work-
             flow from the save point, default to None.

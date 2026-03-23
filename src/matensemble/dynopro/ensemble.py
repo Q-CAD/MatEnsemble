@@ -1,4 +1,12 @@
-from matensemble.manager import SuperFluxManager
+import datetime
+
+from pathlib import Path
+
+from networkx import write_network_text
+
+from matensemble.manager import FluxManager
+from matensemble.job import Job, JobFlavor
+from matensemble.model import Resources
 # from matensemble.dynopro.driver import online_dynamics
 
 
@@ -30,6 +38,7 @@ class EnsembleDynamicsRunner:
         adaptive=False,
         nnodes=None,
         gpus_per_node=None,
+        dashboard=False,
     ):
         self.sim_list = sim_list
         self.sim_args_list = sim_args_list
@@ -43,6 +52,42 @@ class EnsembleDynamicsRunner:
         self.buffer_time = buffer_time
         self.adaptive = adaptive
         self.sim_command = "python -m matensemble.dynopro.driver"
+        self.dashboard = dashboard
+
+    def build_dynopro_jobs(
+        self,
+        root: Path,
+        basedir: Path,
+        outdir: Path,
+    ) -> list[Job]:
+        jobs = []
+
+        if length := len(self.sim_list) != len(self.sim_args_list):
+            raise Exception(
+                "Dynopro Error: the length of the simulation list and simulation argument list are not equal."
+            )
+        else:
+            for i in range(length):
+                popped = sim_list.pop(0)
+                job_id = f"job-dynopro-{popped}-{i:04d}"
+                resources = Resources(
+                    num_tasks=self.tasks_per_job,
+                    cores_per_task=self.cores_per_task,
+                    gpus_per_task=self.gpus_per_task,
+                )
+                workdir = outdir / job_id
+
+                jobs.append(
+                    Job(
+                        id=job_id,
+                        command=self.sim_command,
+                        flavor=JobFlavor.EXECUTABLE,
+                        resources=resources,
+                        workdir=workdir,
+                    )
+                )
+
+        return jobs
 
     def run(self):
         """
@@ -50,25 +95,24 @@ class EnsembleDynamicsRunner:
 
         This method initializes the SuperFluxManager and executes the simulations in parallel.
         """
-        # Initialize SuperFluxManager
-        sfm = SuperFluxManager(
-            gen_task_list=self.sim_list,
-            gen_task_cmd=self.sim_command,
-            ml_task_cmd=None,
-            tasks_per_job=self.tasks_per_job,
-            cores_per_task=self.cores_per_task,
-            gpus_per_task=self.gpus_per_task,
+
+        root = Path.cwd()
+        basedir = root / f"matensemble_workflow-{datetime.datetime.now():%Y%m%d_%H%M%S}"
+        outdir = basedir / "out"
+
+        jobs = self.build_dynopro_jobs(root, basedir, outdir)
+
+        # Initialize FluxManager
+        fm = FluxManager(
+            job_list=jobs,
+            base_dir=basedir,
             write_restart_freq=self.write_restart_freq,
-            nnodes=self.nnodes,
-            gpus_per_node=self.gpus_per_node,
         )
 
         # Execute the simulations
-        sfm.poolexecutor(
-            task_arg_list=self.sim_args_list,
+        fm.run(
             buffer_time=self.buffer_time,
-            task_dir_list=self.sim_dir_list,
             adaptive=self.adaptive,
             dynopro=True,
+            dashboard=self.dashboard,
         )
-
