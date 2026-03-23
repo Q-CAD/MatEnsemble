@@ -130,7 +130,93 @@ You would also be able to define your EXECUTABLE :obj:`Jobs <Job>` here as well.
 Finally you would call pipeline.submit() in *run_workflow.py* and you would
 run the script as "__main__". 
     
+Another feature of MatEnsemble is the ability to create :obj:`Jobs <Job>` that 
+depend on other :obj:`Jobs` Here is an example 
+
+.. code-block:: python
+
+    # ./functions.py
+    from matensemble.pipeline import Pipeline
+
+    pipe = Pipeline()
+
+    @pipe.job()
+    def job1():
+        return 1
 
 
-    
+    @pipe.job()
+    def job2(x):
+        return x + 1
+
+
+    @pipe.job()
+    def job3(x):
+        return x * 2
+
+
+    # ./run_workflow.py
+    from functions import pipe, job1, job2, job3
+
+    a = job1()
+    b = job2(a)
+    c = job3(b)
+
+    pipe.submit()
+
+        
+That simple, you call the functions in the order that you want and MatEnsemble
+will take care of scheduling them in order and resolving the results of one job
+and delivering them to another. 
+
+You can create your workflow to follow any valid DAG structure, but as of right
+now MatEnsemble does not allow for your workflow to have cycles. 
+
+Third-Part Dependencies
+-----------------------
+If your Job definitions need modules or other code from third party libraries 
+then there are a couple of different options. There is a chance that the 
+dependencie you is already depended upon by MatEnsemble. NumPy, PyTorch and many
+others are already installed with MatEnsemble so you should be able to import
+them at the top of the file and have them work out of the box. 
+
+If that is not the case you can install them into the container when you build it. 
+For Apptainer you can create a simple definition file that installs whatever you 
+may need at build time and to make them available at run time. 
+
+.. code-block::
+
+   # matensemble.def
+   Bootstrap: docker
+   From ghcr.io/freddude2004/matensemble:frontier-vX.Y.Z
+
+   %post
+      uv pip install <package>
+
+Then you would build the container like so 
+
+.. code-block:: bash
+
+   apptainer build matensemble.sif matensemble.def
+
+Now the package is available to use and you would simply use it as you always 
+would when defining your functions. 
+
+.. code-block:: python
+
+   import <package>
+   from matensemble.pipeline import Pipeline
+
+   pipe = Pipeline()
+
+   @pipe.job(...)
+   def f(x):
+      ...
+
+Since MatEnsemble imports the module at run-time all of the imports will be run 
+automagically, so you do not need to place the imports inside of the function
+definition. 
+
+
+   
 
