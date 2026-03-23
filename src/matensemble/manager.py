@@ -14,7 +14,7 @@ from matensemble.strategy import (
     FutureProcessingStrategy,
 )
 from matensemble.fluxlet import Fluxlet
-from matensemble.utils.import setup_dashboard
+from matensemble.utils import setup_dashboard
 
 
 class FluxManager:
@@ -128,7 +128,7 @@ class FluxManager:
         self._failed_jobs = []
         self._futures = set()
 
-        # aquiring a flux handle 
+        # aquiring a flux handle
         self._flux_handle = flux.Flux()
         self._fluxlet = Fluxlet(self._flux_handle)
 

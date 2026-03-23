@@ -14,7 +14,9 @@ class DummyManager:
     created = None
     run_args = None
 
-    def __init__(self, job_list, base_dir, write_restart_freq, set_cpu_affinity, set_gpu_affinity):
+    def __init__(
+        self, job_list, base_dir, write_restart_freq, set_cpu_affinity, set_gpu_affinity
+    ):
         DummyManager.created = {
             "job_list": job_list,
             "base_dir": base_dir,
@@ -38,7 +40,14 @@ def top_level_add(x, y=0):
 
 def test_job_decorator_builds_python_job_and_output_reference(tmp_path):
     pipe = Pipeline(basedir=str(tmp_path))
-    wrapped = pipe.job(name="add", num_tasks=2, cores_per_task=3, gpus_per_task=1, mpi=True, env={"EXTRA": "1"})(top_level_add)
+    wrapped = pipe.job(
+        name="add",
+        num_tasks=2,
+        cores_per_task=3,
+        gpus_per_task=1,
+        mpi=True,
+        env={"EXTRA": "1"},
+    )(top_level_add)
 
     ref = wrapped(4, y=5)
     assert ref == OutputReference("job-add-0001")
@@ -79,6 +88,7 @@ def test_nested_local_function_is_rejected(tmp_path):
     def outer():
         def inner(x):
             return x
+
         return inner
 
     wrapped = pipe.job()(outer())
@@ -99,8 +109,17 @@ def test_exec_builds_executable_job(tmp_path):
 
 def test_create_graph_and_sort_graph(tmp_path):
     pipe = Pipeline(basedir=str(tmp_path))
-    a_job = Job("job-a", ["echo", "a"], JobFlavor.EXECUTABLE, Resources(), tmp_path / "a")
-    b_job = Job("job-b", ["echo", "b"], JobFlavor.EXECUTABLE, Resources(), tmp_path / "b", deps=("job-a",))
+    a_job = Job(
+        "job-a", ["echo", "a"], JobFlavor.EXECUTABLE, Resources(), tmp_path / "a"
+    )
+    b_job = Job(
+        "job-b",
+        ["echo", "b"],
+        JobFlavor.EXECUTABLE,
+        Resources(),
+        tmp_path / "b",
+        deps=("job-a",),
+    )
     pipe._job_list = [a_job, b_job]
 
     graph = pipe._create_graph()
@@ -110,7 +129,14 @@ def test_create_graph_and_sort_graph(tmp_path):
 
 def test_create_graph_rejects_unknown_dependencies(tmp_path):
     pipe = Pipeline(basedir=str(tmp_path))
-    bad_job = Job("job-b", ["echo", "b"], JobFlavor.EXECUTABLE, Resources(), tmp_path / "b", deps=("missing",))
+    bad_job = Job(
+        "job-b",
+        ["echo", "b"],
+        JobFlavor.EXECUTABLE,
+        Resources(),
+        tmp_path / "b",
+        deps=("missing",),
+    )
     pipe._job_list = [bad_job]
 
     with pytest.raises(ValueError, match="unknown dependencies"):
@@ -158,4 +184,5 @@ def test_submit_builds_sorted_job_list_and_calls_manager(monkeypatch, tmp_path):
         "adaptive": False,
         "dynopro": True,
         "processing_strategy": "sentinel",
+        "dashboard": False,
     }
