@@ -18,6 +18,51 @@ from matensemble.utils import _collect_dep_ids
 
 
 class Pipeline:
+    """
+    Build and submit a MatEnsemble workflow as a directed acyclic graph (DAG)
+    of delayed jobs.
+
+    A :obj:`Pipeline` is the main user-facing workflow builder in MatEnsemble.
+    It collects jobs without executing them immediately, tracks dependencies
+    between them, and later submits the fully constructed workflow to Flux
+    through a :obj:`FluxManager`.
+
+    There are two main ways to add work to a pipeline:
+
+    #. ``Pipeline.job(...)``
+       Wraps a top-level Python function and turns each call to that function
+       into a delayed ``Job`` object instead of executing it immediately.
+       The call returns an ``OutputReference`` placeholder that can be passed
+       into later jobs to define dependencies between tasks.
+
+    #. ``Pipeline.exec(...)``
+       Adds an executable or shell-style command as a ``Job`` for non-Python
+       tasks.
+
+    For Python jobs, the pipeline records enough metadata to reproduce the
+    original function call later, including:
+
+    - the module where the function is defined
+    - the function's qualified name
+    - the positional and keyword arguments
+    - the job's resource requirements
+    - any upstream dependencies discovered from ``OutputReference`` objects
+
+    When ``submit()`` is called, the pipeline:
+
+    - builds a DAG from the collected jobs
+    - validates that all dependencies refer to known jobs
+    - checks that the workflow is acyclic
+    - topologically sorts the jobs into dependency order
+    - creates a :obj:`FluxManager` to launch the workflow
+
+    For Python jobs, the manager will submit a Flux job whose command runs
+    ``matensemble.runtime_worker``. That worker loads the serialized ``Job``
+    specification from disk, imports the recorded module, resolves the target
+    function by qualified name, replaces dependency references with their
+    concrete upstream results, and calls the function
+    """
+
     def __init__(self, basedir: str | None = None) -> None:
         """
         Parameters
@@ -80,6 +125,13 @@ class Pipeline:
         env : dict[str, str], optional
             The environment varaibles that will be set on job submission, defaults
             to None
+        inherit_env : bool
+            Whether the flux job should copy the managers environement variables,
+            defaults to False
+
+        Return
+        ------
+        :obj:`Callable[[Callable[..., Any]], Callable[..., OutputReference]]`
 
 
         Examples
@@ -107,7 +159,7 @@ class Pipeline:
                 return rank
 
         You can define a simple job by simply decorating a regular python function.
-        But the function **must be defined in an importable module that is NOT __main__**.
+        But the function **MUST** be defined in an importable module that is **NOT __main__**.
 
         """
 
@@ -213,6 +265,9 @@ class Pipeline:
         env : dict[str, str], optional
             The environment varaibles that will be set on job submission, defaults
             to None
+        inherit_env : bool
+            Whether the flux job should copy the managers environement variables,
+            defaults to False
 
         Return
         ------

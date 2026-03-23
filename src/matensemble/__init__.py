@@ -1,20 +1,10 @@
 """
 MatEnsemble
 
-MatEnsemble is an adaptive workflow manager designed for high throughput HPC
-workflows/tasks
-
-The package consists of the 'manager' which holds the main SuperFluxManager
-class where the bulk of the task management logic resides. A 'fluxlet' which
-handles job submission and usage of the Flux API's. And a 'logger' which handles
-organizing the output of the program, the status and more general
-logs.
-
-The strategy sub-package holds the two Abstract Base Classes TaskSubmissionStrategy
-and FutureProcessingStrategy. (interfaces) and the implementations of them. These
-strategies are used in the SuperFluxManager's poolexecutor method to determine
-how jobs are submitted and how the Future objects are processed.
-
+MatEnsemble is a Python workflow library for building and running
+high-throughput and dependency-aware workflows on HPC systems.
+It lets users define delayed Python and executable jobs, connect them
+through data dependencies, and submit them for execution with Flux.
 """
 
 __author__ = ["Soumendu Bagchi", "Kaleb Duchesneau"]

@@ -144,6 +144,22 @@ def setup_dashboard(status_file: str) -> None:
 
 
 def create_app(status_file: str) -> FastAPI:
+    """
+    Create the FastAPI app that will run the web server which serves the status
+    dashboard that users can view on port 8000. Since the workflows will be
+    done on a cluster the user will need to ssh tunnel into the allocation
+    and port forward port 8000 to their local machine in order to view the server
+
+    Example
+    -------
+    .. code-block:: bash
+
+        # After launching the job with dashboard=True note the node and run this command
+        ssh -L 8000:frontier00206:8000 kaleb@frontier.olcf.ornl.gov
+
+
+    """
+
     app = FastAPI()
     app.add_middleware(CORSMiddleware, allow_origins=["*"])
 

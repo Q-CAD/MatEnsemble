@@ -8,6 +8,7 @@ import flux.job
 
 from pathlib import Path
 from matensemble.job import Job
+from matensemble.model import JobFlavor
 
 
 class Fluxlet:
@@ -68,12 +69,13 @@ class Fluxlet:
 
         job.workdir.mkdir(parents=True, exist_ok=True)
 
-        with tempfile.NamedTemporaryFile(
-            "wb", dir=job.spec_path.parent, delete=False
-        ) as tf:
-            pickle.dump(job, tf)
-            temp_name = tf.name
-        os.replace(temp_name, job.spec_path)
+        if job.flavor is JobFlavor.PYTHON:
+            with tempfile.NamedTemporaryFile(
+                "wb", dir=job.spec_path.parent, delete=False
+            ) as tf:
+                pickle.dump(job, tf)
+                temp_name = tf.name
+            os.replace(temp_name, job.spec_path)
 
         # helpful for debugging
         job._write_debug_json()

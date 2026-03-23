@@ -11,19 +11,47 @@ from abc import ABC, abstractmethod
 
 
 class FutureProcessingStrategy(ABC):
+    """
+    The Base Class that all FutureProcessingStrategy's must extend in order to
+    be compliant with how the :obj:`FluxManager` uses them
+    """
+
     @abstractmethod
     def process_futures(self, buffer_time) -> None:
         pass
 
 
 class AdaptiveStrategy(FutureProcessingStrategy):
+    """
+    An implementation of the :obj:`FutureProcessingStrategy` which will adaptively
+    submit new :obj:`Job`'s as incoming jobs are completed.
+    """
+
     def __init__(self, manager) -> None:
+        """
+        AdaptiveStrategy constructor
+
+        Parameters
+        ----------
+        manager : FluxManager
+            The :obj:`FluxManager` that holds all of the queues and functions
+            to handle them.
+        """
+
         self.manager = manager
 
-    def process_futures(self, buffer_time) -> None:
+    def process_futures(self, buffer_time: float) -> None:
         completed, self.manager._futures = concurrent.futures.wait(
             self.manager._futures, timeout=buffer_time
         )
+        """
+        Process the future objects as :obj:`Job`'s complete 
+
+        Parameters
+        ----------
+        buffer_time : float 
+            The amount of time to wait between jobs being completed. 
+        """
 
         for fut in completed:
             job_id = fut.job_id
@@ -84,6 +112,7 @@ class AdaptiveStrategy(FutureProcessingStrategy):
                     self.manager._ready.append(dep_id)
                     self.manager._blocked.discard(dep_id)
 
+            # adaptively submit another job
             self.manager._submit_until_ooresources(buffer_time=buffer_time)
 
             if self.manager._write_restart_freq and (
@@ -94,6 +123,11 @@ class AdaptiveStrategy(FutureProcessingStrategy):
 
 
 class NonAdaptiveStrategy(FutureProcessingStrategy):
+    """
+    An implementation of the :obj:`FutureProcessingStrategy` which will not adaptively
+    submit new :obj:`Job`'s as incoming jobs are completed.
+    """
+
     def __init__(self, manager) -> None:
         self.manager = manager
 

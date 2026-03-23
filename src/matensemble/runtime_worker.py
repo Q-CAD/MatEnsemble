@@ -1,3 +1,51 @@
+"""
+Worker entrypoint for executing a serialized MatEnsemble Job.
+
+This module is meant to be launched inside a Flux job by the manager.
+The manager serializes a :obj:`Job` object to disk
+then submits a command to Flux that runs this worker with the job ID and
+path to that job spec. In practice, the submitted command is conceptually
+something like:
+
+.. code-block:: bash
+
+    python -m matensemble.runtime_worker --job-id <job_id> --spec-file <path/to/job.pkl>
+
+When Flux starts that command on an allocated worker, this module:
+
+#. Parses the CLI arguments to determine which job it is supposed to run
+   and where the serialized job specification lives.
+
+#. Loads the pickled :obj:`Job` object from disk and validates that the CLI
+   job ID matches the ID stored in the spec file. This provides a basic
+   safety check that the correct job is being executed.
+
+#. Reconstructs the Python import environment needed to run the job's
+   target function. The :obj:`Job` stores the module path
+   and qualified function name. This worker adds the workflow source root to
+   ``sys.path``, imports the module with ``importlib.import_module()``,
+   and resolves the callable from its qualified name.
+
+#. Loads dependency results for any upstream jobs and replaces
+   ``OutputReference`` placeholders in ``job.args`` and ``job.kwargs``
+   with the actual deserialized values. This allows dependent jobs to
+   receive the concrete outputs of earlier jobs.
+
+#. Calls the resolved function as:
+
+   .. code-block:: python
+
+       func(*args, **kwargs)
+
+   where ``args`` and ``kwargs`` are the fully resolved positional and
+   keyword arguments from the ``Job``.
+
+#. Serializes the returned result to ``result.pkl`` for downstream jobs
+   and also attempts to write a JSON-friendly version to ``result.json``
+   for easier debugging and inspection.
+
+"""
+
 import argparse
 import importlib
 import json

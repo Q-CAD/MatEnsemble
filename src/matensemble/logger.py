@@ -54,6 +54,8 @@ class StatusWriter:
             "freeGpus": free_gpus,
         }
 
+        # atomically write the status file so that the dashboard never sees a
+        # half written file.
         with tempfile.NamedTemporaryFile("w", dir=self.path.parent, delete=False) as tf:
             tf.write(json.dumps(data))
             temp_name = tf.name
@@ -63,7 +65,23 @@ class StatusWriter:
 
 def _setup_status_writer(
     path: Path, nnodes: int, cores_per_node: int, gpus_per_node: int
-):  # -> StatusWriter
+):
+    """
+    Setup the status writer for the :obj:`FluxManager` to
+
+    Parameters
+    ----------
+    path : Path
+        The path to the status file
+    nnodes : int
+        The number of nodes that are on the allocation minus one for the Flux
+        borker
+    cores_per_node : int
+        The number of CPU cores per node
+    gpus_per_node : int
+        The number of GPUs per nod
+    """
+
     return StatusWriter(
         path=path,
         nnodes=nnodes,
@@ -73,6 +91,10 @@ def _setup_status_writer(
 
 
 def _setup_logger(base_dir: Path) -> logging.Logger:
+    """
+    setup the status writer for the :obj:`FluxManager`
+    """
+
     logger = logging.getLogger("matensemble")
     logger.setLevel(logging.DEBUG)
     logger.propagate = False

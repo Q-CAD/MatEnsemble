@@ -7,7 +7,7 @@
 
 - [x] Test matflux/matfluxGen refactor make sure it works before doing anything else
 - [x] Fix problems and test again 
-    * Problems: ~/problems.txt
+    **--- Problems ---**
     - [x] Use *ONE* executor in the manager super loop instead of spawning new ones each time
     - [x] Make sure future objects have proper fields appended at creation (task_ or task + job_spec)
     - [x] Move writing of restart files into the FutureProcessingStrategy implementations
@@ -95,7 +95,7 @@
 - [ ] Provide tutorials for how to run the example workflows 
 
 **--- Science Example ---**
-- [x] Test the real science example that Soumendu provided 
+- [x] Test the science example that Soumendu provided 
 - [ ] Update version of LAMMPS
 
 **--- Model Context Protocol ---**

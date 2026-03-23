@@ -72,7 +72,7 @@ class FluxManager:
         base_dir: Path,
         write_restart_freq: int | None = 100,
         set_cpu_affinity: bool = True,
-        set_gpu_affinity: bool = True,
+        set_gpu_affinity: bool = False,
         restart_file: str | None = None,
     ) -> None:
         """
@@ -87,7 +87,7 @@ class FluxManager:
         set_cpu_affinity : bool, optional
             Whther affinity to the CPU should be set, defaults to True
         set_gpu_affinity : bool, optional
-            Whether affinity to the GPU should be set, defulat to True
+            Whether affinity to the GPU should be set, defulat to False 
         restart_file : str
             The path to a restart file which will be loaded and restart the work-
             flow from the save point, default to None.
@@ -100,14 +100,17 @@ class FluxManager:
         self._base_dir = Path(base_dir)
         self._base_dir.mkdir(parents=True, exist_ok=True)
 
+        # dictionary to referenece job objects by their job-id
         self._jobs_by_id = {job.id: job for job in job_list}
         self._dependents = {job.id: [] for job in job_list}
         self._remaining_deps = {job.id: len(job.deps) for job in job_list}
 
+        # ensuring that jobs have their correct dependencies
         for job in job_list:
             for dep in job.deps:
                 self._dependents[dep].append(job.id)
 
+        # queue for jobs that are ready for submission
         self._ready = deque(
             [
                 job_id
@@ -115,18 +118,23 @@ class FluxManager:
                 if num_deps == 0
             ]
         )
+
+        # queue for jobs that are waiting on their dependencies to finish
         self._blocked = set(self._jobs_by_id.keys()) - set(self._ready)
 
+        # main queues for running jobs and completed jobs
         self._running_jobs = set()
         self._completed_jobs = []
         self._failed_jobs = []
         self._futures = set()
 
+        # aquiring a flux handle 
         self._flux_handle = flux.Flux()
         self._fluxlet = Fluxlet(self._flux_handle)
 
         self._write_restart_freq = write_restart_freq
 
+        # setup logging to be able to communicate with dashboard
         self._nnodes, self._cores_per_node, self._gpus_per_node = (
             self._get_allocation_info()
         )
@@ -432,6 +440,7 @@ class FluxManager:
         #. Prints a progress snapshot
         #. Submits new jobs until resources are exhausted
         #. processes completed jobs using a FutureProcessingStrategy:
+            * User implementation if a processing_strategy is used
             * AdaptiveStrategy if adaptive=True
             * NonAdaptiveStrategy otherwise
         """
@@ -458,12 +467,12 @@ class FluxManager:
 
             self._validate_jobs()
 
+            ### Super Loop ###
             done = (
                 len(self._ready) == 0
                 and len(self._running_jobs) == 0
                 and len(self._blocked) == 0
             )
-
             while not done:
                 self._check_resources()
                 self._log_progress()
@@ -475,6 +484,7 @@ class FluxManager:
                     and len(self._running_jobs) == 0
                     and len(self._blocked) == 0
                 )
+            ### Super Loop ###
 
             end = time.perf_counter()
             self._logger.info("=== EXITING WORKFLOW ENVIRONMENT ===")

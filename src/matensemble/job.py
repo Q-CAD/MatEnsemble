@@ -13,7 +13,16 @@ from matensemble.utils import _json_safe
 
 class Job:
     """
-    as;dlkfjas;dlkfj;x
+    A :obj:`Job` is what MatEnsemble is built around. :obj:`Job`'s can have two
+    different flavors. ``PYTHON`` or ``EXECUTABLE``
+
+    Python jobs are delayed function calls that will be submitted to the
+    runtime-worker when the :obj:`Job`'s dependencies are resolved and they are
+    schduled in the queue.
+
+    Executable jobs are simply commands that will usually call an Executable script
+    when the job is scheduled.
+
     """
 
     def __init__(
@@ -29,6 +38,36 @@ class Job:
         args: tuple = (),
         kwargs: dict | None = None,
     ) -> None:
+        """
+        The constructor for a :obj:`Job`
+
+        Parameters
+        ----------
+        id : str
+            The ID for the :obj:`Job`
+        command : str, list[str]
+            The command that will be run when the :obj:`Job` is submitted
+        flavor : JobFlavor
+            Either PYTHON or EXECUTABLE
+        resources : Resources
+            An instance of :obj:`Resources` that holds all the information about
+            what resources are needed to run the :obj:`Job`
+        workdir : Path
+            The Path to the directory where the output of the :obj:`Job` will be
+            handled
+        func_module : str
+            The module where the function definition is if the flavor of the :obj:`Job`
+            is PYTHON
+        func_qualname : str
+            The name of the function if the flavor of the :obj:`Job` is PYTHON
+        deps : tuple[str, ...]
+            A tupele of job-id's which results this :obj:`Job` depends on
+        args : tuple
+            The arguments to give the function if flavor is PYTHON
+        kwargs : dict
+            The key-word arguments to give the function if flaovr is PYTHON
+        """
+
         self.id = id
         self.command = (
             shlex.split(command) if isinstance(command, str) else list(command)
@@ -75,10 +114,19 @@ class Job:
         }
 
     def _write_debug_json(self) -> None:
+        """
+        The :obj:`Job` is pickled at runtime to be used later on, but it is also
+        written as json for debugging.
+        """
+
         debug_file = self.spec_path.parent / "job.json"
         debug_file.parent.mkdir(parents=True, exist_ok=True)
         with debug_file.open("w") as f:
             json.dump(self._to_debug_dict(), f, indent=2)
 
     def __str__(self) -> str:
+        """
+        Return the :obj:`Job` as a JSON string.
+        """
+
         return json.dumps(self._to_debug_dict(), indent=2)
