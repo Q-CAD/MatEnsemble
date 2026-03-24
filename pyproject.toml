@@ -1,6 +1,6 @@
 [project]
 name = "matensemble"
-version = "0.1.4"
+version = "0.2.0"
 description = "An adaptive and highly asynchronous ensemble simulation workflow manager MatEnsemble (https://github.com/Q-CAD/MatEnsemble) built jointly on top of the hierarchical graph based scheduler FLUX and concurrent-futures infrastructure of python"
 readme = "README.md"
 license-files = ["LICENSE"]
