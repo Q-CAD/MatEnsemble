@@ -1,84 +1,124 @@
-[![PyPI version](https://badge.fury.io/py/matensemble.svg)](https://badge.fury.io/py/matensemble)
-[![Documentation Status](https://readthedocs.org/projects/matensemble/badge/?version=latest)](https://matensemble.readthedocs.io/en/latest/?badge=latest)
-<!-- [![Build Status](https://github.com/username/matensemble/workflows/Build/badge.svg)](https://github.com/username/matensemble/actions) -->
-[![Coverage Status](https://coveralls.io/repos/github/username/matensemble/badge.svg?branch=main)](https://coveralls.io/github/username/matensemble?branch=main)
+[![PyPI version](https://badge.fury.io/py/matensemble.svg)](https://pypi.org/project/matensemble/)
+[![Documentation](https://readthedocs.org/projects/matensemble/badge/?version=latest)](https://matensemble.readthedocs.io/en/latest/)
+[![Python](https://img.shields.io/badge/python-3.12%2B-blue)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
- <img src="images/Logo-Matensemble.png" alt="MatEnsemble Logo" width="800"/>
-An adaptive and highly asynchronous ensemble simulation workflow manager
- with in-memory dynamics (GPU) and on-the-fly analysis (CPU) capabilties.
+<p align="center">
+  <img src="images/Logo-Matensemble.png" alt="MatEnsemble" width="720" />
+</p>
 
-## Core Capabiliies:
-- Adaptive task management (with the ability to integrate with autonmous data acquistion algorirthms)
- <img src="images/Cap_1_adaptive_task_management.png" alt="Adaptive-task-management" width="600"/>
+# MatEnsemble
 
-- On-the-fly streaming of materials dynamics with custom analysis algorithms
- <img src="images/Cap_2_dynopro.png" alt="on-the-fly dynamics" width="600"/>
+MatEnsemble is a Python library for **high-throughput workflows** on HPC systems. You define a directed acyclic graph (DAG) of tasks—**Python callables** or **executable commands**—and MatEnsemble submits work through **[Flux](https://flux-framework.readthedocs.io/)**, tracks completions, **adapts** scheduling to free CPUs and GPUs, and writes structured logs and per-job output directories.
 
-## User Guide:
-Open the documentation
-```sh
-<browser-of-choice> docs/index.html
-```
+An optional in-tree **dynopro** stack supports streaming dynamics and on-the-fly analysis for advanced materials simulation workflows.
 
+## Features
 
-## Installation Guide
+- **DAG-based workflows** with dependencies via deferred return values (`OutputReference`)
+- **Adaptive scheduling** that back-fills the allocation as tasks finish (with a non-adaptive mode when you need it)
+- **Two job flavors**: Python jobs (remotely unpickled and executed by `matensemble.runtime_worker`) and argv-style **executable** jobs
+- **Resource requests**: tasks, cores per task, GPUs per task, optional MPI (`pmi2`) via Flux
+- **Observability**: `status.json`, `matensemble_workflow.log`, per-job `stdout` / `stderr`, pickle and JSON result artifacts; optional **web dashboard** (FastAPI on port 8000)
 
-### Prerequisites
-- Anaconda or Miniconda
-- Git
-- (optional) C++ compiler (gcc/clang) (for online dynamics using lammps, rmg etc.)
-- (optional) CMake
+<p align="center">
+  <img src="images/Cap_1_adaptive_task_management.png" alt="Adaptive task management" width="620" />
+</p>
 
-### Quick Install (linux systems)
-```bash
-git clone https://github.com/Q-CAD/MatEnsemble.git
-cd matensemble
-chmod +x install.sh
-./install.sh <path-to-env>
-```
-<!-- ### Customized Install
-Environment Setup (`environment.yaml`)
+<p align="center">
+  <img src="images/Cap_2_dynopro.png" alt="On-the-fly dynamics and analysis" width="620" />
+</p>
+
+## Documentation
+
+Hosted documentation (overview, architecture, tutorials, API reference):
+
+**[matensemble.readthedocs.io](https://matensemble.readthedocs.io/en/latest/)**
+
+To build the docs locally:
 
 ```bash
-# filepath: environment.yaml
-name: matensemble
-channels:
-  - conda-forge
-  - defaults
-dependencies:
-  - python=3.11
-  - flux-core>=0.48.0
-  - flux-sched>=0.25.0
-  - cmake>=3.20
-  - gcc>=11.0
-  - make
-  ``` -->
-
-## Create and activate conda environment:
-```bash
-conda env create -f environment.yaml --prefix <path-to-env>
-conda activate <path-to-env>
+uv sync --group dev
+uv run sphinx-build -b html docs/source docs/build
 ```
 
-### Install Python dependencies
+Then open `docs/build/index.html` in a browser.
+
+## Installation
+
+### PyPI (Python layer)
+
+Requires **Python 3.12+**. Flux **C libraries** and a running Flux session come from your HPC environment; the PyPI package adds the Python side.
+
 ```bash
-pip install -r requirements.txt
+pip install "matensemble[flux]"
 ```
-### Install package in development mode
+
+The `flux` extra installs the Flux Python bindings (`flux-python`). For editing workflows only (no Flux on the machine):
+
 ```bash
-pip install -e .
+pip install matensemble
 ```
 
-**Links to documentation for Ease of Access: **
-* [MatEnsemble Dependency](https://github.com/BagchiS6/AutoPF)
-* [Slurm Documentation](https://slurm.schedmd.com/documentation.html)
-* [Flux Documentation](https://flux-framework.readthedocs.io/en/latest/guides/learning_guide.html)
-* [Python Flux Guide](https://flux-framework.readthedocs.io/projects/flux-core/en/latest/guide/start.html)
-* [Baseline Super-Computer User Guide](https://docs.cades.olcf.ornl.gov/baseline_user_guide/baseline_user_guide.html)
-* [Frontier Super-Computer User Guide](https://docs.olcf.ornl.gov/systems/frontier_user_guide.html#slurm)
-* [Open MPI Documentation (Message Passing Interface)](https://www.open-mpi.org/)
-* [LAMMPS Documentation](https://docs.lammps.org/Manual.html)
+### Containers (recommended on many clusters)
 
+OCI images are published to GitHub Container Registry, for example:
 
+`ghcr.io/freddude2004/matensemble:baseline-vX.Y.Z`
 
+See the [container packages](https://github.com/FredDude2004/MatEnsemble/pkgs/container/matensemble) and the [Quick start](https://matensemble.readthedocs.io/en/latest/quickstart.html) in the docs for Apptainer/Singularity and site-specific notes.
+
+### Development install
+
+From a clone of this repository:
+
+```bash
+uv sync
+uv sync --group dev   # optional: docs and pytest tooling
+uv run pytest
+```
+
+Or with pip:
+
+```bash
+pip install -e ".[flux]"
+```
+
+Site-specific Conda-style environment files live under `scripts/` (for example `scripts/baseline/environment.yaml`, `scripts/frontier/`, `scripts/perlmuter/`). Align Python with **3.12+** and Flux with your center’s modules.
+
+## Quick example
+
+```python
+from matensemble.pipeline import Pipeline
+
+pipe = Pipeline()
+pipe.exec(command=["/bin/echo", "hello from MatEnsemble"])
+pipe.submit()
+```
+
+For Python jobs, dependency graphs, and the required split between an importable **job module** and a **runner script**, see the [Tutorials](https://matensemble.readthedocs.io/en/latest/tutorials.html).
+
+## Examples in the repository
+
+Illustrative workflows live under [`example_workflows/`](https://github.com/FredDude2004/MatEnsemble/tree/main/example_workflows).
+
+## Requirements and runtime
+
+- A **Flux allocation** (or equivalent) on the machine where you call `Pipeline.submit()`
+- For MPI Python or executable jobs: a coherent MPI/Flux setup (e.g. PMI2) as expected by your site
+- Optional: SSH port forwarding if you enable the dashboard on a compute node (see the architecture guide in the docs)
+
+## Related links
+
+- [Flux documentation](https://flux-framework.readthedocs.io/)
+- [Flux Python guide](https://flux-framework.readthedocs.io/projects/flux-core/en/latest/guide/start.html)
+- [Slurm documentation](https://slurm.schedmd.com/documentation.html) (common front-end to batch allocations)
+- [LAMMPS manual](https://docs.lammps.org/Manual.html) (often used alongside ensemble MD workflows)
+
+## Authors
+
+Soumendu Bagchi, Kaleb Duchesneau (see `pyproject.toml` for contact details).
+
+## License
+
+BSD 3-Clause. See [`LICENSE`](LICENSE).
