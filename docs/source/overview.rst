@@ -2,134 +2,132 @@
 Overview
 ========
 
-MatEnsemble is a workflow manager for running lots of similar simulation
-:obj:`Jobs <Job>` on a supercomputer as efficiently as possible. MatEnsemble launches
-:obj:`Jobs <Job>`, watches them finish, records what happened, and immediately sends
-more when resources open up.
+MatEnsemble is a **workflow manager** for running many similar :class:`~matensemble.job.Job` instances on a
+supercomputer as efficiently as possible. You build a directed acyclic graph (DAG) in Python; MatEnsemble
+submits work to **Flux**, tracks completions, records logs, and keeps hardware busy while tasks finish
+at different rates.
 
-High Throughput Computing
-=========================
+The library targets **high-throughput** and **ensemble** scenarios: thousands of small simulations,
+parameter sweeps, or analysis pipelines where classic “one Slurm job per task” workflows would overwhelm the
+scheduler or spend too much time queued.
 
-High Throughput Computing (HTC) is a computing paradigm designed to maximize
-the total amount of computational work completed over long periods by executing
-a large number of independent, often small, jobs.
+High-throughput computing and schedulers
+=========================================
 
-This characteristic feature of HTC, frequently referred to as "task farming,"
-poses problems for batch job schedulers such as Slurm used in HPC systems. A
-large number of jobs (launched with ``sbatch``) and job steps (launched with
-``srun``) generate excess log data and slow down Slurm. Short jobs also have a
-large scheduling overhead, meaning that an increasing fraction of time is spent
-in the queue instead of computing.
+High Throughput Computing (HTC) maximizes completed work over long windows by running **many independent**
+tasks, often modest in size. Sites frequently call this pattern **task farming**.
 
-On an HPC system, you usually run work through a batch scheduler like Slurm.
-Slurm is great for large jobs, but it can be awkward when you have many smaller
-jobs. These constraints lead some systems to enforce a limit on the number of
-``srun`` invocations that you can perform within a given job submission.
+Farming through raw Slurm has costs:
 
-To get around this, you would often submit a big job and then try to run many
-smaller tasks inside it. Jobs can finish at different times, leaving some CPU
-cores or GPUs idle even though there is more work to do. Submitting a separate
-Slurm job for every task can be slow and creates scheduler overhead, including
-queueing delays and launch latency, resulting in wasted compute time.
+* Many short ``sbatch`` / ``srun`` invocations increase scheduler load and log volume.
+* Queue latency dominates when tasks are tiny relative to scheduler quanta.
+* Some centers cap how many job steps you may launch inside a single allocation.
 
-MatEnsemble
-===========
+A common mitigation is **one large allocation** plus an **internal scheduler** that launches many child
+processes or MPI ranks inside that allocation. The remaining problem is **utilization**: if you launch work
+in static waves, fast tasks finish early and cores sit idle while slow tasks run. MatEnsemble addresses that
+with **adaptive** submission tied to live Flux resource reporting.
 
-To solve this, MatEnsemble runs inside your allocated job and manages the work
-dynamically. It uses the Flux runtime to submit and track :obj:`Jobs <Job>` as
-:obj:`Futures <Future>`.
+What MatEnsemble does in one sentence
+=====================================
 
-At a high level, MatEnsemble repeatedly:
+**Inside your Flux session**, MatEnsemble repeatedly: (1) reads free CPU/GPU counts, (2) submits ready DAG
+nodes that fit, (3) processes completed Flux jobs, (4) unblocks dependents, and (5) repeats until no ready,
+running, or blocked work remains.
 
-* Checks what resources are free (CPU cores / GPUs).
-* Submits new tasks until resources are used up.
-* Processes completed tasks and records success, failure, and outputs.
-* Repeats until everything is done.
+See :doc:`architecture` for the exact loop, artifacts, and environment assumptions.
 
-Logging
-=======
+Core concepts (with pointers)
+==============================
 
-Just as important as actually running the tasks is logging. MatEnsemble actively
-logs your workflow status and organizes the output in an intuitive way. Each
-workflow creates a dedicated directory named
-``matensemble_workflow_YYYY-MM-DD_HH_mm_ss``.
+:class:`~matensemble.pipeline.Pipeline`
+    User-facing builder. Decorated Python functions turn into delayed jobs; :meth:`~matensemble.pipeline.Pipeline.exec`
+    adds argv-style work.
+
+:class:`~matensemble.model.OutputReference`
+    Placeholder returned from a delayed Python call. Passing it into another job encodes a **dependency edge**
+    and ensures upstream results are unpickled before the downstream function runs.
+
+:class:`~matensemble.job.Job`
+    Single Flux submission record—command, resources, working directory, and (for Python jobs) pointers back
+    to your source module.
+
+:class:`~matensemble.manager.FluxManager`
+    Runtime coordinator created when you call :meth:`~matensemble.pipeline.Pipeline.submit`.
+
+:class:`~matensemble.strategy.FutureProcessingStrategy`
+    Pluggable completion handler. Built-ins: :class:`~matensemble.strategy.AdaptiveStrategy` (fill idle
+    resources as tasks finish) and :class:`~matensemble.strategy.NonAdaptiveStrategy` (wave-style drain).
+
+Logging and on-disk layout
+==========================
+
+Every run creates a **timestamped workflow directory** under your chosen base path (by default the current
+working directory):
 
 .. code-block:: text
 
-   matensemble_workflow_1970-01-01_00-00-00/
-   ├── status.json
-   ├── matensemble_workflow.log
+   <base>/matensemble_workflow-YYYYMMDD_HHMMSS/
+   ├── status.json                 # compact counters for dashboards / monitoring
+   ├── matensemble_workflow.log    # verbose rolling log from the ``matensemble`` logger
    └── out/
-       ├── <job_id_1>/
-       │   ├── stdout
-       │   └── stderr
-       ├── <job_id_2>/
-       │   ├── stdout
-       │   └── stderr
-       └── ...
+       └── <job_id>/
+           ├── stdout
+           ├── stderr
+           ├── job.pkl / job.json  # serialized job specification & debug view
+           └── result.pkl / result.json   # Python return values only
 
-The ``status.json`` file is used by the dashboard, if it is enabled. Alongside
-the status file, there is a more verbose timestamped log file that holds a
-complete record of the workflow, including additional runtime information.
+The driver prints a short hint to stderr with absolute paths to ``status.json``, the log file, and the ``out``
+tree when logging initializes.
 
-Each :obj:`Job` is given its own isolated directory for any output files that it
-produces. Alongside the metadata produced by MatEnsemble, the ``stdout`` and
-``stderr`` files are present in these directories and can be used for
-additional information, such as error codes, print statements, and stack
-traces.
+Adaptive vs non-adaptive scheduling
+===================================
 
-Adaptive Scheduling
-===================
+In **adaptive** mode (the default), completing a job can **immediately** trigger more submissions in the same
+super-loop iteration via :meth:`~matensemble.manager.FluxManager._submit_until_ooresources`, keeping the
+allocation saturated when backlog exists.
 
-The key performance feature of MatEnsemble is adaptive scheduling.
-
-In "adaptive" mode, the moment a :obj:`Job` finishes, MatEnsemble immediately
-submits a new one, if there is remaining work and enough available resources.
-This keeps the worker pool saturated and the machine busy instead of waiting for
-a slow "batch" step.
+In **non-adaptive** mode, the manager only submits during the initial “fill until out of resources” phases;
+completion handling updates the DAG but **does not** proactively pull additional ready jobs until the next
+outer-loop scheduling opportunity—use this when you want tighter control or simpler resource snapshots.
 
 .. image:: ../../images/Cap_1_adaptive_task_management.png
-   :alt: Adaptive Task Management
+   :alt: Diagram contrasting static batching with adaptive back-filling of tasks
 
-MatEnsemble Strategies
-======================
+Strategies
+==========
 
-To account for the different ways that a :obj:`Job` can be processed,
-MatEnsemble uses the strategy pattern for processing the completion of
-:obj:`Jobs <Job>`.
+MatEnsemble uses the *strategy pattern* when processing :class:`flux.job.FluxExecutorFuture` completions:
 
 .. code-block:: python
 
    class FutureProcessingStrategy(ABC):
        @abstractmethod
        def process_futures(self, buffer_time) -> None:
-           pass
+           ...
 
-The ``FutureProcessingStrategy`` is an interface with one required method, which
-gives the manager more flexibility when processing tasks, such as in adaptive or
-non-adaptive modes.
+Concrete implementations live in :mod:`matensemble.strategy`. Supply your own subclass to
+:meth:`~matensemble.pipeline.Pipeline.submit` if you need custom batching, metrics hooks, or integration with
+external planners—ensure your strategy maintains the manager’s queue invariants or you may deadlock.
 
-Out of the box, MatEnsemble has two different strategies.
-
-FutureProcessingStrategy Implementations
-----------------------------------------
-
-* **AdaptiveStrategy**
-* **NonAdaptiveStrategy**
-
-Users can define their own strategies and provide them to MatEnsemble, and
-those user-defined strategies will be assigned automatically.
-
-Conclusion
-==========
-
-MatEnsemble is an adaptive workflow manager that is ideal for high-throughput
-workflows. It allows full utilization of the resources available to a given
-workflow, making :obj:`Jobs <Job>` run more efficiently and reducing wasted compute
-time.
+Roadmap and stability
+=====================
 
 .. note::
 
-   This project is under active development. Some APIs may change before the
-   1.0 release.
+   The project is under active development; pre-1.0 APIs may still move. Track ``CHANGELOG`` / release notes
+   in the repository for breaking changes. The internal **dynopro** package (streaming dynamics and heavy
+   analysis) ships in-tree but is not yet part of the curated Sphinx API toctree.
 
+**Checkpointing:** ``write_restart_freq`` exists on :meth:`~matensemble.pipeline.Pipeline.submit`, but
+checkpoint serialization is **not implemented** yet. Long production runs should pass ``None`` until
+restart files are supported (:doc:`reference`).
+
+Next steps
+==========
+
+* :doc:`quickstart` — containers, PyPI install, site-specific shell snippets.
+* :doc:`tutorials` — minimal Python and executable examples, dependency graphs, packaging tips.
+* :doc:`architecture` — Flux interactions, ``PYTHONPATH``, failure propagation, dashboard tunneling.
+* :doc:`reference` — exhaustive parameter and artifact listing.
+* :ref:`api-reference` — docstring-generated module documentation.

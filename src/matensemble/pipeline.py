@@ -120,18 +120,19 @@ class Pipeline:
         gpus_per_task : int, optional
             The number of GPUs that are required to submit the job, defaults to 0
         mpi : bool, optional
-            Whether  or not the job will use the Message Passing Interface I think
-            defaults to False
+            When True, sets Flux shell option ``mpi=pmi2`` on the jobspec (default False).
         env : dict[str, str], optional
-            The environment varaibles that will be set on job submission, defaults
-            to None
+            Extra environment variables for the task. For Python jobs,
+            ``PYTHONPATH`` is merged to include the workflow parent directory.
         inherit_env : bool
-            Whether the flux job should copy the managers environement variables,
-            defaults to False
+            If True (default), the Flux jobspec starts from the submitting process
+            environment and applies ``env`` overrides.
 
-        Return
-        ------
-        :obj:`Callable[[Callable[..., Any]], Callable[..., OutputReference]]`
+        Returns
+        -------
+        Callable
+            A decorator that returns a wrapped function; each call to the wrapper
+            enqueues a Python job and returns :class:`~matensemble.model.OutputReference`.
         """
 
         def decorator(func: Callable[..., Any]) -> Callable[..., OutputReference]:
@@ -231,18 +232,17 @@ class Pipeline:
         gpus_per_task : int, optional
             The number of GPUs that are required to submit the job, defaults to 0
         mpi : bool, optional
-            Whether  or not the job will use the Message Passing Interface I think
-            defaults to False
+            When True, sets Flux shell option ``mpi=pmi2`` on the jobspec (default False).
         env : dict[str, str], optional
-            The environment varaibles that will be set on job submission, defaults
-            to None
+            Extra environment variables for the task (default None).
         inherit_env : bool
-            Whether the flux job should copy the managers environement variables,
-            defaults to False
+            If True (default), the Flux jobspec starts from the submitting process
+            environment and applies ``env`` overrides.
 
-        Return
-        ------
-        :obj:`Job`
+        Returns
+        -------
+        Job
+            The executable job object (already appended to this pipeline).
         """
 
         res = Resources(
@@ -346,9 +346,11 @@ class Pipeline:
 
         Parameters
         ----------
-        write_restart_freq : int
-            The number of jobs that need to complete before pickleing the state
-            of the :obj:`FluxManager` into a restart file, defaulst to 100.
+        write_restart_freq : int or None
+            If an integer *N*, the completion strategy tries to checkpoint after each *N*
+            successful jobs. **Checkpointing is not implemented yet**; leave ``None`` (or
+            pass ``None`` explicitly) for production runs until restart files are supported.
+            The default remains ``100`` for historical reasons only.
         buffer_time : float
             The amount of seconds that the :obj:`FluxManager` should wait between
             submission of jobs, defaults to 1.0s.
@@ -360,7 +362,8 @@ class Pipeline:
             Whether the :obj:`FluxManager` should adaptively submit other jobs
             as resources become available, defaults to True.
         dynopro : bool
-            Literally does nothing right now, need to ask what this is for.
+            Reserved flag forwarded to :meth:`FluxManager.run`. The core manager loop does
+            not read it yet; it exists for experiments integrating the in-tree dynopro stack.
         processing_strategy : FutureProcessingStrategy
             The strategy that should be used to process the future objects as :obj:`Job`'s
             complete.

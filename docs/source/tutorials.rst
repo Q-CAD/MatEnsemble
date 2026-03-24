@@ -1,222 +1,222 @@
-Tutorial
-========
+=========
+Tutorials
+=========
 
-There are a couple of example workflows that you can reference on `GitHub <https://github.com/FredDude2004/Matensemble/tree/main/example_workflows>`_
+These examples assume you already have a **Flux session** and the ``matensemble`` package importable in
+that environment (:doc:`quickstart`).
 
-Using MatEnsemble
------------------
+Example repositories
+====================
 
-After you have installed MatEnsemble or built a container image that is ready to 
-run using MatEnsemble is quite simple. The first thing to do is to define your 
-:obj:`Jobs <Job>`. Which is done with the :obj:`Pipeline` There are two different Job
-flavors. EXECUTABLE Jobs and PYTHON Jobs. We'll first go over the simpler of the
-two. EXECUTABLE Jobs. 
+Reference implementations live under ``example_workflows/`` in the `MatEnsemble GitHub repository
+<https://github.com/FredDude2004/MatEnsemble/tree/main/example_workflows>`__. Paths worth opening first:
 
-.. code-block:: python
+.. list-table::
+   :widths: 32 68
+   :header-rows: 1
 
-    from matensemble.pipeline import Pipeline
+   * - Path
+     - What it demonstrates
+   * - ``hello_world/exec_workflow.py``
+     - Ten executable jobs calling the same Python helper script with different arguments.
+   * - ``hello_world/job_workflow.py`` / ``run_job_workflow.py``
+     - Split-module pattern for decorated Python jobs.
+   * - ``dependency_example/``
+     - Tiny DAG showing chained return values.
 
-    pipe = Pipeline()
+Minimal executable (“exec”) workflow
+====================================
 
-    pipe.exec(command=["/bin/echo", "hello from MatEnsemble"])
-
-    pipe.submit()
-
-The :obj:`Pipeline` is used to build your workflow. You can add as many jobs as 
-you want to the pipeline. Here is an example of creating 10 of the same
-:obj:`Jobs <Job>` 
-
-.. code-block:: python
-
-    import sys
-    from pathlib import Path
-    from matensemble.pipeline import Pipeline
-
-    pipe = Pipeline()
-
-    job_command = Path(__file__).with_name("mpi_helloworld.py")
-
-    for _ in range(10):
-        pipe.exec(
-            name="hello",
-            command=job_command,
-            num_tasks=50,
-            mpi=True,
-        )
-
-    pipe.submit()
-
-Calling :meth:`pipe.exec()` only creates the :obj:`Job` object that the 
-:obj:`Pipeline` uses to populate the job list. When you call :meth:`pipe.submit()`
-that is when the DAG is created and the workflow will run. 
-
-
-Python Jobs
------------
-The other flavor of Job that MatEnsemble offers are Python jobs. Python jobs 
-are delayed function calls that get passed to Flux. To define a Python Job 
-you can use the :obj:`Pipeline` to decorate a regular old python funciton. 
+``Pipeline.exec`` records a :class:`~matensemble.job.Job` with flavor :attr:`~matensemble.model.JobFlavor.EXECUTABLE`.
+The command is either a string (split with :mod:`shlex`) or an argv list.
 
 .. code-block:: python
 
-    # workflow.py
-    from mpi4py import MPI
-    from matensemble.pipeline import Pipeline
+   from pathlib import Path
 
-    pipe = Pipeline()
-
-    @pipe.job()
-    def run_mpi_hello(task_id: int):
-        size = MPI.COMM_WORLD.Get_size()
-        rank = MPI.COMM_WORLD.Get_rank()
-        name = MPI.Get_processor_name()
-
-        with open(f"task_{task_id}_rank_{rank}.txt", "w") as f:
-            f.write(f"Hello from rank {rank}/{size} on {name}, task={task_id}\n")
-
-        return rank
-
-This decorated python function when called will create a :obj:`Job` in the 
-:obj:`Pipeline` and it will return an :obj:`OutputReference`. In order to run 
-the workflow we can call :meth:`pipeline.submit()` as before with a little caveat. 
-
-
-.. code-block:: python
-
-    # run_workflow.py
-    from workflow import pipe, run_mpi_hello
-
-    def main():
-        for i in range(1, 11):
-            run_mpi_hello(i)
-
-        pipe.submit()
-
-    if __name__ == "__main__":
-        main()
-
-In order for MatEnsemble to work the decorated function needs to be in an importable
-module that is **NOT** run as *__main__*. In other words you cannot run the module
-where :meth:`pipeline.job()` is defined with:
-
-.. code-block:: bash
-
-   python <path_to_script.py>
-
-This will cause the name of the module in the :obj:`Job` to be "__main__" rather
-than the actual name of the module where you define your :obj:`Jobs <Job>`
-
-.. warning::
-   Do not define you jobs in a module that you run as "__main__" instead define
-   your jobs in a seperate python module and have a runner script that you import
-   the decorated jobs function and build the DAG. This is the current behavior of
-   MatEnsemble but this may change in the future to be more user friendly. 
-
-So for now it is required that you follow a structure similar to this for your 
-workflow. 
-
-.. code-block:: 
-
-   .
-   ├── functions.py
-   └── run_workflow.py
-
-
-Where you would create the :obj:`Pipeline`, define your functions and decorate
-them with :meth:`pipeline.job()` in the *functions.py* module. In the *run_workflow.py*
-module you would then import the pipline object that you created and all of the 
-functions that you defined, and you would call them and build the workflow graph.
-You would also be able to define your EXECUTABLE :obj:`Jobs <Job>` here as well.
-Finally you would call pipeline.submit() in *run_workflow.py* and you would
-run the script as "__main__". 
-    
-Another feature of MatEnsemble is the ability to create :obj:`Jobs <Job>` that 
-depend on other :obj:`Jobs` Here is an example 
-
-.. code-block:: python
-
-    # ./functions.py
-    from matensemble.pipeline import Pipeline
-
-    pipe = Pipeline()
-
-    @pipe.job()
-    def job1():
-        return 1
-
-
-    @pipe.job()
-    def job2(x):
-        return x + 1
-
-
-    @pipe.job()
-    def job3(x):
-        return x * 2
-
-
-    # ./run_workflow.py
-    from functions import pipe, job1, job2, job3
-
-    a = job1()
-    b = job2(a)
-    c = job3(b)
-
-    pipe.submit()
-
-        
-That simple, you call the functions in the order that you want and MatEnsemble
-will take care of scheduling them in order and resolving the results of one job
-and delivering them to another. 
-
-You can create your workflow to follow any valid DAG structure, but as of right
-now MatEnsemble does not allow for your workflow to have cycles. 
-
-Third-Part Dependencies
------------------------
-If your Job definitions need modules or other code from third party libraries 
-then there are a couple of different options. There is a chance that the 
-dependencie you is already depended upon by MatEnsemble. NumPy, PyTorch and many
-others are already installed with MatEnsemble so you should be able to import
-them at the top of the file and have them work out of the box. 
-
-If that is not the case you can install them into the container when you build it. 
-For Apptainer you can create a simple definition file that installs whatever you 
-may need at build time and to make them available at run time. 
-
-.. code-block::
-
-   # matensemble.def
-   Bootstrap: docker
-   From ghcr.io/freddude2004/matensemble:frontier-vX.Y.Z
-
-   %post
-      uv pip install <package>
-
-Then you would build the container like so 
-
-.. code-block:: bash
-
-   apptainer build matensemble.sif matensemble.def
-
-Now the package is available to use and you would simply use it as you always 
-would when defining your functions. 
-
-.. code-block:: python
-
-   import <package>
    from matensemble.pipeline import Pipeline
 
    pipe = Pipeline()
 
-   @pipe.job(...)
-   def f(x):
-      ...
+   pipe.exec(command=["/bin/echo", "hello from MatEnsemble"])
 
-Since MatEnsemble imports the module at run-time all of the imports will be run 
-automagically, so you do not need to place the imports inside of the function
-definition. 
+   pipe.submit()
 
+Nothing runs until :meth:`~matensemble.pipeline.Pipeline.submit`, which builds the DAG (trivial here),
+instantiates :class:`~matensemble.manager.FluxManager`, and enters the scheduling loop.
 
-   
+Parameters you will commonly set on :meth:`~matensemble.pipeline.Pipeline.exec`:
 
+* ``num_tasks`` — Flux task count (for MPI programs this is usually your rank count).
+* ``cores_per_task`` / ``gpus_per_task`` — resource hints for scheduling.
+* ``mpi=True`` — toggles ``mpi=pmi2`` on the Flux jobspec; your program must initialize MPI accordingly.
+* ``env`` / ``inherit_env`` — see :doc:`reference`.
+
+**Dependencies:** Executable jobs created through :meth:`~matensemble.pipeline.Pipeline.exec` **do not**
+inspect :class:`~matensemble.model.OutputReference` objects; they are always treated as roots unless you wrap
+external commands inside a Python job.
+
+Batch of executable jobs (from the hello_world example)
+==========================================================
+
+.. code-block:: python
+
+   import sys
+   from pathlib import Path
+
+   from matensemble.pipeline import Pipeline
+
+   pipe = Pipeline()
+   script = Path(__file__).with_name("mpi_helloworld.py")
+
+   for i in range(1, 11):
+       pipe.exec(command=[sys.executable, str(script), str(i)], num_tasks=50)
+
+   pipe.submit()
+
+Here ``num_tasks=50`` launches 50 Flux tasks; combine with ``mpi=True`` when your script expects PMI.
+
+Python jobs and ``OutputReference`` dependencies
+=================================================
+
+Decorated functions are **not** executed immediately. Each call appends a Python :class:`~matensemble.job.Job`
+and returns a :class:`~matensemble.model.OutputReference` placeholder.
+
+Defining jobs (importable module — **not** ``__main__``)
+--------------------------------------------------------
+
+.. code-block:: python
+
+   # workflow.py  (module name must be importable, e.g. package.workflow)
+   from mpi4py import MPI
+   from matensemble.pipeline import Pipeline
+
+   pipe = Pipeline()
+
+   @pipe.job()
+   def run_mpi_hello(task_id: int):
+       size = MPI.COMM_WORLD.Get_size()
+       rank = MPI.COMM_WORLD.Get_rank()
+       name = MPI.Get_processor_name()
+
+       out = f"task_{task_id}_rank_{rank}.txt"
+       with open(out, "w", encoding="utf-8") as f:
+           f.write(f"Hello from rank {rank}/{size} on {name}, task={task_id}\n")
+
+       return rank
+
+Driver script (this **may** be ``__main__``)
+----------------------------------------------
+
+.. code-block:: python
+
+   # run_workflow.py
+   from workflow import pipe, run_mpi_hello
+
+   def main():
+       for i in range(1, 11):
+           run_mpi_hello(i)
+
+       pipe.submit()
+
+   if __name__ == "__main__":
+       main()
+
+Why this split matters
+----------------------
+
+Python jobs store ``func_module`` and ``func_qualname``. If you define jobs in the same file you later run
+with ``python that_file.py``, Python sets ``__name__ == "__main__"`` and ``func_module`` becomes
+``"__main__"``. The remote worker then imports ``__main__`` in a different process context, which **fails**
+or picks up the wrong definitions.
+
+.. warning::
+
+   Define decorated jobs in a **regular module** (for example ``workflow.py`` or ``pkg/tasks.py``) and import
+   them from a tiny runner script. This requirement may be relaxed in a future release, but it is mandatory
+   today.
+
+Recommended file layout
+-----------------------
+
+.. code-block:: text
+
+   project/
+   ├── my_workflow.py    # Pipeline + @pipe.job definitions
+   └── run.py            # imports my_workflow, builds graph, calls pipe.submit()
+
+You can add ``__init__.py`` if you place code inside a package; ensure the working directory / ``PYTHONPATH``
+story from :doc:`architecture` still resolves.
+
+Chained dependencies (any acyclic DAG)
+======================================
+
+.. code-block:: python
+
+   # functions.py
+   from matensemble.pipeline import Pipeline
+
+   pipe = Pipeline()
+
+   @pipe.job()
+   def job1():
+       return 1
+
+   @pipe.job()
+   def job2(x):
+       return x + 1
+
+   @pipe.job()
+   def job3(x):
+       return x * 2
+
+.. code-block:: python
+
+   # run_workflow.py
+   from functions import pipe, job1, job2, job3
+
+   a = job1()
+   b = job2(a)
+   c = job3(b)
+
+   pipe.submit()
+
+:class:`~matensemble.manager.FluxManager` only schedules ``job2`` after ``job1`` finishes, and ``job3`` after
+``job2`` finishes. Internally, the worker unpickles ``../job1/result.pkl`` before invoking ``job2``.
+
+.. note::
+
+   Cycles are rejected during DAG validation. Fan-in (many tasks → one consumer) and fan-out are supported
+   so long as the graph remains acyclic.
+
+Nested arguments
+================
+
+Dependency scanning walks nested containers and non-class dataclasses. You may pass structured payloads
+mixing plain data and :class:`~matensemble.model.OutputReference` instances; the worker recursively replaces
+references with concrete Python objects.
+
+Third-party imports inside jobs
+===============================
+
+Because workers import the defining module in full, **top-level imports** run automatically. You do not need
+to bury ``import numpy`` inside the job body unless you want lazy loading for side-effect control.
+
+If you need extra wheels:
+
+* **Containers:** extend the provided image (Apptainer ``%post`` snippet with ``uv pip install …``,
+  :doc:`quickstart`).
+* **Virtualenv on NFS:** install once into the environment shared by all nodes.
+
+Operational tips
+================
+
+* Pass ``dashboard=True`` and tunnel port ``8000`` if you want the browser UI (:doc:`architecture`).
+* Inspect ``matensemble_workflow.log`` for human-readable progress; parse ``status.json`` for machine consumption.
+* On failure, always read the job’s ``stderr``—MatEnsemble annotates wrapper errors there.
+
+Further reading
+===============
+
+* :doc:`reference` — complete ``submit()`` parameter table and artifact schemas.
+* :ref:`api-reference` — authoritative signatures mirrored from the source docstrings.

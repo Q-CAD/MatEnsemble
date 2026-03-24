@@ -86,13 +86,13 @@
 - [x] Write the Job objects specification to a file in their direcotry 
 
 **--- Status Dashboard ---**
-- [ ] Update the Pipeline.run() method to have a dashboard flag 
-- [ ] Add logic to launch the dashboard when the user runs the workflow 
+- [x] Update the Pipeline.run() method to have a dashboard flag 
+- [x] Add logic to launch the dashboard when the user runs the workflow 
 
 **--- Polish Everything ---**
-- [ ] Update all the documentation 
+- [x] Update all the documentation 
 - [x] Update the example workflows 
-- [ ] Provide tutorials for how to run the example workflows 
+- [x] Provide tutorials for how to run the example workflows 
 
 **--- Science Example ---**
 - [x] Test the science example that Soumendu provided 

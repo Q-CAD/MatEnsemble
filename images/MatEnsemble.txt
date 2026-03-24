@@ -20,5 +20,6 @@ module load olcf-container-tools
 module load apptainer-enable-mpi apptainer-enable-gpu
 
 srun -N $SLURM_NNODES -n $SLURM_NNODES --pty --external-launcher --mpi=pmi2 --gpu-bind=closest apptainer exec matensemble_1.sif flux start
+srun -N $SLURM_NNODES -n $SLURM_NNODES --pty --external-launcher --mpi=pmi2 --gpu-bind=closest apptainer exec matensemble.sif flux start
 ssh -L 8000:frontier00206:8000 kaleb@frontier.olcf.ornl.gov
 
