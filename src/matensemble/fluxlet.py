@@ -77,9 +77,6 @@ class Fluxlet:
                 temp_name = tf.name
             os.replace(temp_name, job.spec_path)
 
-        # helpful for debugging
-        job._write_debug_json()
-
         jobspec.cwd = str(job.workdir)
         jobspec.stdout = str(job.workdir / "stdout")
         jobspec.stderr = str(job.workdir / "stderr")
@@ -94,6 +91,9 @@ class Fluxlet:
         base_env = os.environ.copy() if job.resources.inherit_env else {}
         base_env.update(job.resources.env or {})
         jobspec.env = base_env
+
+        # helpful for debugging
+        job._write_debug_json()
 
         # only set this if you truly want every job to span a fixed node count
         if nnodes is not None:
