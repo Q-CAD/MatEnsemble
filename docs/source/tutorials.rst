@@ -27,7 +27,7 @@ Reference implementations live under ``example_workflows/`` in the `MatEnsemble 
 Minimal executable (“exec”) workflow
 ====================================
 
-``Pipeline.exec`` records a :class:`~matensemble.chore.Job` with chore type :attr:`~matensemble.model.ChoreType.EXECUTABLE`.
+``Pipeline.exec`` records a :class:`~matensemble.chore.Chore
 The command is either a string (split with :mod:`shlex`) or an argv list.
 
 .. code-block:: python
@@ -79,7 +79,7 @@ Here ``num_tasks=50`` launches 50 Flux tasks; combine with ``mpi=True`` when you
 Python chores and ``OutputReference`` dependencies
 =================================================
 
-Decorated functions are **not** executed immediately. Each call appends a Python :class:`~matensemble.chore.Job`
+Decorated functions are **not** executed immediately. Each call appends a Python :class:`~matensemble.chore.Chore`
 and returns a :class:`~matensemble.model.OutputReference` placeholder.
 
 Defining chores (importable module — **not** ``__main__``)

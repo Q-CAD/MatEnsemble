@@ -26,11 +26,11 @@ Objects you interact with
 -------------------------
 
 :class:`~matensemble.pipeline.Pipeline`
-    Builder for a directed acyclic graph (DAG) of :class:`~matensemble.chore.Job` instances.
+    Builder for a directed acyclic graph (DAG) of :class:`~matensemble.chore.Chore` instances.
     Calling ``@pipe.chore``-decorated functions records delayed work; :meth:`~matensemble.pipeline.Pipeline.exec`
     adds shell/executable work.
 
-:class:`~matensemble.chore.Job`
+:class:`~matensemble.chore.Chore`
     Immutable specification for a single Flux submission: command vector, resource request,
     working directory, and (for Python chores) import metadata and serialized arguments.
 
@@ -39,7 +39,7 @@ Objects you interact with
     blocked, and running chore IDs, tracks free cores/GPUs from Flux, and drives the main scheduling loop.
 
 :class:`~matensemble.fluxlet.Fluxlet`
-    Thin wrapper that turns a :class:`~matensemble.chore.Job` into a Flux ``JobspecV1`` and submits it
+    Thin wrapper that turns a :class:`~matensemble.chore.Chore` into a Flux ``JobspecV1`` and submits it
     through a :class:`flux.job.FluxExecutor`.
 
 ``matensemble.runtime_worker``

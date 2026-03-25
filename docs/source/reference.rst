@@ -46,7 +46,7 @@ in the qualified name.
 ``Pipeline.exec``
 -----------------
 
-Creates a :class:`~matensemble.chore.Job` with :attr:`~matensemble.model.ChoreType.EXECUTABLE`. The command
+Creates a :class:`~matensemble.chore.Chore` with :attr:`~matensemble.model.ChoreType.EXECUTABLE`. The command
 may be a string (split with :mod:`shlex`) or a pre-split argv list. No automatic ``PYTHONPATH`` injection
 occurs unless you pass it through ``env``. There is **no dependency tracking** for executable chores; use
 a Python chore if you need DAG edges.
@@ -102,9 +102,9 @@ Written atomically (temp file + rename) by :class:`~matensemble.logger.StatusWri
    * - ``gpusPerNode``
      - ``total_free_gpus // nodes`` (integer division).
    * - ``pending``
-     - Jobs waiting in ready + blocked queues (sum of not-yet-finished backlog).
+     - Chores waiting in ready + blocked queues (sum of not-yet-finished backlog).
    * - ``running``
-     - Jobs with active Flux futures.
+     - Chores with active Flux futures.
    * - ``completed``
      - Successful chore IDs recorded in order.
    * - ``failed``

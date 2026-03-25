@@ -2,7 +2,7 @@
 Overview
 ========
 
-MatEnsemble is a **workflow manager** for running many similar :class:`~matensemble.chore.Job` instances on a
+MatEnsemble is a **workflow manager** for running many similar :class:`~matensemble.chore.Chore` instances on a
 supercomputer as efficiently as possible. You build a directed acyclic graph (DAG) in Python; MatEnsemble
 submits work to **Flux**, tracks completions, records logs, and keeps hardware busy while tasks finish
 at different rates.
@@ -48,7 +48,7 @@ Core concepts (with pointers)
     Placeholder returned from a delayed Python call. Passing it into another chore encodes a **dependency edge**
     and ensures upstream results are unpickled before the downstream function runs.
 
-:class:`~matensemble.chore.Job`
+:class:`~matensemble.chore.Chore`
     Single Flux submission record—command, resources, working directory, and (for Python chores) pointers back
     to your source module.
 
