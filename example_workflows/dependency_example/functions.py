@@ -4,16 +4,16 @@ from matensemble.pipeline import Pipeline
 pipe = Pipeline()
 
 
-@pipe.job()
-def job1():
+@pipe.chore()
+def chore1():
     return 1
 
 
-@pipe.job()
-def job2(x):
+@pipe.chore()
+def chore2(x):
     return x + 1
 
 
-@pipe.job()
-def job3(x):
+@pipe.chore()
+def chore3(x):
     return x * 2

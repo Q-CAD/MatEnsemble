@@ -104,8 +104,8 @@ The ``flux`` extra pins ``flux-python`` to the version declared in project metad
 .. warning::
 
    Fully reproducible **non-container** installs require you to line up: Python 3.12+, Flux C libraries,
-   MPI if you use ``mpi=True`` jobs, optional GPU runtimes, and any simulation binaries you call from
-   executable jobs (for example LAMMPS). Treat the PyPI package as the **Python layer** only.
+   MPI if you use ``mpi=True`` chores, optional GPU runtimes, and any simulation binaries you call from
+   executable chores (for example LAMMPS). Treat the PyPI package as the **Python layer** only.
 
 If you do **not** need Flux bindings locally (for example, you are only editing workflows):
 
@@ -129,9 +129,9 @@ Verification checklist before your first run
 =============================================
 
 #. ``flux getattr version`` or your site’s health check succeeds on the node.
-#. ``python -c "import flux, matensemble"`` works in the **same environment** your job will use.
+#. ``python -c "import flux, matensemble"`` works in the **same environment** your chore will use.
 #. You launch the driver from the directory you intend to be the **workflow parent** (see :doc:`architecture`).
-#. For Python jobs, job functions live in an **importable module** that is not executed as ``__main__`` (see :doc:`tutorials`).
+#. For Python chores, chore functions live in an **importable module** that is not executed as ``__main__`` (see :doc:`tutorials`).
 #. For long runs, set ``write_restart_freq=None`` until restart support ships (:doc:`reference`).
 
 Where to read next

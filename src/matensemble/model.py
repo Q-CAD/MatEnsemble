@@ -5,10 +5,10 @@ from enum import StrEnum, auto
 @dataclass(frozen=True)
 class OutputReference:
     """
-    An object to encapsulate the result of a job as the input to another job
+    An object to encapsulate the result of a chore as the input to another chore
     """
 
-    job_id: str
+    chore_id: str
 
 
 @dataclass
@@ -48,11 +48,11 @@ class Resources:
             raise TypeError("inherit_env must be a bool")
 
 
-class JobFlavor(StrEnum):
+class ChoreType(StrEnum):
     """
-    The different flavors that a job can be. As of right now there are two types
-    of Jobs, Python jobs and Executable jobs. Python jobs are delayed function
-    calls and executable jobs are paths to executable files.
+    The different types that a chore can be. As of right now there are two types
+    of Chores, Python chores and Executable chores. Python chores are delayed function
+    calls and executable chores are paths to executable files.
     """
 
     PYTHON = auto()

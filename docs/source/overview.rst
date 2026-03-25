@@ -2,7 +2,7 @@
 Overview
 ========
 
-MatEnsemble is a **workflow manager** for running many similar :class:`~matensemble.job.Job` instances on a
+MatEnsemble is a **workflow manager** for running many similar :class:`~matensemble.chore.Job` instances on a
 supercomputer as efficiently as possible. You build a directed acyclic graph (DAG) in Python; MatEnsemble
 submits work to **Flux**, tracks completions, records logs, and keeps hardware busy while tasks finish
 at different rates.
@@ -41,15 +41,15 @@ Core concepts (with pointers)
 ==============================
 
 :class:`~matensemble.pipeline.Pipeline`
-    User-facing builder. Decorated Python functions turn into delayed jobs; :meth:`~matensemble.pipeline.Pipeline.exec`
+    User-facing builder. Decorated Python functions turn into delayed chores; :meth:`~matensemble.pipeline.Pipeline.exec`
     adds argv-style work.
 
 :class:`~matensemble.model.OutputReference`
-    Placeholder returned from a delayed Python call. Passing it into another job encodes a **dependency edge**
+    Placeholder returned from a delayed Python call. Passing it into another chore encodes a **dependency edge**
     and ensures upstream results are unpickled before the downstream function runs.
 
-:class:`~matensemble.job.Job`
-    Single Flux submission record—command, resources, working directory, and (for Python jobs) pointers back
+:class:`~matensemble.chore.Job`
+    Single Flux submission record—command, resources, working directory, and (for Python chores) pointers back
     to your source module.
 
 :class:`~matensemble.manager.FluxManager`
@@ -71,10 +71,10 @@ working directory):
    ├── status.json                 # compact counters for dashboards / monitoring
    ├── matensemble_workflow.log    # verbose rolling log from the ``matensemble`` logger
    └── out/
-       └── <job_id>/
+       └── <chore_id>/
            ├── stdout
            ├── stderr
-           ├── job.pkl / job.json  # serialized job specification & debug view
+           ├── chore.pkl / chore.json  # serialized chore specification & debug view
            └── result.pkl / result.json   # Python return values only
 
 The driver prints a short hint to stderr with absolute paths to ``status.json``, the log file, and the ``out``
@@ -83,12 +83,12 @@ tree when logging initializes.
 Adaptive vs non-adaptive scheduling
 ===================================
 
-In **adaptive** mode (the default), completing a job can **immediately** trigger more submissions in the same
+In **adaptive** mode (the default), completing a chore can **immediately** trigger more submissions in the same
 super-loop iteration via :meth:`~matensemble.manager.FluxManager._submit_until_ooresources`, keeping the
 allocation saturated when backlog exists.
 
 In **non-adaptive** mode, the manager only submits during the initial “fill until out of resources” phases;
-completion handling updates the DAG but **does not** proactively pull additional ready jobs until the next
+completion handling updates the DAG but **does not** proactively pull additional ready chores until the next
 outer-loop scheduling opportunity—use this when you want tighter control or simpler resource snapshots.
 
 .. image:: ../../images/Cap_1_adaptive_task_management.png

@@ -24,7 +24,7 @@ class FutureProcessingStrategy(ABC):
 class AdaptiveStrategy(FutureProcessingStrategy):
     """
     An implementation of the :obj:`FutureProcessingStrategy` which will adaptively
-    submit new :obj:`Job`'s as incoming jobs are completed.
+    submit new :obj:`Chore`'s as incoming chores are completed.
     """
 
     def __init__(self, manager) -> None:
@@ -45,18 +45,18 @@ class AdaptiveStrategy(FutureProcessingStrategy):
             self.manager._futures, timeout=buffer_time
         )
         """
-        Process the future objects as :obj:`Job`'s complete 
+        Process the future objects as :obj:`Chore`'s complete 
 
         Parameters
         ----------
         buffer_time : float 
-            The amount of time to wait between jobs being completed. 
+            The amount of time to wait between chores being completed. 
         """
 
         for fut in completed:
-            job_id = fut.job_id
-            job = fut.job_obj
-            self.manager._running_jobs.remove(job_id)
+            chore_id = fut.chore_id
+            chore = fut.chore_obj
+            self.manager._running_chores.remove(chore_id)
 
             try:
                 rc = fut.result()
@@ -65,58 +65,58 @@ class AdaptiveStrategy(FutureProcessingStrategy):
                 stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
                 append_text(
-                    job.workdir / "stderr",
+                    chore.workdir / "stderr",
                     (
                         f"\n\n===== MATENSEMBLE WRAPPER ERROR ({stamp}) =====\n"
-                        f"job={job_id}\n"
-                        f"workdir={job.workdir}\n"
+                        f"chore={chore_id}\n"
+                        f"workdir={chore.workdir}\n"
                         f"{type(e).__name__}: {e}"
                         f"{tb}\n"
                     ),
                 )
-                self.manager._logger.exception("JOB FAILED: job=%s", job_id)
+                self.manager._logger.exception("CHORE FAILED: chore=%s", chore_id)
                 self.manager._record_failure(
-                    job_id,
+                    chore_id,
                     reason="exception",
                     exception=f"{type(e).__name__}: {e}",
                 )
-                self.manager._fail_dependents(job_id)
+                self.manager._fail_dependents(chore_id)
                 continue
 
             if rc != 0:
                 append_text(
-                    job.workdir / "stderr",
+                    chore.workdir / "stderr",
                     f"\n\n===== MATENSEMBLE: NONZERO EXIT =====\n"
-                    f"job={job_id} rc={rc}\n",
+                    f"chore={chore_id} rc={rc}\n",
                 )
                 self.manager._logger.error(
-                    "JOB NONZERO EXIT: job=%s rc=%s | workdir=%s | stdout=%s | stderr=%s",
-                    job_id,
+                    "CHORE NONZERO EXIT: chore=%s rc=%s | workdir=%s | stdout=%s | stderr=%s",
+                    chore_id,
                     rc,
-                    job.workdir,
-                    job.workdir / "stdout",
-                    job.workdir / "stderr",
+                    chore.workdir,
+                    chore.workdir / "stdout",
+                    chore.workdir / "stderr",
                 )
                 self.manager._record_failure(
-                    job_id,
+                    chore_id,
                     reason=f"nonzero_exit:{rc}",
                 )
-                self.manager._fail_dependents(job_id)
+                self.manager._fail_dependents(chore_id)
                 continue
 
-            self.manager._completed_jobs.append(job_id)
+            self.manager._completed_chores.append(chore_id)
 
-            for dep_id in self.manager._dependents.get(job_id, []):
+            for dep_id in self.manager._dependents.get(chore_id, []):
                 self.manager._remaining_deps[dep_id] -= 1
                 if self.manager._remaining_deps[dep_id] == 0:
                     self.manager._ready.append(dep_id)
                     self.manager._blocked.discard(dep_id)
 
-            # adaptively submit another job
+            # adaptively submit another chore
             self.manager._submit_until_ooresources(buffer_time=buffer_time)
 
             if self.manager._write_restart_freq and (
-                len(self.manager._completed_jobs) % self.manager._write_restart_freq
+                len(self.manager._completed_chores) % self.manager._write_restart_freq
                 == 0
             ):
                 self.manager._make_restart()
@@ -125,7 +125,7 @@ class AdaptiveStrategy(FutureProcessingStrategy):
 class NonAdaptiveStrategy(FutureProcessingStrategy):
     """
     An implementation of the :obj:`FutureProcessingStrategy` which will not adaptively
-    submit new :obj:`Job`'s as incoming jobs are completed.
+    submit new :obj:`Chore`'s as incoming chores are completed.
     """
 
     def __init__(self, manager) -> None:
@@ -137,9 +137,9 @@ class NonAdaptiveStrategy(FutureProcessingStrategy):
         )
 
         for fut in completed:
-            job_id = fut.job_id
-            job = fut.job_obj
-            self.manager._running_jobs.remove(job_id)
+            chore_id = fut.chore_id
+            chore = fut.chore_obj
+            self.manager._running_chores.remove(chore_id)
 
             try:
                 rc = fut.result()
@@ -148,55 +148,55 @@ class NonAdaptiveStrategy(FutureProcessingStrategy):
                 stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
                 append_text(
-                    job.workdir / "stderr",
+                    chore.workdir / "stderr",
                     (
                         f"\n\n===== MATENSEMBLE WRAPPER ERROR ({stamp}) =====\n"
-                        f"job={job_id}\n"
-                        f"workdir={job.workdir}\n"
+                        f"chore={chore_id}\n"
+                        f"workdir={chore.workdir}\n"
                         f"{type(e).__name__}: {e}"
                         f"{tb}\n"
                     ),
                 )
-                self.manager._logger.exception("JOB FAILED: job=%s", job_id)
+                self.manager._logger.exception("CHORE FAILED: chore=%s", chore_id)
                 self.manager._record_failure(
-                    job_id,
+                    chore_id,
                     reason="exception",
                     exception=f"{type(e).__name__}: {e}",
                 )
-                self.manager._fail_dependents(job_id)
+                self.manager._fail_dependents(chore_id)
                 continue
 
             if rc != 0:
                 append_text(
-                    job.workdir / "stderr",
+                    chore.workdir / "stderr",
                     f"\n\n===== MATENSEMBLE: NONZERO EXIT =====\n"
-                    f"job={job_id} rc={rc}\n",
+                    f"chore={chore_id} rc={rc}\n",
                 )
                 self.manager._logger.error(
-                    "JOB NONZERO EXIT: job=%s rc=%s | workdir=%s | stdout=%s | stderr=%s",
-                    job_id,
+                    "CHORE NONZERO EXIT: chore=%s rc=%s | workdir=%s | stdout=%s | stderr=%s",
+                    chore_id,
                     rc,
-                    job.workdir,
-                    job.workdir / "stdout",
-                    job.workdir / "stderr",
+                    chore.workdir,
+                    chore.workdir / "stdout",
+                    chore.workdir / "stderr",
                 )
                 self.manager._record_failure(
-                    job_id,
+                    chore_id,
                     reason=f"nonzero_exit:{rc}",
                 )
-                self.manager._fail_dependents(job_id)
+                self.manager._fail_dependents(chore_id)
                 continue
 
-            self.manager._completed_jobs.append(job_id)
+            self.manager._completed_chores.append(chore_id)
 
-            for dep_id in self.manager._dependents.get(job_id, []):
+            for dep_id in self.manager._dependents.get(chore_id, []):
                 self.manager._remaining_deps[dep_id] -= 1
                 if self.manager._remaining_deps[dep_id] == 0:
                     self.manager._ready.append(dep_id)
                     self.manager._blocked.discard(dep_id)
 
             if self.manager._write_restart_freq and (
-                len(self.manager._completed_jobs) % self.manager._write_restart_freq
+                len(self.manager._completed_chores) % self.manager._write_restart_freq
                 == 0
             ):
                 self.manager._make_restart()
@@ -205,7 +205,7 @@ class NonAdaptiveStrategy(FutureProcessingStrategy):
 def append_text(path: Path, text: str) -> None:
     """
     Append some text to the end of a given file. Used for writing error messages
-    to stderr on a specific job
+    to stderr on a specific chore
 
     Parameters
     ----------

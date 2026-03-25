@@ -7,21 +7,21 @@ import shlex
 
 from pathlib import Path
 
-from matensemble.model import JobFlavor, Resources
+from matensemble.model import ChoreType, Resources
 from matensemble.utils import _json_safe
 
 
-class Job:
+class Chore:
     """
-    A :obj:`Job` is what MatEnsemble is built around. :obj:`Job`'s can have two
-    different flavors. ``PYTHON`` or ``EXECUTABLE``
+    A :obj:`Chore` is what MatEnsemble is built around. :obj:`Job`'s can have two
+    different types. ``PYTHON`` or ``EXECUTABLE``
 
-    Python jobs are delayed function calls that will be submitted to the
-    runtime-worker when the :obj:`Job`'s dependencies are resolved and they are
+    Python chores are delayed function calls that will be submitted to the
+    runtime-worker when the :obj:`Chore`'s dependencies are resolved and they are
     schduled in the queue.
 
-    Executable jobs are simply commands that will usually call an Executable script
-    when the job is scheduled.
+    Executable chores are simply commands that will usually call an Executable script
+    when the chore is scheduled.
 
     """
 
@@ -29,7 +29,7 @@ class Job:
         self,
         id: str,
         command: str | list[str],
-        flavor: JobFlavor,
+        chore_type: ChoreType,
         resources: Resources,
         workdir: Path,
         func_module: str | None = None,
@@ -39,31 +39,31 @@ class Job:
         kwargs: dict | None = None,
     ) -> None:
         """
-        The constructor for a :obj:`Job`
+        The constructor for a :obj:`Chore`
 
         Parameters
         ----------
         id : str
-            The ID for the :obj:`Job`
+            The ID for the :obj:`Chore`
         command : str, list[str]
-            The command that will be run when the :obj:`Job` is submitted
-        flavor : JobFlavor
+            The command that will be run when the :obj:`Chore` is submitted
+        chore_type: ChoreType
             Either PYTHON or EXECUTABLE
         resources : Resources
             An instance of :obj:`Resources` that holds all the information about
-            what resources are needed to run the :obj:`Job`
+            what resources are needed to run the :obj:`Chore`
         workdir : Path
-            The Path to the directory where the output of the :obj:`Job` will be
+            The Path to the directory where the output of the :obj:`Chore` will be
             handled
         func_module : str
-            The module where the function definition is if the flavor of the :obj:`Job`
+            The module where the function definition is if the type of the :obj:`Chore`
             is PYTHON
         func_qualname : str
-            The name of the function if the flavor of the :obj:`Job` is PYTHON
+            The name of the function if the type of the :obj:`Chore` is PYTHON
         deps : tuple[str, ...]
-            A tupele of job-id's which results this :obj:`Job` depends on
+            A tupele of chore-id's which results this :obj:`Chore
         args : tuple
-            The arguments to give the function if flavor is PYTHON
+            The arguments to give the function if type is PYTHON
         kwargs : dict
             The key-word arguments to give the function if flaovr is PYTHON
         """
@@ -73,16 +73,16 @@ class Job:
             shlex.split(command) if isinstance(command, str) else list(command)
         )
 
-        if flavor == JobFlavor.PYTHON:
+        if chore_type == ChoreType.PYTHON:
             if not func_module:
-                raise ValueError("Python jobs require importable func_module")
+                raise ValueError("Python chores require importable func_module")
             if not func_qualname:
-                raise ValueError("Python jobs require func_qualname")
+                raise ValueError("Python chores require func_qualname")
 
-        self.flavor = flavor
+        self.chore_type = chore_type
         self.resources = resources
         self.workdir = workdir.resolve()
-        self.spec_path = self.workdir / "job.pkl"
+        self.spec_path = self.workdir / "chore.pkl"
         self.func_module = func_module
         self.func_qualname = func_qualname
         self.deps = deps
@@ -96,7 +96,7 @@ class Job:
         return {
             "id": self.id,
             "command": self.command,
-            "flavor": _json_safe(self.flavor),
+            "chore_type": _json_safe(self.chore_type),
             "resources": {
                 "num_tasks": self.resources.num_tasks,
                 "cores_per_task": self.resources.cores_per_task,
@@ -115,18 +115,18 @@ class Job:
 
     def _write_debug_json(self) -> None:
         """
-        The :obj:`Job` is pickled at runtime to be used later on, but it is also
+        The :obj:`Chore` is pickled at runtime to be used later on, but it is also
         written as json for debugging.
         """
 
-        debug_file = self.spec_path.parent / "job.json"
+        debug_file = self.spec_path.parent / "chore.json"
         debug_file.parent.mkdir(parents=True, exist_ok=True)
         with debug_file.open("w") as f:
             json.dump(self._to_debug_dict(), f, indent=2)
 
     def __str__(self) -> str:
         """
-        Return the :obj:`Job` as a JSON string.
+        Return the :obj:`Chore` as a JSON string.
         """
 
         return json.dumps(self._to_debug_dict(), indent=2)

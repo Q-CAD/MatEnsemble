@@ -18,16 +18,16 @@ Reference implementations live under ``example_workflows/`` in the `MatEnsemble 
    * - Path
      - What it demonstrates
    * - ``hello_world/exec_workflow.py``
-     - Ten executable jobs calling the same Python helper script with different arguments.
-   * - ``hello_world/job_workflow.py`` / ``run_job_workflow.py``
-     - Split-module pattern for decorated Python jobs.
+     - Ten executable chores calling the same Python helper script with different arguments.
+   * - ``hello_world/chore_workflow.py`` / ``run_chore_workflow.py``
+     - Split-module pattern for decorated Python chores.
    * - ``dependency_example/``
      - Tiny DAG showing chained return values.
 
 Minimal executable (“exec”) workflow
 ====================================
 
-``Pipeline.exec`` records a :class:`~matensemble.job.Job` with flavor :attr:`~matensemble.model.JobFlavor.EXECUTABLE`.
+``Pipeline.exec`` records a :class:`~matensemble.chore.Job` with chore type :attr:`~matensemble.model.ChoreType.EXECUTABLE`.
 The command is either a string (split with :mod:`shlex`) or an argv list.
 
 .. code-block:: python
@@ -52,11 +52,11 @@ Parameters you will commonly set on :meth:`~matensemble.pipeline.Pipeline.exec`:
 * ``mpi=True`` — toggles ``mpi=pmi2`` on the Flux jobspec; your program must initialize MPI accordingly.
 * ``env`` / ``inherit_env`` — see :doc:`reference`.
 
-**Dependencies:** Executable jobs created through :meth:`~matensemble.pipeline.Pipeline.exec` **do not**
+**Dependencies:** Executable chores created through :meth:`~matensemble.pipeline.Pipeline.exec` **do not**
 inspect :class:`~matensemble.model.OutputReference` objects; they are always treated as roots unless you wrap
-external commands inside a Python job.
+external commands inside a Python chore.
 
-Batch of executable jobs (from the hello_world example)
+Batch of executable chores (from the hello_world example)
 ==========================================================
 
 .. code-block:: python
@@ -76,13 +76,13 @@ Batch of executable jobs (from the hello_world example)
 
 Here ``num_tasks=50`` launches 50 Flux tasks; combine with ``mpi=True`` when your script expects PMI.
 
-Python jobs and ``OutputReference`` dependencies
+Python chores and ``OutputReference`` dependencies
 =================================================
 
-Decorated functions are **not** executed immediately. Each call appends a Python :class:`~matensemble.job.Job`
+Decorated functions are **not** executed immediately. Each call appends a Python :class:`~matensemble.chore.Job`
 and returns a :class:`~matensemble.model.OutputReference` placeholder.
 
-Defining jobs (importable module — **not** ``__main__``)
+Defining chores (importable module — **not** ``__main__``)
 --------------------------------------------------------
 
 .. code-block:: python
@@ -93,7 +93,7 @@ Defining jobs (importable module — **not** ``__main__``)
 
    pipe = Pipeline()
 
-   @pipe.job()
+   @pipe.chore()
    def run_mpi_hello(task_id: int):
        size = MPI.COMM_WORLD.Get_size()
        rank = MPI.COMM_WORLD.Get_rank()
@@ -125,14 +125,14 @@ Driver script (this **may** be ``__main__``)
 Why this split matters
 ----------------------
 
-Python jobs store ``func_module`` and ``func_qualname``. If you define jobs in the same file you later run
+Python chores store ``func_module`` and ``func_qualname``. If you define chores in the same file you later run
 with ``python that_file.py``, Python sets ``__name__ == "__main__"`` and ``func_module`` becomes
 ``"__main__"``. The remote worker then imports ``__main__`` in a different process context, which **fails**
 or picks up the wrong definitions.
 
 .. warning::
 
-   Define decorated jobs in a **regular module** (for example ``workflow.py`` or ``pkg/tasks.py``) and import
+   Define decorated chores in a **regular module** (for example ``workflow.py`` or ``pkg/tasks.py``) and import
    them from a tiny runner script. This requirement may be relaxed in a future release, but it is mandatory
    today.
 
@@ -142,7 +142,7 @@ Recommended file layout
 .. code-block:: text
 
    project/
-   ├── my_workflow.py    # Pipeline + @pipe.job definitions
+   ├── my_workflow.py    # Pipeline + @pipe.chore definitions
    └── run.py            # imports my_workflow, builds graph, calls pipe.submit()
 
 You can add ``__init__.py`` if you place code inside a package; ensure the working directory / ``PYTHONPATH``
@@ -158,31 +158,31 @@ Chained dependencies (any acyclic DAG)
 
    pipe = Pipeline()
 
-   @pipe.job()
-   def job1():
+   @pipe.chore()
+   def chore1():
        return 1
 
-   @pipe.job()
-   def job2(x):
+   @pipe.chore()
+   def chore2(x):
        return x + 1
 
-   @pipe.job()
-   def job3(x):
+   @pipe.chore()
+   def chore3(x):
        return x * 2
 
 .. code-block:: python
 
    # run_workflow.py
-   from functions import pipe, job1, job2, job3
+   from functions import pipe, chore1, chore2, chore3
 
-   a = job1()
-   b = job2(a)
-   c = job3(b)
+   a = chore1()
+   b = chore2(a)
+   c = chore3(b)
 
    pipe.submit()
 
-:class:`~matensemble.manager.FluxManager` only schedules ``job2`` after ``job1`` finishes, and ``job3`` after
-``job2`` finishes. Internally, the worker unpickles ``../job1/result.pkl`` before invoking ``job2``.
+:class:`~matensemble.manager.FluxManager` only schedules ``chore2`` after ``chore1`` finishes, and ``chore3`` after
+``chore2`` finishes. Internally, the worker unpickles ``../chore1/result.pkl`` before invoking ``chore2``.
 
 .. note::
 
@@ -196,11 +196,11 @@ Dependency scanning walks nested containers and non-class dataclasses. You may p
 mixing plain data and :class:`~matensemble.model.OutputReference` instances; the worker recursively replaces
 references with concrete Python objects.
 
-Third-party imports inside jobs
+Third-party imports inside chores
 ===============================
 
 Because workers import the defining module in full, **top-level imports** run automatically. You do not need
-to bury ``import numpy`` inside the job body unless you want lazy loading for side-effect control.
+to bury ``import numpy`` inside the chore body unless you want lazy loading for side-effect control.
 
 If you need extra wheels:
 
@@ -213,7 +213,7 @@ Operational tips
 
 * Pass ``dashboard=True`` and tunnel port ``8000`` if you want the browser UI (:doc:`architecture`).
 * Inspect ``matensemble_workflow.log`` for human-readable progress; parse ``status.json`` for machine consumption.
-* On failure, always read the job’s ``stderr``—MatEnsemble annotates wrapper errors there.
+* On failure, always read the chore’s ``stderr``—MatEnsemble annotates wrapper errors there.
 
 Further reading
 ===============

@@ -47,13 +47,13 @@ class FakeJobspecV1:
 
 
 class FakeFuture:
-    def __init__(self, jobspec=None, result_value=0, exc=None):
-        self.jobspec = jobspec
+    def __init__(self, chorespec=None, result_value=0, exc=None):
+        self.chorespec = chorespec
         self._result_value = result_value
         self._exc = exc
-        self.job_id = None
-        self.job_obj = None
-        self.job_spec = None
+        self.chore_id = None
+        self.chore_obj = None
+        self.chore_spec = None
         self.workdir = None
 
     def result(self):
@@ -75,9 +75,9 @@ class FakeFluxExecutor:
     def __exit__(self, exc_type, exc, tb):
         return False
 
-    def submit(self, jobspec):
-        fut = FakeFuture(jobspec=jobspec, result_value=0)
-        self.submissions.append((jobspec, fut))
+    def submit(self, chorespec):
+        fut = FakeFuture(chorespec=chorespec, result_value=0)
+        self.submissions.append((chorespec, fut))
         return fut
 
 

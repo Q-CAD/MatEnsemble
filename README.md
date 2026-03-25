@@ -9,7 +9,7 @@
 
 # MatEnsemble
 
-MatEnsemble is a Python library for **high-throughput workflows** on HPC systems. You define a directed acyclic graph (DAG) of tasks—**Python callables** or **executable commands**—and MatEnsemble submits work through **[Flux](https://flux-framework.readthedocs.io/)**, tracks completions, **adapts** scheduling to free CPUs and GPUs, and writes structured logs and per-job output directories.
+MatEnsemble is a Python library for **high-throughput workflows** on HPC systems. You define a directed acyclic graph (DAG) of tasks—**Python callables** or **executable commands**—and MatEnsemble submits work through **[Flux](https://flux-framework.readthedocs.io/)**, tracks completions, **adapts** scheduling to free CPUs and GPUs, and writes structured logs and per-chore output directories.
 
 An optional in-tree **dynopro** stack supports streaming dynamics and on-the-fly analysis for advanced materials simulation workflows.
 
@@ -17,9 +17,9 @@ An optional in-tree **dynopro** stack supports streaming dynamics and on-the-fly
 
 - **DAG-based workflows** with dependencies via deferred return values (`OutputReference`)
 - **Adaptive scheduling** that back-fills the allocation as tasks finish (with a non-adaptive mode when you need it)
-- **Two job flavors**: Python jobs (remotely unpickled and executed by `matensemble.runtime_worker`) and argv-style **executable** jobs
+- **Two chore types**: Python chores (remotely unpickled and executed by `matensemble.runtime_worker`) and argv-style **executable** chores
 - **Resource requests**: tasks, cores per task, GPUs per task, optional MPI (`pmi2`) via Flux
-- **Observability**: `status.json`, `matensemble_workflow.log`, per-job `stdout` / `stderr`, pickle and JSON result artifacts; optional **web dashboard** (FastAPI on port 8000)
+- **Observability**: `status.json`, `matensemble_workflow.log`, per-chore `stdout` / `stderr`, pickle and JSON result artifacts; optional **web dashboard** (FastAPI on port 8000)
 
 <p align="center">
   <img src="images/Cap_1_adaptive_task_management.png" alt="Adaptive task management" width="620" />
@@ -96,7 +96,7 @@ pipe.exec(command=["/bin/echo", "hello from MatEnsemble"])
 pipe.submit()
 ```
 
-For Python jobs, dependency graphs, and the required split between an importable **job module** and a **runner script**, see the [Tutorials](https://matensemble.readthedocs.io/en/latest/tutorials.html).
+For Python chores, dependency graphs, and the required split between an importable **chore module** and a **runner script**, see the [Tutorials](https://matensemble.readthedocs.io/en/latest/tutorials.html).
 
 ## Examples in the repository
 
@@ -105,7 +105,7 @@ Illustrative workflows live under [`example_workflows/`](https://github.com/Fred
 ## Requirements and runtime
 
 - A **Flux allocation** (or equivalent) on the machine where you call `Pipeline.submit()`
-- For MPI Python or executable jobs: a coherent MPI/Flux setup (e.g. PMI2) as expected by your site
+- For MPI Python or executable chores: a coherent MPI/Flux setup (e.g. PMI2) as expected by your site
 - Optional: SSH port forwarding if you enable the dashboard on a compute node (see the architecture guide in the docs)
 
 ## Related links

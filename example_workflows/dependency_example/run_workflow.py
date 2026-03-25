@@ -1,8 +1,8 @@
 # ./run_workflow.py
-from functions import pipe, job1, job2, job3
+from functions import pipe, chore1, chore2, chore3
 
-a = job1()
-b = job2(a)
-c = job3(b)
+a = chore1()
+b = chore2(a)
+c = chore3(b)
 
 pipe.submit()

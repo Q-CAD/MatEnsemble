@@ -7,7 +7,7 @@ from pathlib import Path
 from collections import deque
 
 from matensemble.logger import _setup_logger, _setup_status_writer
-from matensemble.job import Job
+from matensemble.chore import Chore
 from matensemble.strategy import (
     AdaptiveStrategy,
     NonAdaptiveStrategy,
@@ -19,37 +19,37 @@ from matensemble.utils import setup_dashboard
 
 class FluxManager:
     """
-    The :obj:`FluxManager` takes a list of :obj:`Job`'s and manages their submission
+    The :obj:`FluxManager` takes a list of :obj:`Chore`'s and manages their submission
     dependencies and output organization.
 
     Attributes
     ----------
     _base_dir : Path
         The base directory where the output will be placed.
-    _jobs_by_id : dict
-        A dictionary of job_id's to :obj:`Job`
+    _chores_by_id : dict
+        A dictionary of chore_id's to :obj:`Chore`
     _dependents : dict
-        A dictionary of job_id's to a list of job_id's that they depend on
+        A dictionary of chore_id's to a list of chore_id's that they depend on
     _remaining_deps : dict
-        A dictionary of job_id's to integers (the number of dependencies remaining)
+        A dictionary of chore_id's to integers (the number of dependencies remaining)
     _ready : collections.deque
-        A double ended queue of :obj:`Job`'s that are ready for submission
+        A double ended queue of :obj:`Chore`'s that are ready for submission
     _blocked : set
-        A set of :obj:`Job`'s that are waiting on their dependencies to resolve
-    _running_jobs : set
-        A set of :obj:`Job`'s that are currently running
-    _completed_jobs : list
-        A list of :obj:`Job`'s that have completed succesfully
-    _failed_jobs : list
-        A list of :obj:`Job`'s that failed
+        A set of :obj:`Chore`'s that are waiting on their dependencies to resolve
+    _running_chores : set
+        A set of :obj:`Chore`'s that are currently running
+    _completed_chores : list
+        A list of :obj:`Chore`'s that have completed succesfully
+    _failed_chores : list
+        A list of :obj:`Chore`'s that failed
     _futures : set
-        A set of future objects representing the completion of running jobs
+        A set of future objects representing the completion of running chores
     _flux_handle : flux.Flux
         A flux handle
     _fluxlet : matensemble.Fluxlet
-        A :obj:`Fluxlet` that is where all the jobs are submitted
+        A :obj:`Fluxlet` that is where all the chores are submitted
     _write_restart_freq : int
-        The number of jobs to be completed before pickling a restart file
+        The number of chores to be completed before pickling a restart file
     _nnodes : int
         The number of nodes available on the allocaiton minus one for flux broker
     _cores_per_node : int
@@ -68,7 +68,7 @@ class FluxManager:
 
     def __init__(
         self,
-        job_list: list[Job],
+        chore_list: list[Chore],
         base_dir: Path,
         write_restart_freq: int | None = 100,
         set_cpu_affinity: bool = True,
@@ -78,12 +78,12 @@ class FluxManager:
         """
         Parameters
         ----------
-        job_list : list
-            A list of :obj:`Job`'s that need to be submitted
+        chore_list : list
+            A list of :obj:`Chore`'s that need to be submitted
         base_dir : Path
             The base directory of the workflow
         write_restart_freq : int
-            The number of jobs to be completed before pickling a restart file
+            The number of chores to be completed before pickling a restart file
         set_cpu_affinity : bool, optional
             Whther affinity to the CPU should be set, defaults to True
         set_gpu_affinity : bool, optional
@@ -100,32 +100,32 @@ class FluxManager:
         self._base_dir = Path(base_dir)
         self._base_dir.mkdir(parents=True, exist_ok=True)
 
-        # dictionary to referenece job objects by their job-id
-        self._jobs_by_id = {job.id: job for job in job_list}
-        self._dependents = {job.id: [] for job in job_list}
-        self._remaining_deps = {job.id: len(job.deps) for job in job_list}
+        # dictionary to referenece chore objects by their chore-id
+        self._chores_by_id = {chore.id: chore for chore in chore_list}
+        self._dependents = {chore.id: [] for chore in chore_list}
+        self._remaining_deps = {chore.id: len(chore.deps) for chore in chore_list}
 
-        # ensuring that jobs have their correct dependencies
-        for job in job_list:
-            for dep in job.deps:
-                self._dependents[dep].append(job.id)
+        # ensuring that chores have their correct dependencies
+        for chore in chore_list:
+            for dep in chore.deps:
+                self._dependents[dep].append(chore.id)
 
-        # queue for jobs that are ready for submission
+        # queue for chores that are ready for submission
         self._ready = deque(
             [
-                job_id
-                for job_id, num_deps in self._remaining_deps.items()
+                chore_id
+                for chore_id, num_deps in self._remaining_deps.items()
                 if num_deps == 0
             ]
         )
 
-        # queue for jobs that are waiting on their dependencies to finish
-        self._blocked = set(self._jobs_by_id.keys()) - set(self._ready)
+        # queue for chores that are waiting on their dependencies to finish
+        self._blocked = set(self._chores_by_id.keys()) - set(self._ready)
 
-        # main queues for running jobs and completed jobs
-        self._running_jobs = set()
-        self._completed_jobs = []
-        self._failed_jobs = []
+        # main queues for running chores and completed chores
+        self._running_chores = set()
+        self._completed_chores = []
+        self._failed_chores = []
         self._futures = set()
 
         # aquiring a flux handle
@@ -176,19 +176,19 @@ class FluxManager:
         pending = len(self._ready) + len(self._blocked)
         self._status_writer.update(
             pending=pending,
-            running=len(self._running_jobs),
-            completed=len(self._completed_jobs),
-            failed=len(self._failed_jobs),
+            running=len(self._running_chores),
+            completed=len(self._completed_chores),
+            failed=len(self._failed_chores),
             free_cores=self._free_cores,
             free_gpus=self._free_gpus,
         )
 
         self._logger.info(
-            "JOBS: Pending=%d Running=%d Completed=%d Failed=%d | RESOURCES: Free_cores=%d Free_gpus=%d",
+            "CHORES: Pending=%d Running=%d Completed=%d Failed=%d | RESOURCES: Free_cores=%d Free_gpus=%d",
             pending,
-            len(self._running_jobs),
-            len(self._completed_jobs),
-            len(self._failed_jobs),
+            len(self._running_chores),
+            len(self._completed_chores),
+            len(self._failed_chores),
             self._free_cores,
             self._free_gpus,
         )
@@ -214,48 +214,48 @@ class FluxManager:
         gpus_per_node = total_gpus // nnodes
         return nnodes, cores_per_node, gpus_per_node
 
-    def _job_fits_allocation(self, job: Job) -> bool:
+    def _chore_fits_allocation(self, chore: Chore) -> bool:
         """
-        Checks whether the given job is too big to be submitted
+        Checks whether the given chore is too big to be submitted
 
         Parameters
         ----------
-        job : Job
-            The :obj:`Job` to check if it will fit in the allocation
+        chore : Chore
+            The :obj:`Chore` to check if it will fit in the allocation
         """
 
-        needed_cores = job.resources.num_tasks * job.resources.cores_per_task
-        needed_gpus = job.resources.num_tasks * job.resources.gpus_per_task
+        needed_cores = chore.resources.num_tasks * chore.resources.cores_per_task
+        needed_gpus = chore.resources.num_tasks * chore.resources.gpus_per_task
 
         total_cores = self._nnodes * self._cores_per_node
         total_gpus = self._nnodes * self._gpus_per_node
 
         return needed_cores <= total_cores and needed_gpus <= total_gpus
 
-    def _validate_jobs(self) -> None:
+    def _validate_chores(self) -> None:
         """
-        Calls :method:`_job_fits_allocation()` on each job given to the manager to make sure
-        that they all fit. If a given job does not fit it will be discarded.
+        Calls :method:`_chore_fits_allocation()` on each chore given to the manager to make sure
+        that they all fit. If a given chore does not fit it will be discarded.
         """
 
-        for job_id, job in self._jobs_by_id.items():
-            if not self._job_fits_allocation(job):
+        for chore_id, chore in self._chores_by_id.items():
+            if not self._chore_fits_allocation(chore):
                 self._record_failure(
-                    job_id,
-                    reason="job_exceeds_allocation",
+                    chore_id,
+                    reason="chore_exceeds_allocation",
                 )
 
                 try:
-                    self._ready.remove(job_id)
+                    self._ready.remove(chore_id)
                 except ValueError:
                     pass
-                self._blocked.discard(job_id)
+                self._blocked.discard(chore_id)
 
                 self._logger.error(
-                    "JOB INVALID: job=%s requires more resources than the allocation can provide",
-                    job_id,
+                    "CHORE INVALID: chore=%s requires more resources than the allocation can provide",
+                    chore_id,
                 )
-                self._fail_dependents(job_id)
+                self._fail_dependents(chore_id)
 
     def _check_resources(self) -> None:
         """
@@ -271,54 +271,54 @@ class FluxManager:
         self._free_cores = resources.free.ncores
         self._free_gpus = resources.free.ngpus
 
-    def _can_submit_now(self, job: Job) -> bool:
+    def _can_submit_now(self, chore: Chore) -> bool:
         """
-        Checks to see if there are enough resources to submit the given :obj:`Job`
+        Checks to see if there are enough resources to submit the given :obj:`Chore`
         """
 
-        needed_cores = job.resources.num_tasks * job.resources.cores_per_task
-        needed_gpus = job.resources.num_tasks * job.resources.gpus_per_task
+        needed_cores = chore.resources.num_tasks * chore.resources.cores_per_task
+        needed_gpus = chore.resources.num_tasks * chore.resources.gpus_per_task
         return self._free_cores >= needed_cores and self._free_gpus >= needed_gpus
 
-    def _has_failed(self, job_id: str) -> bool:
+    def _has_failed(self, chore_id: str) -> bool:
         """
-        Checks if a given job_id has failed
+        Checks if a given chore_id has failed
         """
 
-        return any(item["job_id"] == job_id for item in self._failed_jobs)
+        return any(item["chore_id"] == chore_id for item in self._failed_chores)
 
     def _record_failure(
         self,
-        job_id: str,
+        chore_id: str,
         reason: str,
         *,
         upstream: str | None = None,
         exception: str | None = None,
     ) -> None:
         """
-        Logs the failure of a job with its reason
+        Logs the failure of a chore with its reason
         """
 
-        if self._has_failed(job_id):
+        if self._has_failed(chore_id):
             return
 
-        self._failed_jobs.append(
+        self._failed_chores.append(
             {
-                "job_id": job_id,
+                "chore_id": chore_id,
                 "reason": reason,
                 "upstream": upstream,
                 "exception": exception,
             }
         )
 
-    def _fail_dependents(self, failed_job_id: str) -> None:
+    def _fail_dependents(self, failed_chore_id: str) -> None:
         """
-        Cascades the failure of one job to all of it dependents to avoid
+        Cascades the failure of one chore to all of it dependents to avoid
         deadlocks.
         """
 
-        for dep_id in self._dependents.get(failed_job_id, []):
-            if dep_id in self._completed_jobs or dep_id in self._running_jobs:
+        for dep_id in self._dependents.get(failed_chore_id, []):
+            if dep_id in self._completed_chores or dep_id in self._running_chores:
                 continue
 
             try:
@@ -331,80 +331,80 @@ class FluxManager:
                 self._record_failure(
                     dep_id,
                     reason="dependency_failed",
-                    upstream=failed_job_id,
+                    upstream=failed_chore_id,
                 )
                 self._logger.error(
-                    "JOB SKIPPED: job=%s because dependency %s failed",
+                    "CHORE SKIPPED: chore=%s because dependency %s failed",
                     dep_id,
-                    failed_job_id,
+                    failed_chore_id,
                 )
 
             self._fail_dependents(dep_id)
 
-    def _submit_one(self, job_id: str, buffer_time: float) -> None:
+    def _submit_one(self, chore_id: str, buffer_time: float) -> None:
         """
-        Submits a :obj:`Job` and does book-keeping all the queues and resources
+        Submits a :obj:`Chore` and does book-keeping all the queues and resources
         count
 
         Parameters
         ----------
         buffer_time : float
-            The amount of time in seconds buffer the submission of :obj:`Job`'s
+            The amount of time in seconds buffer the submission of :obj:`Chore`'s
         """
 
-        job = self._jobs_by_id[job_id]
+        chore = self._chores_by_id[chore_id]
 
         try:
             fut = self._fluxlet.submit(
                 self._executor,
-                job,
+                chore,
                 set_cpu_affinity=self._set_cpu_affinity,
                 set_gpu_affinity=self._set_gpu_affinity,
                 nnodes=None,
             )
         except Exception as e:
-            self._logger.exception("JOB SUBMIT FAILED: job=%s", job_id)
+            self._logger.exception("CHORE SUBMIT FAILED: chore=%s", chore_id)
             self._record_failure(
-                job_id,
+                chore_id,
                 reason="submit_exception",
                 exception=repr(e),
             )
-            self._fail_dependents(job_id)
-            self._blocked.discard(job_id)
+            self._fail_dependents(chore_id)
+            self._blocked.discard(chore_id)
             return
 
-        self._blocked.discard(job_id)
-        fut.job_id = job_id
-        fut.job_obj = job
-        self._running_jobs.add(job_id)
+        self._blocked.discard(chore_id)
+        fut.chore_id = chore_id
+        fut.chore_obj = chore
+        self._running_chores.add(chore_id)
         self._futures.add(fut)
 
-        self._free_cores -= job.resources.num_tasks * job.resources.cores_per_task
-        self._free_gpus -= job.resources.num_tasks * job.resources.gpus_per_task
+        self._free_cores -= chore.resources.num_tasks * chore.resources.cores_per_task
+        self._free_gpus -= chore.resources.num_tasks * chore.resources.gpus_per_task
         time.sleep(buffer_time)
 
     def _submit_until_ooresources(self, buffer_time: float) -> bool:
         """
-        Submit as many jobs as possible until out-of-resources
+        Submit as many chores as possible until out-of-resources
 
         Parameters
         ----------
         buffer_time : float
-            The amount of time in seconds buffer the submission of :obj:`Job`'s
+            The amount of time in seconds buffer the submission of :obj:`Chore`'s
         """
 
         deferred = deque()
         submitted_any = False
 
         while self._ready:
-            job_id = self._ready.popleft()
-            job = self._jobs_by_id[job_id]
+            chore_id = self._ready.popleft()
+            chore = self._chores_by_id[chore_id]
 
-            if self._can_submit_now(job):
-                self._submit_one(job_id, buffer_time)
+            if self._can_submit_now(chore):
+                self._submit_one(chore_id, buffer_time)
                 submitted_any = True
             else:
-                deferred.append(job_id)
+                deferred.append(chore_id)
 
         self._ready = deferred
         return submitted_any
@@ -419,14 +419,14 @@ class FluxManager:
     ) -> None:
         """
         Runs the 'Super Loop' until there are no more ready, running or blocked
-        :obj:`Job`'s
+        :obj:`Chore`'s
 
         Parameters
         ----------
         buffer_time : float
-            The amount of time in seconds buffer the submission of :obj:`Job`'s
+            The amount of time in seconds buffer the submission of :obj:`Chore`'s
         adaptive : bool
-            Whether or not :obj:`Job`'s should be submitted adaptively, defaults
+            Whether or not :obj:`Chore`'s should be submitted adaptively, defaults
             to True
         dynopro : bool
             Currently does nothing because I couldn't figure out what it did
@@ -438,8 +438,8 @@ class FluxManager:
 
         #. Refreshes available resources
         #. Prints a progress snapshot
-        #. Submits new jobs until resources are exhausted
-        #. processes completed jobs using a FutureProcessingStrategy:
+        #. Submits new chores until resources are exhausted
+        #. processes completed chores using a FutureProcessingStrategy:
             * User implementation if a processing_strategy is used
             * AdaptiveStrategy if adaptive=True
             * NonAdaptiveStrategy otherwise
@@ -465,12 +465,12 @@ class FluxManager:
             self._logger.info("=== ENTERING WORKFLOW ENVIRONMENT ===")
             start = time.perf_counter()
 
-            self._validate_jobs()
+            self._validate_chores()
 
             ### Super Loop ###
             done = (
                 len(self._ready) == 0
-                and len(self._running_jobs) == 0
+                and len(self._running_chores) == 0
                 and len(self._blocked) == 0
             )
             while not done:
@@ -481,7 +481,7 @@ class FluxManager:
 
                 done = (
                     len(self._ready) == 0
-                    and len(self._running_jobs) == 0
+                    and len(self._running_chores) == 0
                     and len(self._blocked) == 0
                 )
             ### Super Loop ###

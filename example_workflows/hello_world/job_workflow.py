@@ -4,7 +4,7 @@ from matensemble.pipeline import Pipeline
 pipe = Pipeline()
 
 
-@pipe.job()
+@pipe.chore()
 def run_mpi_hello(task_id: int):
     size = MPI.COMM_WORLD.Get_size()
     rank = MPI.COMM_WORLD.Get_rank()

@@ -1,4 +1,4 @@
-from job_workflow import pipe, run_mpi_hello
+from chore_workflow import pipe, run_mpi_hello
 
 
 def main():

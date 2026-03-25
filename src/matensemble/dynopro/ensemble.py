@@ -5,7 +5,7 @@ from pathlib import Path
 from networkx import write_network_text
 
 from matensemble.manager import FluxManager
-from matensemble.job import Job, JobFlavor
+from matensemble.chore import Chore, ChoreType
 from matensemble.model import Resources
 # from matensemble.dynopro.driver import online_dynamics
 
@@ -54,13 +54,13 @@ class EnsembleDynamicsRunner:
         self.sim_command = "python -m matensemble.dynopro.driver"
         self.dashboard = dashboard
 
-    def build_dynopro_jobs(
+    def build_dynopro_chores(
         self,
         root: Path,
         basedir: Path,
         outdir: Path,
-    ) -> list[Job]:
-        jobs = []
+    ) -> list[Chore]:
+        chores = []
 
         if length := len(self.sim_list) != len(self.sim_args_list):
             raise Exception(
@@ -69,25 +69,25 @@ class EnsembleDynamicsRunner:
         else:
             for i in range(length):
                 popped = sim_list.pop(0)
-                job_id = f"job-dynopro-{popped}-{i:04d}"
+                chore_id = f"chore-dynopro-{popped}-{i:04d}"
                 resources = Resources(
                     num_tasks=self.tasks_per_job,
                     cores_per_task=self.cores_per_task,
                     gpus_per_task=self.gpus_per_task,
                 )
-                workdir = outdir / job_id
+                workdir = outdir / chore_id
 
-                jobs.append(
-                    Job(
-                        id=job_id,
+                chores.append(
+                    Chore(
+                        id=chore_id,
                         command=self.sim_command,
-                        flavor=JobFlavor.EXECUTABLE,
+                        chore_type=ChoreType.EXECUTABLE,
                         resources=resources,
                         workdir=workdir,
                     )
                 )
 
-        return jobs
+        return chores
 
     def run(self):
         """
@@ -100,11 +100,11 @@ class EnsembleDynamicsRunner:
         basedir = root / f"matensemble_workflow-{datetime.datetime.now():%Y%m%d_%H%M%S}"
         outdir = basedir / "out"
 
-        jobs = self.build_dynopro_jobs(root, basedir, outdir)
+        chores = self.build_dynopro_chores(root, basedir, outdir)
 
         # Initialize FluxManager
         fm = FluxManager(
-            job_list=jobs,
+            chore_list=chores,
             base_dir=basedir,
             write_restart_freq=self.write_restart_freq,
         )

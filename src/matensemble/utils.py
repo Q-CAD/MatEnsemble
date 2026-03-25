@@ -23,7 +23,7 @@ def _json_safe(value):
     if isinstance(value, Enum):
         return value.name
     if isinstance(value, OutputReference):
-        return {"__type__": "OutputReference", "job_id": value.job_id}
+        return {"__type__": "OutputReference", "chore_id": value.chore_id}
     if isinstance(value, tuple):
         return [_json_safe(v) for v in value]
     if isinstance(value, list):
@@ -40,7 +40,7 @@ def _json_safe(value):
 
 
 def _collect_dep_ids(args, kwargs) -> tuple[str, ...]:
-    return tuple(dict.fromkeys(ref.job_id for ref in _find_refs(args, kwargs)))
+    return tuple(dict.fromkeys(ref.chore_id for ref in _find_refs(args, kwargs)))
 
 
 def _find_refs(args, kwargs):
@@ -91,10 +91,10 @@ def _resolve_output_references(value, dep_results):
 
     if isinstance(value, OutputReference):
         try:
-            return dep_results[value.job_id]
+            return dep_results[value.chore_id]
         except KeyError as e:
             raise KeyError(
-                f"Missing dependency result for job_id={value.job_id!r}"
+                f"Missing dependency result for chore_id={value.chore_id!r}"
             ) from e
 
     if isinstance(value, (str, bytes, bytearray)):
@@ -154,7 +154,7 @@ def create_app(status_file: str) -> FastAPI:
     -------
     .. code-block:: bash
 
-        # After launching the job with dashboard=True note the node and run this command
+        # After launching the chore with dashboard=True note the node and run this command
         ssh -L 8000:frontier00206:8000 kaleb@frontier.olcf.ornl.gov
 
 

@@ -5,8 +5,8 @@ from pathlib import Path
 import networkx as nx
 import pytest
 
-from matensemble.job import Job
-from matensemble.model import JobFlavor, OutputReference, Resources
+from matensemble.chore import Chore
+from matensemble.model import ChoreType, OutputReference, Resources
 from matensemble.pipeline import Pipeline
 
 
@@ -15,10 +15,15 @@ class DummyManager:
     run_args = None
 
     def __init__(
-        self, job_list, base_dir, write_restart_freq, set_cpu_affinity, set_gpu_affinity
+        self,
+        chore_list,
+        base_dir,
+        write_restart_freq,
+        set_cpu_affinity,
+        set_gpu_affinity,
     ):
         DummyManager.created = {
-            "job_list": job_list,
+            "chore_list": chore_list,
             "base_dir": base_dir,
             "write_restart_freq": write_restart_freq,
             "set_cpu_affinity": set_cpu_affinity,
@@ -38,9 +43,9 @@ def top_level_add(x, y=0):
     return x + y
 
 
-def test_job_decorator_builds_python_job_and_output_reference(tmp_path):
+def test_chore_decorator_builds_python_chore_and_output_reference(tmp_path):
     pipe = Pipeline(basedir=str(tmp_path))
-    wrapped = pipe.job(
+    wrapped = pipe.chore(
         name="add",
         num_tasks=2,
         cores_per_task=3,
@@ -50,36 +55,36 @@ def test_job_decorator_builds_python_job_and_output_reference(tmp_path):
     )(top_level_add)
 
     ref = wrapped(4, y=5)
-    assert ref == OutputReference("job-add-0001")
-    assert len(pipe._job_list) == 1
+    assert ref == OutputReference("chore-add-0001")
+    assert len(pipe._chore_list) == 1
 
-    job = pipe._job_list[0]
-    assert job.id == "job-add-0001"
-    assert job.flavor == JobFlavor.PYTHON
-    assert job.func_module == __name__
-    assert job.func_qualname == "top_level_add"
-    assert job.args == (4,)
-    assert job.kwargs == {"y": 5}
-    assert job.resources.num_tasks == 2
-    assert job.resources.cores_per_task == 3
-    assert job.resources.gpus_per_task == 1
-    assert job.resources.mpi is True
-    assert job.resources.env["EXTRA"] == "1"
-    assert "PYTHONPATH" in job.resources.env
-    assert job.command[1:3] == ["-m", "matensemble.runtime_worker"]
+    chore = pipe._chore_list[0]
+    assert chore.id == "chore-add-0001"
+    assert chore.chore_type == ChoreType.PYTHON
+    assert chore.func_module == __name__
+    assert chore.func_qualname == "top_level_add"
+    assert chore.args == (4,)
+    assert chore.kwargs == {"y": 5}
+    assert chore.resources.num_tasks == 2
+    assert chore.resources.cores_per_task == 3
+    assert chore.resources.gpus_per_task == 1
+    assert chore.resources.mpi is True
+    assert chore.resources.env["EXTRA"] == "1"
+    assert "PYTHONPATH" in chore.resources.env
+    assert chore.command[1:3] == ["-m", "matensemble.runtime_worker"]
 
 
-def test_job_decorator_collects_dependencies(tmp_path):
+def test_chore_decorator_collects_dependencies(tmp_path):
     pipe = Pipeline(basedir=str(tmp_path))
-    producer = pipe.job()(top_level_add)
-    consumer = pipe.job(name="consumer")(top_level_add)
+    producer = pipe.chore()(top_level_add)
+    consumer = pipe.chore(name="consumer")(top_level_add)
 
     a = producer(1, y=2)
     b = consumer(a, y=3)
 
-    assert a.job_id == "job-top_level_add-0001"
-    assert b.job_id == "job-consumer-0002"
-    assert pipe._job_list[1].deps == ("job-top_level_add-0001",)
+    assert a.chore_id == "chore-top_level_add-0001"
+    assert b.chore_id == "chore-consumer-0002"
+    assert pipe._chore_list[1].deps == ("chore-top_level_add-0001",)
 
 
 def test_nested_local_function_is_rejected(tmp_path):
@@ -91,53 +96,53 @@ def test_nested_local_function_is_rejected(tmp_path):
 
         return inner
 
-    wrapped = pipe.job()(outer())
+    wrapped = pipe.chore()(outer())
     with pytest.raises(ValueError, match="top-level callables"):
         wrapped(1)
 
 
-def test_exec_builds_executable_job(tmp_path):
+def test_exec_builds_executable_chore(tmp_path):
     pipe = Pipeline(basedir=str(tmp_path))
-    job = pipe.exec("echo hello", name="hello", num_tasks=2, cores_per_task=4)
+    chore = pipe.exec("echo hello", name="hello", num_tasks=2, cores_per_task=4)
 
-    assert job.id == "job-hello-0001"
-    assert job.flavor == JobFlavor.EXECUTABLE
-    assert job.command == ["echo", "hello"]
-    assert job.resources.num_tasks == 2
-    assert job.resources.cores_per_task == 4
+    assert chore.id == "chore-hello-0001"
+    assert chore.chore_type == ChoreType.EXECUTABLE
+    assert chore.command == ["echo", "hello"]
+    assert chore.resources.num_tasks == 2
+    assert chore.resources.cores_per_task == 4
 
 
 def test_create_graph_and_sort_graph(tmp_path):
     pipe = Pipeline(basedir=str(tmp_path))
-    a_job = Job(
-        "job-a", ["echo", "a"], JobFlavor.EXECUTABLE, Resources(), tmp_path / "a"
+    a_chore = Chore(
+        "chore-a", ["echo", "a"], ChoreType.EXECUTABLE, Resources(), tmp_path / "a"
     )
-    b_job = Job(
-        "job-b",
+    b_chore = Chore(
+        "chore-b",
         ["echo", "b"],
-        JobFlavor.EXECUTABLE,
+        ChoreType.EXECUTABLE,
         Resources(),
         tmp_path / "b",
-        deps=("job-a",),
+        deps=("chore-a",),
     )
-    pipe._job_list = [a_job, b_job]
+    pipe._chore_list = [a_chore, b_chore]
 
     graph = pipe._create_graph()
-    assert list(graph.edges()) == [("job-a", "job-b")]
-    assert pipe._sort_graph(graph) == ["job-a", "job-b"]
+    assert list(graph.edges()) == [("chore-a", "chore-b")]
+    assert pipe._sort_graph(graph) == ["chore-a", "chore-b"]
 
 
 def test_create_graph_rejects_unknown_dependencies(tmp_path):
     pipe = Pipeline(basedir=str(tmp_path))
-    bad_job = Job(
-        "job-b",
+    bad_chore = Chore(
+        "chore-b",
         ["echo", "b"],
-        JobFlavor.EXECUTABLE,
+        ChoreType.EXECUTABLE,
         Resources(),
         tmp_path / "b",
         deps=("missing",),
     )
-    pipe._job_list = [bad_job]
+    pipe._chore_list = [bad_chore]
 
     with pytest.raises(ValueError, match="unknown dependencies"):
         pipe._create_graph()
@@ -153,14 +158,14 @@ def test_sort_graph_rejects_cycles(tmp_path):
         pipe._sort_graph(graph)
 
 
-def test_submit_builds_sorted_job_list_and_calls_manager(monkeypatch, tmp_path):
+def test_submit_builds_sorted_chore_list_and_calls_manager(monkeypatch, tmp_path):
     import matensemble.pipeline as pipeline_mod
 
     monkeypatch.setattr(pipeline_mod, "FluxManager", DummyManager)
 
     pipe = Pipeline(basedir=str(tmp_path))
-    a = pipe.job(name="a")(top_level_add)
-    b = pipe.job(name="b")(top_level_add)
+    a = pipe.chore(name="a")(top_level_add)
+    b = pipe.chore(name="b")(top_level_add)
     ref = a(1, y=2)
     b(ref, y=3)
 
@@ -174,8 +179,8 @@ def test_submit_builds_sorted_job_list_and_calls_manager(monkeypatch, tmp_path):
         processing_strategy="sentinel",
     )
 
-    ordered_ids = [job.id for job in DummyManager.created["job_list"]]
-    assert ordered_ids == ["job-a-0001", "job-b-0002"]
+    ordered_ids = [chore.id for chore in DummyManager.created["chore_list"]]
+    assert ordered_ids == ["chore-a-0001", "chore-b-0002"]
     assert DummyManager.created["write_restart_freq"] == 7
     assert DummyManager.created["set_cpu_affinity"] is False
     assert DummyManager.created["set_gpu_affinity"] is True

@@ -3,7 +3,7 @@ MatEnsemble
 
 MatEnsemble is a Python workflow library for building and running
 high-throughput and dependency-aware workflows on HPC systems.
-It lets users define delayed Python and executable jobs, connect them
+It lets users define delayed Python and executable chores, connect them
 through data dependencies, and submit them for execution with Flux.
 """
 
@@ -12,4 +12,4 @@ __package__ = "matensemble"
 
 # Re-export core data model types at the package root for convenience and for
 # backwards compatibility with code/tests that import from `matensemble`.
-from .model import OutputReference, Resources, JobFlavor  # noqa: E402,F401
+from .model import OutputReference, Resources, ChoreType  # noqa: E402,F401

@@ -9,7 +9,7 @@ from matensemble.pipeline import Pipeline
 pipe = Pipeline()
 
 
-@pipe.job(
+@pipe.chore(
     name="lammps-mace-calc",
     num_tasks=1,
     cores_per_task=1,

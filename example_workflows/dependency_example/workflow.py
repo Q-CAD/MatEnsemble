@@ -4,26 +4,26 @@ from matensemble.pipeline import Pipeline
 pipe = Pipeline()
 
 
-@pipe.job()
-def job1():
+@pipe.chore()
+def chore1():
     return 1
 
 
-@pipe.job()
-def job2(x):
+@pipe.chore()
+def chore2(x):
     return x + 1
 
 
-@pipe.job()
-def job3(x):
+@pipe.chore()
+def chore3(x):
     return x * 2
 
 
 # ./run_workflow.py
-from functions import pipe, job1, job2, job3
+from functions import pipe, chore1, chore2, chore3
 
-a = job1()
-b = job2(a)
-c = job3(b)
+a = chore1()
+b = chore2(a)
+c = chore3(b)
 
 pipe.submit()

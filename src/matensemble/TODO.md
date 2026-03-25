@@ -93,10 +93,19 @@
 - [x] Update all the documentation 
 - [x] Update the example workflows 
 - [x] Provide tutorials for how to run the example workflows 
+- [ ] Change name of 'Job' to 'Chore'
+- [ ] Change name of 'Pipeline' to something else
 
 **--- Science Example ---**
 - [x] Test the science example that Soumendu provided 
 - [ ] Update version of LAMMPS
 
+
 **--- Model Context Protocol ---**
 - [ ] MCP implementation 
+
+**--- Reading List ---**
+- [ ] [Agentic Orchestration of HPC Applications](https://vsoch.github.io/assets/posts/agentic-orchestration-hpc-workloads-cloud-sochat-milroy.pdf)
+- [ ] [Container Training Slides](https://drive.google.com/drive/folders/1_mTBBc98TEX3XFpNp0rqoqj1VjN9TKoO)
+- [ ] [Containers as Jupyter Kernels](https://docs.nersc.gov/services/jupyter/how-to-guides/#how-to-use-a-container-to-run-a-jupyter-kernel)
+- [ ] [Using SPIN to Run Persistent Containers](https://docs.nersc.gov/services/spin/)

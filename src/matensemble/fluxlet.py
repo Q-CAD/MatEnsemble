@@ -7,8 +7,8 @@ import flux
 import flux.job
 
 from pathlib import Path
-from matensemble.job import Job
-from matensemble.model import JobFlavor
+from matensemble.chore import Chore
+from matensemble.model import ChoreType
 
 
 class Fluxlet:
@@ -18,7 +18,7 @@ class Fluxlet:
     Attributes
     ----------
     handle : flux.Flux
-        A flux handle to be used to submit jobs
+        A flux handle to be used to submit chores
     """
 
     def __init__(
@@ -30,7 +30,7 @@ class Fluxlet:
     def submit(
         self,
         executor: flux.job.FluxExecutor,
-        job: Job,
+        chore: Chore,
         set_cpu_affinity: bool | None = None,
         set_gpu_affinity: bool | None = None,
         nnodes: int | None = None,
@@ -43,8 +43,8 @@ class Fluxlet:
         ----------
         executor : flux.job.FluxExecutor
             The :obj:`FluxExecutor` to use to submit the flux job
-        job : Job
-            The :obj:`Job` to be submitted to flux.
+        chore : Chore
+            The :obj:`Chore` to be submitted to flux.
         set_cpu_affinity : bool, optional
             Whether cpu-affinity should be set in the :obj:`Jobspec`. Defaults
             to None.
@@ -52,7 +52,7 @@ class Fluxlet:
             Whether gpu-affinity should be set in the :obj:`Jobspec`. Defaults
             to None.
         nnodes : int, optional
-            The number of nodes that the given job needs to be able to run. Defaults
+            The number of nodes that the given chore needs to be able to run. Defaults
             to None.
 
         Returns
@@ -61,47 +61,47 @@ class Fluxlet:
         """
 
         jobspec = flux.job.JobspecV1.from_command(
-            job.command,
-            job.resources.num_tasks,
-            job.resources.cores_per_task,
-            job.resources.gpus_per_task,
+            chore.command,
+            chore.resources.num_tasks,
+            chore.resources.cores_per_task,
+            chore.resources.gpus_per_task,
         )
 
-        job.workdir.mkdir(parents=True, exist_ok=True)
+        chore.workdir.mkdir(parents=True, exist_ok=True)
 
-        if job.flavor is JobFlavor.PYTHON:
+        if chore.chore_type is ChoreType.PYTHON:
             with tempfile.NamedTemporaryFile(
-                "wb", dir=job.spec_path.parent, delete=False
+                "wb", dir=chore.spec_path.parent, delete=False
             ) as tf:
-                pickle.dump(job, tf)
+                pickle.dump(chore, tf)
                 temp_name = tf.name
-            os.replace(temp_name, job.spec_path)
+            os.replace(temp_name, chore.spec_path)
 
-        jobspec.cwd = str(job.workdir)
-        jobspec.stdout = str(job.workdir / "stdout")
-        jobspec.stderr = str(job.workdir / "stderr")
+        chorespec.cwd = str(chore.workdir)
+        chorespec.stdout = str(chore.workdir / "stdout")
+        chorespec.stderr = str(chore.workdir / "stderr")
 
-        if job.resources.mpi:
-            jobspec.setattr_shell_option("mpi", "pmi2")
+        if chore.resources.mpi:
+            chorespec.setattr_shell_option("mpi", "pmi2")
         if set_cpu_affinity:
-            jobspec.setattr_shell_option("cpu-affinity", "per-task")
-        if set_gpu_affinity and job.resources.gpus_per_task > 0:
-            jobspec.setattr_shell_option("gpu-affinity", "per-task")
+            chorespec.setattr_shell_option("cpu-affinity", "per-task")
+        if set_gpu_affinity and chore.resources.gpus_per_task > 0:
+            chorespec.setattr_shell_option("gpu-affinity", "per-task")
 
-        base_env = os.environ.copy() if job.resources.inherit_env else {}
-        base_env.update(job.resources.env or {})
-        jobspec.env = base_env
+        base_env = os.environ.copy() if chore.resources.inherit_env else {}
+        base_env.update(chore.resources.env or {})
+        chorespec.env = base_env
 
         # helpful for debugging
-        job._write_debug_json()
+        chore._write_debug_json()
 
-        # only set this if you truly want every job to span a fixed node count
+        # only set this if you truly want every chore to span a fixed node count
         if nnodes is not None:
-            jobspec.num_nodes = nnodes
+            chorespec.num_nodes = nnodes
 
-        fut = executor.submit(jobspec)
-        fut.job_id = job.id
-        fut.job_obj = job
-        fut.job_spec = jobspec
-        fut.workdir = str(job.workdir)
+        fut = executor.submit(chorespec)
+        fut.chore_id = chore.id
+        fut.chore_obj = chore
+        fut.chore_spec = chorespec
+        fut.workdir = str(chore.workdir)
         return fut

@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import pytest
 
-from matensemble.model import JobFlavor, OutputReference, Resources
+from matensemble.model import ChoreType, OutputReference, Resources
 
 
-def test_output_reference_is_frozen_and_holds_job_id():
-    ref = OutputReference("job-1")
-    assert ref.job_id == "job-1"
+def test_output_reference_is_frozen_and_holds_chore_id():
+    ref = OutputReference("chore-1")
+    assert ref.chore_id == "chore-1"
 
 
 @pytest.mark.parametrize(
@@ -43,6 +43,6 @@ def test_resources_accept_valid_values():
     assert resources.env == {"A": "B"}
 
 
-def test_job_flavor_string_values_exist():
-    assert JobFlavor.PYTHON
-    assert JobFlavor.EXECUTABLE
+def test_chore_type_string_values_exist():
+    assert ChoreType.PYTHON
+    assert ChoreType.EXECUTABLE

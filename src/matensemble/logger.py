@@ -117,7 +117,7 @@ def _setup_logger(base_dir: Path) -> logging.Logger:
     hint = (
         f"Status file: {base_dir}/status.json\n"
         f"Verbose log: {base_dir}/matensemble_workflow.log\n"
-        f"Job outputs: {base_dir}/out\n"
+        f"Chore outputs: {base_dir}/out\n"
     )
     print(hint, file=sys.stderr)
 
