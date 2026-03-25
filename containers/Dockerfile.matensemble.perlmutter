@@ -1,7 +1,4 @@
-FROM nersc/lammps_flux:26.03
-
-ENV DEBIAN_FRONTEND=noninteractive
-SHELL ["/bin/bash", "-c"]
+FROM nersc/lammps_flux:25.07
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl    git    gcc
@@ -12,11 +9,10 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/b
     uv --version
 
 # setup uv to install deps to /opt/venv
-ENV UV_PROJECT_ENVIRONMENT=/opt/venv
+ENV UV_PROJECT_ENVIRONMENT=/opt/basic
 
 # clone MatEnsemble
-RUN set -euo pipefail; \
-    mkdir -p /opt/src; \
+RUN mkdir -p /opt/src; \
     cd /opt/src; \
     rm -rf MatEnsemble; \
     git clone --depth 1 https://github.com/FredDude2004/MatEnsemble.git; \
@@ -24,5 +20,5 @@ RUN set -euo pipefail; \
     uv export --format requirements.txt --output-file requirements.txt; \ 
     uv pip install -r requirements.txt
 
-ENV PATH="/opt/venv/bin:${PATH}"
+ENV PATH="/opt/basic/bin:${PATH}"
 
