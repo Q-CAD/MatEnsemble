@@ -44,14 +44,14 @@ class StatusWriter:
     ) -> None:
         data = {
             "nodes": self.nnodes,
-            "coresPerNode": self.cores_per_node,
-            "gpusPerNode": self.gpus_per_node,
+            "cores_per_node": self.cores_per_node,
+            "gpus_per_node": self.gpus_per_node,
             "pending": pending,
             "running": running,
             "completed": completed,
             "failed": failed,
-            "freeCores": free_cores,
-            "freeGpus": free_gpus,
+            "free_cores": free_cores,
+            "free_gpus": free_gpus,
         }
 
         # atomically write the status file so that the dashboard never sees a

@@ -9,19 +9,21 @@ from matensemble.logger import StatusWriter, _setup_logger, _setup_status_writer
 def test_status_writer_updates_json_file(tmp_path):
     path = tmp_path / "status.json"
     writer = StatusWriter(path, nnodes=2, cores_per_node=56, gpus_per_node=8)
-    writer.update(pending=5, running=4, completed=3, failed=2, free_cores=10, free_gpus=1)
+    writer.update(
+        pending=5, running=4, completed=3, failed=2, free_cores=10, free_gpus=1
+    )
 
     data = json.loads(path.read_text())
     assert data == {
         "nodes": 2,
-        "coresPerNode": 56,
-        "gpusPerNode": 8,
+        "cores_per_node": 56,
+        "gpus_per_node": 8,
         "pending": 5,
         "running": 4,
         "completed": 3,
         "failed": 2,
-        "freeCores": 10,
-        "freeGpus": 1,
+        "free_cores": 10,
+        "free_gpus": 1,
     }
 
 

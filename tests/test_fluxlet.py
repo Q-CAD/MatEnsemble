@@ -10,17 +10,17 @@ from matensemble.model import ChoreType, Resources
 
 class RecordingExecutor:
     def __init__(self):
-        self.submitted_chorespecs = []
+        self.submitted_jobspecs = []
 
-    def submit(self, chorespec):
+    def submit(self, jobspec):
         from tests.conftest import FakeFuture
 
-        fut = FakeFuture(chorespec=chorespec, result_value=0)
-        self.submitted_chorespecs.append(chorespec)
+        fut = FakeFuture(jobspec=jobspec, result_value=0)
+        self.submitted_jobspecs.append(jobspec)
         return fut
 
 
-def test_fluxlet_submit_writes_chore_spec_and_sets_chorespec_fields(tmp_path):
+def test_fluxlet_submit_writes_chore_spec_and_sets_jobspec_fields(tmp_path):
     workdir = tmp_path / "out" / "chore-1"
     chore = Chore(
         id="chore-1",
@@ -44,16 +44,16 @@ def test_fluxlet_submit_writes_chore_spec_and_sets_chorespec_fields(tmp_path):
         nnodes=2,
     )
 
-    chorespec = executor.submitted_chorespecs[0]
-    assert chorespec.command == ["python", "-m", "task"]
-    assert chorespec.cwd == str(workdir.resolve())
-    assert chorespec.stdout.endswith("stdout")
-    assert chorespec.stderr.endswith("stderr")
-    # assert chorespec.env == {"A": "B"}
-    assert chorespec.num_nodes == 2
-    assert chorespec.shell_options["mpi"] == "pmi2"
-    assert chorespec.shell_options["cpu-affinity"] == "per-task"
-    assert chorespec.shell_options["gpu-affinity"] == "per-task"
+    jobspec = executor.submitted_jobspecs[0]
+    assert jobspec.command == ["python", "-m", "task"]
+    assert jobspec.cwd == str(workdir.resolve())
+    assert jobspec.stdout.endswith("stdout")
+    assert jobspec.stderr.endswith("stderr")
+    # assert jobspec.env == {"A": "B"}
+    assert jobspec.num_nodes == 2
+    assert jobspec.shell_options["mpi"] == "pmi2"
+    assert jobspec.shell_options["cpu-affinity"] == "per-task"
+    assert jobspec.shell_options["gpu-affinity"] == "per-task"
 
     with chore.spec_path.open("rb") as f:
         stored_chore = pickle.load(f)
@@ -63,4 +63,4 @@ def test_fluxlet_submit_writes_chore_spec_and_sets_chorespec_fields(tmp_path):
     assert debug["id"] == "chore-1"
     assert fut.chore_id == "chore-1"
     assert fut.chore_obj.id == "chore-1"
-    assert fut.chore_spec is chorespec
+    assert fut.chore_spec is jobspec

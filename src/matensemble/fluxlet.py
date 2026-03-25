@@ -77,31 +77,31 @@ class Fluxlet:
                 temp_name = tf.name
             os.replace(temp_name, chore.spec_path)
 
-        chorespec.cwd = str(chore.workdir)
-        chorespec.stdout = str(chore.workdir / "stdout")
-        chorespec.stderr = str(chore.workdir / "stderr")
+        jobspec.cwd = str(chore.workdir)
+        jobspec.stdout = str(chore.workdir / "stdout")
+        jobspec.stderr = str(chore.workdir / "stderr")
 
         if chore.resources.mpi:
-            chorespec.setattr_shell_option("mpi", "pmi2")
+            jobspec.setattr_shell_option("mpi", "pmi2")
         if set_cpu_affinity:
-            chorespec.setattr_shell_option("cpu-affinity", "per-task")
+            jobspec.setattr_shell_option("cpu-affinity", "per-task")
         if set_gpu_affinity and chore.resources.gpus_per_task > 0:
-            chorespec.setattr_shell_option("gpu-affinity", "per-task")
+            jobspec.setattr_shell_option("gpu-affinity", "per-task")
 
         base_env = os.environ.copy() if chore.resources.inherit_env else {}
         base_env.update(chore.resources.env or {})
-        chorespec.env = base_env
+        jobspec.env = base_env
 
         # helpful for debugging
         chore._write_debug_json()
 
         # only set this if you truly want every chore to span a fixed node count
         if nnodes is not None:
-            chorespec.num_nodes = nnodes
+            jobspec.num_nodes = nnodes
 
-        fut = executor.submit(chorespec)
+        fut = executor.submit(jobspec)
         fut.chore_id = chore.id
         fut.chore_obj = chore
-        fut.chore_spec = chorespec
+        fut.chore_spec = jobspec
         fut.workdir = str(chore.workdir)
         return fut
