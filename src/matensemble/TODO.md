@@ -66,6 +66,7 @@
 - [x] Build MatEnsemble Images with each base image
 - [x] Test Images on each respective system
 - [ ] NOTE: Come back later -- Test Perlmutter Image
+- [ ] Create Perlmutter image from new base image [Neil's Containerfiles](https://github.com/namehta4/Containerfiles/blob/main/Base/GPU/Dockerfile)
 
 **--- Setup GitHub Actions ---**
 - [x] Setup Matrix build action to build MatEnsemble images for baseline, frontier, and perlmutter and push them to ghcr
@@ -93,7 +94,7 @@
 - [x] Update all the documentation 
 - [x] Update the example workflows 
 - [x] Provide tutorials for how to run the example workflows 
-- [ ] Change name of 'Job' to 'Chore'
+- [x] Change name of 'Job' to 'Chore'
 - [ ] Change name of 'Pipeline' to something else
 
 **--- Science Example ---**
