@@ -64,3 +64,49 @@ def test_fluxlet_submit_writes_chore_spec_and_sets_jobspec_fields(tmp_path):
     assert fut.chore_id == "chore-1"
     assert fut.chore_obj.id == "chore-1"
     assert fut.chore_spec is jobspec
+
+
+def test_fluxlet_submit_inherit_env_true_copies_manager_environment(
+    tmp_path, monkeypatch
+):
+    monkeypatch.setenv("MATENSEMBLE_MANAGER_ENV", "from-manager")
+
+    workdir = tmp_path / "out" / "chore-inherit"
+    chore = Chore(
+        id="chore-inherit",
+        command=["python", "-m", "task"],
+        chore_type=ChoreType.EXECUTABLE,
+        resources=Resources(
+            inherit_env=True,
+            env={"LOCAL_ONLY": "1", "MATENSEMBLE_MANAGER_ENV": "overridden"},
+        ),
+        workdir=workdir,
+    )
+
+    executor = RecordingExecutor()
+    fluxlet = Fluxlet(handle=None)
+    fluxlet.submit(executor, chore)
+
+    jobspec = executor.submitted_jobspecs[0]
+    assert jobspec.environment["MATENSEMBLE_MANAGER_ENV"] == "overridden"
+    assert jobspec.environment["LOCAL_ONLY"] == "1"
+
+
+def test_fluxlet_submit_inherit_env_false_uses_only_chore_env(tmp_path, monkeypatch):
+    monkeypatch.setenv("MATENSEMBLE_MANAGER_ENV", "from-manager")
+
+    workdir = tmp_path / "out" / "chore-no-inherit"
+    chore = Chore(
+        id="chore-no-inherit",
+        command=["python", "-m", "task"],
+        chore_type=ChoreType.EXECUTABLE,
+        resources=Resources(inherit_env=False, env={"LOCAL_ONLY": "1"}),
+        workdir=workdir,
+    )
+
+    executor = RecordingExecutor()
+    fluxlet = Fluxlet(handle=None)
+    fluxlet.submit(executor, chore)
+
+    jobspec = executor.submitted_jobspecs[0]
+    assert jobspec.environment == {"LOCAL_ONLY": "1"}

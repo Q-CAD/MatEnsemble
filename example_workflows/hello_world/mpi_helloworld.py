@@ -1,4 +1,4 @@
-#!/opt/venv/bin/python
+#!/opt/basic/bin/python
 """
 Parallel Hello World
 """

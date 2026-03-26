@@ -90,7 +90,7 @@ class Fluxlet:
 
         base_env = os.environ.copy() if chore.resources.inherit_env else {}
         base_env.update(chore.resources.env or {})
-        jobspec.env = base_env
+        jobspec.environment = base_env
 
         # helpful for debugging
         chore._write_debug_json()
