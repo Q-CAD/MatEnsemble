@@ -22,4 +22,11 @@ RUN mkdir -p /opt/src; \
     uv pip install -r requirements.txt; \
     uv pip install --index-url https://download.pytorch.org/whl/cu128 torch
 
+RUN cd /opt/src/MatEnsemble && \
+    uv export --format requirements.txt --output-file requirements.txt && \
+    uv pip install -r requirements.txt && \
+    uv pip install mace-torch && \
+    uv pip uninstall -y cupy-cuda11x cupy-cuda13x cupy || true && \
+    uv pip install cupy-cuda12x
+
 
