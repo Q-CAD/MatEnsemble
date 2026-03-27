@@ -49,7 +49,12 @@ srun -l -N2 -n2 --mpi=pmi2 \
 # get the allocation
 salloc -N 2 -t 60 -C gpu --qos interactive -A m5014_g -G 8
 
-srun -N2 -n2 --mpi=pmi2 --gpus-per-node=4 podman-hpc run --rm --gpu --net host -v "$PWD:$PWD" -w "$PWD" -e SLURM_* -e PMI_* -e PALS_* ghcr.io/freddude2004/matensemble:perlmutter-dev flux start python run_mace_workflow.py
+srun -N2 -n2 --mpi=pmi2 --gpus-per-node=4 \
+    podman-hpc run --rm --gpu --net host \
+    -v "$PWD:$PWD" -w "$PWD" \
+    -e SLURM_* -e PMI_* -e PALS_* \
+    ghcr.io/freddude2004/matensemble:perlmutter-dev \
+    flux start python run_mace_workflow.py
 
 
 # run the workflow
