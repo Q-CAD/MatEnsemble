@@ -8,16 +8,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh && \
     /usr/local/bin/uv --version
 
-# use one known Python environment everywhere
+# use the /opt/basic python env with flux and lammps installed in there 
 ENV VIRTUAL_ENV=/opt/basic
 ENV UV_PROJECT_ENVIRONMENT=/opt/basic
-ENV PATH="/opt/basic/bin:/opt/lammps/install/bin:/usr/local/bin:${PATH}"
 ENV LD_LIBRARY_PATH="/opt/lammps/install/lib:/usr/local/lib:${LD_LIBRARY_PATH}"
+ENV PATH="/opt/basic/bin:/opt/lammps/install/bin:/usr/local/bin:${PATH}"
 
-# install the ML-IAP / MACE runtime stack into the same env
-# choose the CUDA-matching packages for your base image
-RUN uv venv /opt/basic && \
-    uv pip install --python /opt/basic/bin/python --upgrade pip setuptools wheel && \
+RUN uv pip install --python /opt/basic/bin/python --upgrade pip setuptools wheel && \
     uv pip install --python /opt/basic/bin/python \
         "torch<=2.5.0" \
         mace-torch \
