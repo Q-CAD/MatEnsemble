@@ -90,20 +90,22 @@
 - [x] Update the Pipeline.run() method to have a dashboard flag 
 - [x] Add logic to launch the dashboard when the user runs the workflow 
 
+**--- Science Example ---**
+- [x] Test the science example that Soumendu provided 
+- [ ] Update version of LAMMPS
+- [ ] Fix Bug with jobspec.env -> jobspec.environment 
+
 **--- Polish Everything ---**
 - [x] Update all the documentation 
 - [x] Update the example workflows 
 - [x] Provide tutorials for how to run the example workflows 
 - [x] Change name of 'Job' to 'Chore'
 - [ ] Change name of 'Pipeline' to something else
-
-**--- Science Example ---**
-- [x] Test the science example that Soumendu provided 
-- [ ] Update version of LAMMPS
-
+- [ ] Make ChoreType.PYTHON have the ability to be defined in the runner script
 
 **--- Model Context Protocol ---**
 - [ ] MCP implementation 
+- [ ] Map out the Tool and Resources
 
 **--- Reading List ---**
 - [ ] [Agentic Orchestration of HPC Applications](https://vsoch.github.io/assets/posts/agentic-orchestration-hpc-workloads-cloud-sochat-milroy.pdf)

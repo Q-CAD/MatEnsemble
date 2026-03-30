@@ -1,45 +1,49 @@
 FROM nersc/lammps_flux:25.07
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    git \
-    gcc \
-    g++ \
-    make \
-    pkg-config \
- && rm -rf /var/lib/apt/lists/*
+    curl git gcc && \
+    rm -rf /var/lib/apt/lists/*
 
 # install uv
 RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh && \
     /usr/local/bin/uv --version
 
-# install into /opt/basic
+# use one known Python environment everywhere
+ENV VIRTUAL_ENV=/opt/basic
 ENV UV_PROJECT_ENVIRONMENT=/opt/basic
-ENV PATH="/opt/basic/bin:/usr/local/bin:${PATH}"
+ENV PATH="/opt/basic/bin:/opt/lammps/install/bin:/usr/local/bin:${PATH}"
+ENV LD_LIBRARY_PATH="/opt/lammps/install/lib:/usr/local/lib:${LD_LIBRARY_PATH}"
 
-# make h5py build against the HDF5 already present in the base image
-ENV HDF5_DIR=/opt/hdf5/install
-ENV HDF5_PLUGIN_PATH=/opt/hdf5/install/lib/plugin
-ENV CFLAGS="-I/opt/hdf5/install/include"
-ENV LDFLAGS="-L/opt/hdf5/install/lib"
+# install the ML-IAP / MACE runtime stack into the same env
+# choose the CUDA-matching packages for your base image
+RUN uv venv /opt/basic && \
+    uv pip install --python /opt/basic/bin/python --upgrade pip setuptools wheel && \
+    uv pip install --python /opt/basic/bin/python \
+        "torch<=2.5.0" \
+        mace-torch \
+        cuequivariance \
+        cuequivariance-torch \
+        cuequivariance-ops-torch-cu12 \
+        cupy-cuda12x \
+        "numpy<2"
 
+# quick import test
+RUN /opt/basic/bin/python - <<'PY'
+import torch
+import mace
+import e3nn
+import lammps
+import lammps.mliap
+import cuequivariance
+import cuequivariance_torch
+import numpy
+print("python stack ok")
+PY
+
+# install MatEnsemble 
 RUN mkdir -p /opt/src && \
     cd /opt/src && \
     rm -rf MatEnsemble && \
     git clone --depth 1 https://github.com/FredDude2004/MatEnsemble.git && \
     cd MatEnsemble && \
-    uv export --format requirements.txt --output-file requirements.txt && \
-    uv pip install -r requirements.txt && \
-    uv pip install --index-url https://download.pytorch.org/whl/cu128 torch && \
-    uv pip install mace-torch && \
-    uv pip uninstall -y cupy-cuda11x cupy-cuda13x cupy || true && \
-    uv pip install --force-reinstall cupy-cuda12x && \
-    uv pip uninstall -y h5py || true && \
-    uv pip install --no-binary=h5py --force-reinstall h5py && \
-    python - <<'PY'
-import h5py
-print("h5py:", h5py.__file__)
-print("built against:", h5py.version.hdf5_built_version_tuple)
-print("running against:", h5py.version.hdf5_version_tuple)
-assert h5py.version.hdf5_built_version_tuple == h5py.version.hdf5_version_tuple
-PY
+    uv pip install --python /opt/basic/bin/python .
