@@ -1,165 +1,246 @@
-FROM docker.io/nersc/base_gpu:25.11 AS builder
-ENV DEBIAN_FRONTEND=noninteractive
-SHELL ["/bin/bash", "-lc"]
+FROM docker.io/nersc/base_gpu:26.03
+WORKDIR /opt
+ENV DEBIAN_FRONTEND noninteractive
 
-ARG FLUX_CORE_VER=0.66.0
-ARG FLUX_SCHED_VER=0.38.0
-ARG LAMMPS_TAG=stable_2Aug2023_update3
+RUN apt-get update
+RUN apt-get install -y libblas-dev liblapack-dev libgsl-dev unzip
 
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    autoconf  	   	automake 		libtool \
-    make 	   	pkg-config 	      	libc6-dev \
-    libzmq3-dev    	uuid-dev 	      	libjansson-dev \
-    liblz4-dev 	   	libarchive-dev     	libhwloc-dev \
-    libsqlite3-dev 	lua5.1 	      		liblua5.1-dev \
-    lua-posix 	   	python3-dev 	      	python3-cffi \
-    python3-ply    	python3-setuptools 	python3-yaml \
-    python3-sphinx 	aspell 	      		aspell-en \
-    time 	   	valgrind   	      	libmpich-dev jq \
-    libhwloc-dev 	libboost-dev 		libboost-graph-dev \
-    libedit-dev 	libyaml-cpp-dev 	python3-yaml \
-    git	 	   	curl		      	build-essential \
-    wget 		ninja-build		cmake \
-    python3.12-venv \
-    && rm -rf /var/lib/apt/lists/*
-
-ENV VIRTUAL_ENV=/opt/venv
-ENV FLUX_PREFIX=/opt/flux
-ENV LAMMPS_PREFIX=/opt/lammps
-
-RUN python3 -m venv "${VIRTUAL_ENV}" \
- && "${VIRTUAL_ENV}/bin/python" -m pip install --no-cache-dir -U pip setuptools wheel \
- && "${VIRTUAL_ENV}/bin/python" -m pip install --no-cache-dir cffi PyYAML ply jsonschema Cython numpy \
- && ln -sf "${VIRTUAL_ENV}/bin/python" /usr/local/bin/python
-
-
-# build flux-core
-RUN set -euo pipefail; \
-    cd /tmp; \
-    wget -O flux-core.tgz "https://github.com/flux-framework/flux-core/releases/download/v${FLUX_CORE_VER}/flux-core-${FLUX_CORE_VER}.tar.gz"; \
-    tar xzf flux-core.tgz; \
-    cd "flux-core-${FLUX_CORE_VER}"; \
-    PYTHON="${VIRTUAL_ENV}/bin/python" PYTHON_VERSION=3.12 \
-    ./configure --prefix="${FLUX_PREFIX}" --disable-docs; \
-    make -j"$(nproc)"; \
-    make install; \
-    rm -rf /tmp/flux-core.tgz "/tmp/flux-core-${FLUX_CORE_VER}"
-
-ENV PATH="${FLUX_PREFIX}/bin:${PATH}"
-ENV LD_LIBRARY_PATH="${FLUX_PREFIX}/lib:${FLUX_PREFIX}/lib64"
-ENV PKG_CONFIG_PATH="${FLUX_PREFIX}/lib/pkgconfig:${FLUX_PREFIX}/lib64/pkgconfig"
-
-# creating a .pth file to the flux-python bindings 
-# check https://docs.python.org/3/library/site.html for more info
-RUN set -euo pipefail; \
-    site="$("${VIRTUAL_ENV}/bin/python" -c 'import site; print(site.getsitepackages()[0])')"; \
-    flux_pythonpath="$("${FLUX_PREFIX}/bin/flux" env | sed -n 's/^export PYTHONPATH="\([^"]*\)".*/\1/p')"; \
-    test -n "${flux_pythonpath}"
-
-# build flux-sched
-RUN set -euo pipefail; \
-    cd /tmp; \
-    wget -O flux-sched.tgz "https://github.com/flux-framework/flux-sched/releases/download/v${FLUX_SCHED_VER}/flux-sched-${FLUX_SCHED_VER}.tar.gz"; \
-    tar xzf flux-sched.tgz; \
-    cd "flux-sched-${FLUX_SCHED_VER}"; \
-    PYTHON="${VIRTUAL_ENV}/bin/python" cmake -S . -B build \
-      -DCMAKE_BUILD_TYPE=Release \
-      -DCMAKE_INSTALL_PREFIX="${FLUX_PREFIX}" \
-      -DCMAKE_PREFIX_PATH="${FLUX_PREFIX}" \
-      -DENABLE_DOCS=Off; \
-    cmake --build build -j"$(nproc)"; \
-    cmake --install build; \
-    rm -rf /tmp/flux-sched.tgz "/tmp/flux-sched-${FLUX_SCHED_VER}"
-
-# build lammps (Perlmutter/CUDA flavor, Docker-friendly compilers)
-RUN set -euo pipefail; \
-    cd /tmp; \
-    wget -O lammps.tgz "https://github.com/lammps/lammps/archive/refs/tags/${LAMMPS_TAG}.tar.gz"; \
-    tar xzf lammps.tgz; \
-    SRC="/tmp/lammps-${LAMMPS_TAG}"; \
-    export PATH="${VIRTUAL_ENV}/bin:$PATH"; \
-    cmake -S "${SRC}/cmake" -B /tmp/lammps_build \
-      -DCMAKE_INSTALL_PREFIX="${LAMMPS_PREFIX}" \
-      -DCMAKE_BUILD_TYPE=Release \
-      -DCMAKE_POSITION_INDEPENDENT_CODE=ON \
-      -DCMAKE_EXE_LINKER_FLAGS="-dynamic" \
-      -DBUILD_SHARED_LIBS=ON \
-      -DCMAKE_C_COMPILER=mpicc \
-      -DCMAKE_CXX_COMPILER=mpicxx \
-      -DCMAKE_Fortran_COMPILER=mpifort \
-      -DMPI_C_COMPILER=mpicc \
-      -DMPI_CXX_COMPILER=mpicxx \
-      -DLAMMPS_EXCEPTIONS=ON \
-      -DPKG_KOKKOS=ON \
-      -DKokkos_ENABLE_CUDA=ON \
-      -DKokkos_ARCH_AMPERE80=ON \
-      -DKokkos_ENABLE_OPENMP=ON \
-      -DPKG_MOLECULE=on \
-      -DPKG_BODY=on \
-      -DPKG_RIGID=on \
-      -DPKG_MC=on \
-      -DPKG_MANYBODY=on \
-      -DPKG_REAXFF=on \
-      -DPKG_REPLICA=on \
-      -DPKG_QEQ=on \
-      -DPKG_INTERLAYER=on \
-      -DPKG_ML-SNAP=yes \
-      -DPKG_ML-IAP=yes \
-      -DPKG_ML-PACE=yes \
-      -DPKG_SPIN=yes \
-      -DPKG_PYTHON=ON \
-      -DMLIAP_ENABLE_PYTHON=ON; \
-    cmake --build /tmp/lammps_build -j"$(nproc)"; \
-    cmake --install /tmp/lammps_build
-
-# install lammps wheel into venv
-RUN set -euo pipefail; \
-    SRC="/tmp/lammps-${LAMMPS_TAG}"; \
-    cd "${SRC}/python"; \
-    "${VIRTUAL_ENV}/bin/python" -m pip install --no-cache-dir -U build wheel setuptools; \
-    "${VIRTUAL_ENV}/bin/python" -m build --wheel; \
-    "${VIRTUAL_ENV}/bin/python" -m pip install --no-cache-dir --force-reinstall dist/lammps-*.whl; \
-    rm -rf /tmp/lammps.tgz "${SRC}" /tmp/lammps_build
-
-# quick test of lammps and flux bindings
-RUN set -euo pipefail; \
-    "${FLUX_PREFIX}/bin/flux" --version; \
-    "${VIRTUAL_ENV}/bin/python" -c "import flux; print('flux:', flux.__file__)"; \
-    "${VIRTUAL_ENV}/bin/python" -c "import lammps; print('lammps:', lammps.__file__)"
+RUN python3 -m venv /opt/basic
+ENV PATH=$PATH:/opt/basic/bin
+RUN ln -sf /opt/basic/bin/pip /usr/local/bin/pip
+RUN pip install cupy-cuda13x
+RUN pip install cython setuptools pyfftw
+RUN pip install mpi4py -i https://pypi.anaconda.org/mpi4py/simple
+RUN pip install tblite
+RUN pip install --prefer-binary pyscf
+RUN pip install gpu4pyscf-cuda11x
+RUN pip install tensorflow[and-cuda]
+RUN pip install papermill
+RUN pip install tqdm
+RUN pip install py3DMol
+RUN pip install b2[full]
+RUN pip install ply
+RUN pip install pyyaml
+RUN pip install "numpy>=1.21.0"
+RUN pip install "pandas>=1.3.0"
+RUN pip install "scipy>=1.7.0"
+RUN pip install "pymatgen>=2022.0.0"
+RUN pip install "ase>=3.22.0"
+RUN pip install "scikit-learn>=1.0.0"
+RUN pip install "matplotlib>=3.4.0"
+RUN pip install "seaborn>=0.11.0"
+RUN pip install botorch
+RUN pip install "imageio>=2.9.0"
 
 
-FROM docker.io/nersc/base_cuda_mpich:11.8x4.2.2 
-ENV DEBIAN_FRONTEND=noninteractive
-SHELL ["/bin/bash", "-c"]
+ENV PATH=$PATH:/opt/basic/bin
+ENV PYTHONPATH=$PYTHONPATH:/opt/basic/lib/python3.12/site-packages
 
-# install run-time dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \ 
-    autoconf 		automake	    libtool \ 
-    make 		pkg-config	    libc6-dev \ 
-    libzmq3-dev 	uuid-dev	    libjansson-dev \ 
-    liblz4-dev 		libarchive-dev	    libhwloc-dev \ 
-    libsqlite3-dev 	lua5.1		    liblua5.1-dev \ 
-    lua-posix 		python3-dev	    python3-cffi \ 
-    python3-ply 	python3-setuptools  python3-yaml \ 
-    python3-sphinx 	aspell 		    aspell-en \ 
-    time valgrind 	libmpich-dev 	    jq \ 
-    libhwloc-dev 	libboost-dev 	    libboost-graph-dev \ 
-    libedit-dev 	libyaml-cpp-dev     python3-yaml \ 
-    git 		curl 		    build-essential \ 
-    wget 		ninja-build 	    cmake \ 
-    python3.10-venv \ 
-    && rm -rf /var/lib/apt/lists/*
 
-COPY --from=builder /opt/flux /opt/flux
-COPY --from=builder /opt/venv /opt/venv
-COPY --from=builder /opt/lammps /opt/lammps
+# Install Boost
+WORKDIR /opt
+RUN wget 'https://sourceforge.net/projects/boost/files/boost/1.87.0/boost_1_87_0.zip'
+RUN unzip boost_1_87_0.zip
+RUN mv boost_1_87_0 boost
+RUN cd /opt/boost                                                           && \
+    ./bootstrap.sh                                                          && \
+    ./b2 install
 
-ENV PATH="/opt/flux/bin:/opt/venv/bin:/opt/lammps/bin:${PATH}"
-ENV LD_LIBRARY_PATH="/opt/flux/lib:/opt/flux/lib64:/opt/lammps/lib:/opt/lammps/lib64:/opt/rocm/lib/llvm/lib:${LD_LIBRARY_PATH}"
-ENV LAMMPS_LIBRARY="/opt/lammps/lib/liblammps.so"
 
-# quick test of lammps and flux bindings
-RUN set -euo pipefail; \
-    /opt/venv/bin/python -c "import flux, lammps; print('ok')" \
-    && flux --version
+#Install HWLOC
+WORKDIR /opt
+RUN git clone -b v2.11 https://github.com/open-mpi/hwloc.git hwloc          && \
+    cd hwloc                                                                && \
+    ./autogen.sh                                                            && \
+    ./configure                                                             && \
+    make -j 16                                                              && \
+    make install
+
+
+# Install dependencies required by flux-core
+RUN apt-get update && apt-get install -y \
+    lua5.3 liblua5.3-dev \
+    libzmq3-dev \
+    libjansson-dev \
+    libczmq-dev \
+    libsqlite3-dev \
+    libarchive-dev \
+    libsodium-dev \
+    uuid-dev \
+    libcurl4-openssl-dev \
+    libncurses-dev \
+    pkg-config \
+    libyaml-cpp-dev \
+    libedit-dev
+
+
+# Install flux-core
+WORKDIR /opt
+RUN git clone -b v0.69.0 https://github.com/flux-framework/flux-core.git    && \
+    cd flux-core                                                            && \
+    ./autogen.sh                                                            && \
+    ./configure                                                             && \
+    make -j 1                                                              && \
+    make install
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+ENV LD_RUN_PATH=$LD_RUN_PATH:/usr/local/lib
+
+
+# Install flux-sched
+WORKDIR /opt
+RUN git clone -b v0.36.0 https://github.com/flux-framework/flux-sched.git   && \
+    cd flux-sched                                                           && \
+    cmake -B build                                                          && \
+    cmake --build build                                                     && \
+    cmake --build build -t install
+RUN pip install flux-python
+
+
+# Install Open Babel
+WORKDIR /opt
+RUN git clone -b openbabel-3-1-1 https://github.com/openbabel/openbabel.git
+RUN git clone https://github.com/conda-forge/openbabel-feedstock.git obf
+RUN cd /opt/openbabel                                                       && \
+    mkdir build                                                             && \
+    cd build                                                                && \
+    cmake .. -DCMAKE_INSTALL_PREFIX=/opt/openbabel/install -DBUILD_GUI=ON      \
+             -DCMAKE_BUILD_TYPE=Release -DWITH_INCHI=ON                        \
+             -DPYTHON_BINDINGS=ON -DRUN_SWIG=ON                                \
+             -DCMAKE_CXX_FLAGS="-include ctime"                             && \
+    make -j 2                                                               && \
+    make install
+ENV PYTHONPATH=$PYTHONPATH:/opt/openbabel
+ENV PYTHONPATH=$PYTHONPATH:/opt
+ENV PATH=$PATH:/opt/openbabel/install/bin
+ENV PATH=$PATH:/opt/openbabel/install/include
+ENV PATH=$PATH:/opt/openbabel/install/share
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/openbabel/install/lib
+ENV PATH=$PATH:/opt/openbabel/install/include/openbabel3
+RUN ln -s /opt/openbabel/install/include/openbabel3 /usr/local/include/openbabel3
+RUN ln -s /opt/openbabel/install/lib/libopenbabel.so /usr/local/lib/libopenbabel.so
+RUN OB_PY=$(find /opt/openbabel/install -type d -name "openbabel" | head -1) && \
+    if [ -n "$OB_PY" ]; then cp -r "$OB_PY" /usr/local/lib/python3.12/dist-packages/; fi
+
+
+# Install MPI-ping-pong from OLCF
+WORKDIR /opt
+ENV MPI_HOME "/opt/mpich/install"
+RUN git clone https://github.com/olcf-tutorials/MPI_ping_pong.git test_code
+RUN cd /opt/test_code/cpu                                                   && \
+    make
+RUN cd /opt/test_code/cuda_staged                                           && \
+    sed -i 's:-arch=sm_70:-arch=sm_80:g' Makefile                           && \
+    sed -i 's:OMPI_DIR:MPI_HOME:g' Makefile                                 && \
+    sed -i 's:-lmpi_ibm:-lmpi:g' Makefile                                   && \
+    make
+RUN cd /opt/test_code/cuda_aware                                            && \
+    sed -i 's:-arch=sm_70:-arch=sm_80:g' Makefile                           && \
+    sed -i 's:OMPI_DIR:MPI_HOME:g' Makefile                                 && \
+    sed -i 's:-lmpi_ibm:-lmpi:g' Makefile                                   && \
+    make
+ENV PATH=$PATH:/opt/test_code/cpu
+ENV PATH=$PATH:/opt/test_code/cuda_staged
+ENV PATH=$PATH:/opt/test_code/cuda_aware
+
+ENV PATH=$PATH:/opt/lammps/build/plumed_build-prefix/bin
+ENV PATH=$PATH:/opt/lammps/build/plumed_build-prefix/include
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/lammps/build/plumed_build-prefix/lib
+ENV PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/opt/lammps/build/plumed_build-prefix/lib/pkgconfig
+ENV PLUMED_KERNEL=/opt/lammps/build/plumed_build-prefix/lib/libplumedKernel.so
+ARG BLAS_LIBRARIES=/usr/local/blas/lib
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/fftw/install/lib
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/blas
+ENV PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/opt/fftw
+
+
+#Installing lammps
+WORKDIR /opt
+RUN git clone -b patch_2Apr2025 --recursive https://github.com/lammps/lammps.git lammps
+WORKDIR /opt/lammps
+RUN mkdir build
+WORKDIR /opt/lammps/build
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/compat
+
+
+# RUN cmake 
+# -D CMAKE_CXX_COMPILER=/opt/lammps/lib/kokkos/bin/nvcc_wrapper \
+# -D LAMMPS_EXCEPTIONS=ON \
+# -D Kokkos_ARCH_ZEN3=yes \
+# -D Kokkos_ARCH_AMPERE80=ON \
+# -D Kokkos_ENABLE_CUDA=yes \
+# -D CMAKE_CXX_STANDARD=17 \
+# -D GPU_API=cuda \
+# -D GPU_ARCH=sm_80 \
+# -D DOWNLOAD_PLUMED=yes \
+# -D PLUMED_MODE=static \
+# -D DOWNLOAD_MSCG=yes \
+# -D DOWNLOAD_SCAFACOS=yes \
+# -D DOWNLOAD_QUIP=yes \
+# -D DOWNLOAD_KIM=yes \
+# -D DOWNLOAD_EIGEN3=yes \
+# -D DOWNLOAD_LATTE=yes \
+# -D LAMMPS_SIZES=BIGBIG \
+# -D CMAKE_POSITION_INDEPENDENT_CODE=ON \
+# -D CMAKE_EXE_FLAGS="-dynamic" \
+# -WITH_FFMPEG=yes \
+
+RUN cmake -DCMAKE_INSTALL_PREFIX=$PWD/../install -D CMAKE_BUILD_TYPE=Release \
+            -D CMAKE_CXX_COMPILER=/opt/lammps/lib/kokkos/bin/nvcc_wrapper \
+            -D LAMMPS_EXCEPTIONS=ON \
+            -D PKG_KOKKOS=yes \
+            -D Kokkos_ARCH_ZEN3=yes \
+            -D Kokkos_ARCH_AMPERE80=ON \
+            -D Kokkos_ENABLE_CUDA=yes \
+            -D BUILD_MPI=ON \
+            -D BUILD_SHARED_LIBS=on \
+            -D CMAKE_CXX_STANDARD=17 \
+            -D Kokkos_ENABLE_OPENMP=yes \
+            -D BUILD_SHARED_LIBS=ON \
+            -D PKG_MANYBODY=on \
+            -D PKG_MOLECULE=ON \
+            -D PKG_REPLICA=on \
+            -D GPU_API=cuda \
+            -D GPU_ARCH=sm_80 \
+            -D LAMMPS_SIZES=bigbig \
+            -D PKG_ML-SNAP=yes \
+            -D PKG_BODY=on \
+            -D PKG_INTERLAYER=on \
+            -D PKG_ML-IAP=yes \
+            -D MLIAP_ENABLE_PYTHON=yes \
+            -D PKG_PYTHON=yes \
+            -D PKG_MC=on \
+            -D PKG_ML-PACE=yes \
+            -D PKG_QEQ=on \
+            -D PKG_RIGID=on \
+            -D PKG_SPIN=yes \
+            -D PKG_REAXFF=on \
+            -D DOWNLOAD_PLUMED=yes \
+            -D PLUMED_MODE=static \
+            -D DOWNLOAD_MSCG=yes \
+            -D DOWNLOAD_SCAFACOS=yes \
+            -D DOWNLOAD_QUIP=yes \
+            -D DOWNLOAD_KIM=yes \
+            -WITH_FFMPEG=yes \
+            -D DOWNLOAD_EIGEN3=yes \
+            -D DOWNLOAD_LATTE=yes \
+            -D LAMMPS_SIZES=BIGBIG \
+            -D CMAKE_POSITION_INDEPENDENT_CODE=ON \
+            -D CMAKE_EXE_FLAGS="-dynamic" \
+            ../cmake
+RUN make -j 4
+RUN make install
+WORKDIR /opt/lammps/python
+RUN pip install --no-cache-dir -U build wheel setuptools
+RUN pip wheel .
+RUN pip install --no-cache-dir --force-reinstall lammps-*.whl
+WORKDIR /opt
+
+
+# Setup entry point for production.
+ENV PATH="$PATH:/opt/lammps/install/bin"
+ENV PATH=/opt/lammps/install/bin:$PATH
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/lammps/install/lib
+ENV PATH=/opt/lammps/build/kim_build-prefix/bin:$PATH
+ENV PATH=/opt/lammps/build/kim_build-prefix/include:$PATH
+ENV LD_LIBRARY_PATH=/opt/lammps/build/kim_build-prefix/lib:$LD_LIBRARY_PATH
+
