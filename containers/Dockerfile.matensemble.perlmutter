@@ -1,46 +1,21 @@
-FROM nersc/lammps_flux:25.07
+FROM ghcr.io/freddude2004/matensemble-base:apr_patch_base25.11
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl git gcc && \
+RUN apt-get update && apt-get install -y --no-install-recommends    \
+    curl git gcc                                                 && \
     rm -rf /var/lib/apt/lists/*
 
-# install uv
 RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh && \
     /usr/local/bin/uv --version
 
-# use the /opt/basic python env with flux and lammps installed in there 
 ENV VIRTUAL_ENV=/opt/basic
 ENV UV_PROJECT_ENVIRONMENT=/opt/basic
 ENV LD_LIBRARY_PATH="/opt/lammps/install/lib:/usr/local/lib:${LD_LIBRARY_PATH}"
 ENV PATH="/opt/basic/bin:/opt/lammps/install/bin:/usr/local/bin:${PATH}"
 
-RUN uv pip install --python /opt/basic/bin/python --upgrade pip setuptools wheel && \
-    uv pip install --python /opt/basic/bin/python \
-        "torch<=2.5.0" \
-        mace-torch \
-        cuequivariance \
-        cuequivariance-torch \
-        cuequivariance-ops-torch-cu12 \
-        cupy-cuda12x \
-        "numpy<2"
-
-# quick import test
-RUN /opt/basic/bin/python - <<'PY'
-import torch
-import mace
-import e3nn
-import lammps
-import lammps.mliap
-import cuequivariance
-import cuequivariance_torch
-import numpy
-print("python stack ok")
-PY
-
-# install MatEnsemble 
-RUN mkdir -p /opt/src && \
-    cd /opt/src && \
-    rm -rf MatEnsemble && \
+# clone MatEnsemble
+WORKDIR opt/src
+RUN rm -rf /opt/basic/lib/python3.12/site-packages/tabulate*            && \
     git clone --depth 1 https://github.com/FredDude2004/MatEnsemble.git && \
-    cd MatEnsemble && \
-    uv pip install --python /opt/basic/bin/python .
+    cd MatEnsemble                                                      && \
+    uv export --format requirements.txt --output-file requirements.txt  && \
+    uv pip install -r requirements.txt
