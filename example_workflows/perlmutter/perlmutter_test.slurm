@@ -112,19 +112,19 @@ srun -N2 -n2 --mpi=pmi2 --gpus-per-node=4                                      \
 salloc -N 2 -t 60 -C gpu --qos interactive -A m5014_g -G 8
 
 # SHOW THAT FLUX IS RECOGNIZING GPUs 
-srun -N2 -n2 --mpi=pmi2 --gpus-per-node=4	    \
-    podman-hpc run --rm --gpu --net host            \
-    -e SLURM_* -e PMI_* -e PALS_*                   \
-    ghcr.io/freddude2004/matensemble:perlmutter-dev \
+srun -N2 -n2 --mpi=pmi2 --gpus-per-node=4 \
+    podman-hpc run --rm --gpu --net host \
+    -e SLURM_* -e PMI_* -e PALS_* \
+    ghcr.io/freddude2004/matensemble:perlmutter_mace_0.3.14 \
     flux start flux resource list
 
 # RUN THE MATENSEMBLE WORKFLOW 
-srun -N2 -n2 --mpi=pmi2 --gpus-per-node=4	    \
-    podman-hpc run --rm --gpu --net host            \
-    -v "$PWD:$PWD" -w "$PWD"                        \
-    -e SLURM_* -e PMI_* -e PALS_*                   \
-    ghcr.io/freddude2004/matensemble:perlmutter-dev \
-    flux start python run_mace_workflow.py
+srun -N2 -n2 --mpi=pmi2 --gpus-per-node=4 \
+    podman-hpc run --rm --gpu --net host \
+    -v "$PWD:$PWD" -w "$PWD" \
+    -e SLURM_* -e PMI_* -e PALS_* \
+    ghcr.io/freddude2004/matensemble:perlmutter_mace_0.3.14 \
+    flux start flux run -n 4 python run_mace_workflow.py
 
 
 
