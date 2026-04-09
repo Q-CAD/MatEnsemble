@@ -22,31 +22,7 @@ pipe = Pipeline()
     inherit_env=True,
 )
 def run_lammps_mace(output_file: str, ff_file: str):
-    print("OS ENVIRONMENT", os.environ)
-    print("LAMMPS executable:", shutil.which("lmp"))
-    print("PATH:", os.environ.get("PATH"))
-    print("LD_LIBRARY_PATH:", os.environ.get("LD_LIBRARY_PATH"))
-    print("CUDA_VISIBLE_DEVICES:", os.environ.get("CUDA_VISIBLE_DEVICES"))
-    print("ROCR_VISIBLE_DEVICES:", os.environ.get("ROCR_VISIBLE_DEVICES"))
-
-    pkgdir = pathlib.Path(lammps.__file__).resolve().parent
-    print("LAMMPS package dir:", pkgdir)
-    print("pkg-local lib exists:", (pkgdir / "liblammps.so").exists())
-
-    for cand in [
-        pkgdir / "liblammps.so",
-        pathlib.Path("/opt/lammps/install/lib/liblammps.so"),
-        pathlib.Path("/opt/lammps/build/liblammps.so"),
-    ]:
-        print(f"\nTrying CDLL on: {cand}")
-        print("exists:", cand.exists())
-        if cand.exists():
-            try:
-                ctypes.CDLL(str(cand))
-                print("CDLL load: OK")
-            except OSError as e:
-                print("CDLL load failed:", e)
-                subprocess.run(["/usr/bin/ldd", str(cand)], check=False)
+    print("OS ENVIRONMENT:", os.environ)
 
     lmp = lammps.lammps(
         cmdargs=[
