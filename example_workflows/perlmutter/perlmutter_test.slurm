@@ -87,3 +87,61 @@ srun -N2 -n2 --mpi=pmi2 --gpus-per-node=4                                      \
 # which container to run
 # start flux and run workflow 							
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# TESTS TO SHOW DR. BAGCHI 
+
+salloc -N 2 -t 60 -C gpu --qos interactive -A m5014_g -G 8
+
+
+# SHOW THAT FLUX IS RECOGNIZING GPUs 
+srun -N2 -n2 --mpi=pmi2 --gpus-per-node=4		 \
+    podman-hpc run --rm --gpu --net host                 \
+    -e SLURM_* -e PMI_* -e PALS_*                        \
+    ghcr.io/freddude2004/matensemble:perlmutter-dev-test \
+    flux start flux resource list
+
+# RUN THE MATENSEMBLE WORKFLOW 
+srun -N2 -n2 --mpi=pmi2 --gpus-per-node=4		 \
+    podman-hpc run --rm --gpu --net host                 \
+    -v "$PWD:$PWD" -w "$PWD"                             \
+    -e SLURM_* -e PMI_* -e PALS_*                        \
+    ghcr.io/freddude2004/matensemble:perlmutter-dev-test \
+    flux start python exec_workflow.py
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
