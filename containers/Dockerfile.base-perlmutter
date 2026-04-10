@@ -10,8 +10,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends               \
     libfftw3-dev libopenblas-dev libhdf5-dev libsqlite3-dev libarchive-dev     \
     libcurl4-openssl-dev libzmq3-dev libsodium-dev libjansson-dev libczmq-dev  \
     libyaml-cpp-dev libedit-dev libboost-all-dev uuid-dev lua5.3 liblua5.3-dev \
-    python3 python3-venv python3-dev                                           \        
-    && rm -rf /var/lib/apt/lists/*                                             
+    python3 python3-venv python3-dev                                           \
+    && rm -rf /var/lib/apt/lists/*
 
 # Python env
 RUN python3 -m venv /opt/basic && \
@@ -96,22 +96,22 @@ RUN git clone -b v2.11 https://github.com/open-mpi/hwloc.git hwloc && \
 # ----------
 WORKDIR /opt
 
-RUN git clone -b v0.69.0 https://github.com/flux-framework/flux-core.git && \
+RUN git clone -b v0.70.0 https://github.com/flux-framework/flux-core.git && \
     cd flux-core                                                         && \
     ./autogen.sh                                                         && \
     ./configure                                                          && \
-    make -j16                                                            && \
+    make -j 16                                                           && \
     make install                                                         && \
     ldconfig
 
-RUN git clone -b v0.36.0 https://github.com/flux-framework/flux-sched.git && \
+RUN git clone -b v0.41.0 https://github.com/flux-framework/flux-sched.git && \
     cd flux-sched                                                         && \
     cmake -B build                                                        && \
     cmake --build build -j 16                                             && \
     cmake --build build -t install                                        && \
     ldconfig
 
-RUN python -m pip install --no-cache-dir flux-python==0.69.0
+RUN python -m pip install --no-cache-dir flux-python==0.70.0
 ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
 
 

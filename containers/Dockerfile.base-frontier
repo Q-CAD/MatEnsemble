@@ -1,17 +1,21 @@
 FROM savannah.ornl.gov/olcf-container-images/cpe:25.03_gnu_ubuntu AS builder
+
 ENV DEBIAN_FRONTEND=noninteractive
+WORKDIR /opt
 
+
+# System packages
 RUN apt-get update && apt-get install -y --no-install-recommends               \
-    bash ca-certificates curl git wget unzip build-essential gfortran          \
-    pkg-config ninja-build cmake libblas-dev liblapack-dev libgsl-dev          \
-    libfftw3-dev libopenblas-dev libhdf5-dev libsqlite3-dev libarchive-dev     \
-    libcurl4-openssl-dev libzmq3-dev libsodium-dev libjansson-dev libczmq-dev  \
-    libyaml-cpp-dev libedit-dev libboost-all-dev uuid-dev lua5.3 liblua5.3-dev \
-    python3 python3-venv python3-dev                                           \        
-    && rm -rf /var/lib/apt/lists/*                                             
+    build-essential autoconf automake bash ca-certificates curl git wget unzip \
+    build-essential gfortran pkg-config ninja-build cmake libblas-dev libtool  \
+    liblapack-dev libgsl-dev libfftw3-dev libopenblas-dev libhdf5-dev          \
+    libsqlite3-dev libarchive-dev libcurl4-openssl-dev libzmq3-dev libtool-bin \
+    libsodium-dev libjansson-dev libczmq-dev libyaml-cpp-dev libedit-dev       \
+    libboost-all-dev uuid-dev lua5.3 liblua5.3-dev python3-venv python3-dev    \
+    && rm -rf /var/lib/apt/lists/*
 
 
-# Python env 
+# Python env
 RUN python3 -m venv /opt/basic && \
     ln -sf /opt/basic/bin/pip /usr/local/bin/pip
 ENV PATH=/opt/basic/bin:$PATH
@@ -23,7 +27,9 @@ ENV PIP_REQUIREMENT=
 ENV CONSTRAINT=
 ENV REQUIREMENT=
 
-RUN python -m pip install --no-cache-dir --upgrade pip setuptools wheel cffi
+RUN python -m pip install --no-cache-dir --upgrade pip setuptools wheel cffi \
+    PyYAML cython pyarrow pyfftw tqdm papermill py3Dmol ply pyyaml
+
 
 # Build mpim4py
 RUN MPICC="hipcc -L${MPICH_DIR}/lib -lmpi ${PE_MPICH_GTL_DIR_amd_gfx90a} ${PE_MPICH_GTL_LIBS_amd_gfx90a} -I${MPICH_DIR}/include" pip install --no-cache-dir --no-binary=mpi4py mpi4py
@@ -32,73 +38,73 @@ RUN MPICC="hipcc -L${MPICH_DIR}/lib -lmpi ${PE_MPICH_GTL_DIR_amd_gfx90a} ${PE_MP
 # Flux & Fluxion Build
 WORKDIR /opt
 
-RUN git clone -b v0.69.0 https://github.com/flux-framework/flux-core.git && \
+RUN git clone -b v0.70.0 https://github.com/flux-framework/flux-core.git && \
     cd flux-core                                                         && \
-    ./autogen.sh                                                         && \
+    PYTHON=/opt/basic/bin/python ./autogen.sh                            && \
     ./configure                                                          && \
     make -j16                                                            && \
     make install                                                         && \
     ldconfig
 
-RUN git clone -b v0.36.0 https://github.com/flux-framework/flux-sched.git && \
+RUN git clone -b v0.41.0 https://github.com/flux-framework/flux-sched.git && \
     cd flux-sched                                                         && \
     cmake -B build                                                        && \
     cmake --build build -j 16                                             && \
     cmake --build build -t install                                        && \
     ldconfig
 
-RUN python -m pip install --no-cache-dir flux-python==0.69.0
+RUN python -m pip install --no-cache-dir flux-python==0.70.0
 ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
 
 
 # build lammps
 WORKDIR /opt
-ENV LINKFLAGS="-L${MPICH_DIR}/lib -lmpi ${PE_MPICH_GTL_DIR_amd_gfx90a} ${PE_MPICH_GTL_LIBS_amd_gfx90a}"
+ENV LINKFLAGS="-L${MPICH_DIR}/lib -lmpi"
 RUN wget https://github.com/lammps/lammps/archive/refs/tags/stable_22Jul2025_update3.tar.gz && \
     tar -xzvf stable_22Jul2025_update3.tar.gz && \
     rm -rf stable_22Jul2025_update3.tar.gz    && \
     mv lammps-stable_22Jul2025_update3 lammps && \
-    mkdir -p /opt/lammps/build               
+    mkdir -p /opt/lammps/build
 WORKDIR /opt/lammps/build
 RUN cmake -D PKG_KOKKOS=on                                        \
-	  -D PKG_MOLECULE=on                                      \
-	  -D PKG_KSPACE=on                                        \
-	  -D PKG_BODY=on                                          \
-	  -D PKG_RIGID=on                                         \
-	  -D PKG_MC=on                                            \
-	  -D PKG_MANYBODY=on                                      \
-	  -D PKG_REAXFF=on                                        \
-	  -D PKG_REPLICA=on                                       \
-	  -D PKG_QEQ=on                                           \
-	  -D PKG_INTERLAYER=on                                    \
-	  -D BUILD_SHARED_LIBS=yes                                \
-	  -D BUILD_MPI=yes                                        \
-	  -D MLIAP_ENABLE_PYTHON=yes                              \
-	  -D PKG_PYTHON=yes                                       \
-	  -D PKG_ML-SNAP=yes                                      \
-	  -D PKG_ML-IAP=yes                                       \
-	  -D PKG_ML-PACE=yes                                      \
-	  -D PKG_SPIN=yes                                         \
-	  -D PYTHON_EXECUTABLE:FILEPATH=`which python`            \
-	  -D CMAKE_INSTALL_PREFIX=$INSTDIR                        \
-	  -D MPI_CXX_COMPILER=${ROCM_PATH}/bin/hipcc              \
-	  -D CMAKE_CXX_COMPILER=${ROCM_PATH}/bin/hipcc            \
-	  -D CMAKE_BUILD_TYPE=RelWithDebInfo                      \
-	  -D CMAKE_SHARED_LINKER_FLAGS="-Wl,-rpath,${CRAY_LD_LIBRARY_PATH} ${CRAY_MPICH_DIR}/lib/libmpi_amd.so ${CRAY_MPICH_ROOTDIR}/gtl/lib/libmpi_gtl_hsa.so" \
-	  -D Kokkos_ENABLE_HIP=on                                 \
-	  -D FFT=FFTW3                                            \
-	  -D Kokkos_ENABLE_HIP_MULTIPLE_KERNEL_INSTANTIATIONS=ON  \
-	  -D Kokkos_ENABLE_SERIAL=on                              \
-	  -D BUILD_OMP=on                                         \
-	  -D CMAKE_CXX_STANDARD=14                                \
-	  -D Kokkos_ARCH_VEGA90A=ON                               \
-	  -D CMAKE_CXX_FLAGS="${FLAGS}"                           \
-	  -D CMAKE_EXE_LINKER_FLAGS="${LINKFLAGS}"                \
-	  -D LAMMPS_MACHINE=${LMPMACH}                            \
-	  ../cmake
-RUN make VERBOSE=1 -j 16 	    && \
-    cp liblammps.* ../python/lammps && \
+          -D PKG_MOLECULE=on                                      \
+          -D PKG_KSPACE=on                                        \
+          -D PKG_BODY=on                                          \
+          -D PKG_RIGID=on                                         \
+          -D PKG_MC=on                                            \
+          -D PKG_MANYBODY=on                                      \
+          -D PKG_REAXFF=on                                        \
+          -D PKG_REPLICA=on                                       \
+          -D PKG_QEQ=on                                           \
+          -D PKG_INTERLAYER=on                                    \
+          -D BUILD_SHARED_LIBS=yes                                \
+          -D BUILD_MPI=yes                                        \
+          -D MLIAP_ENABLE_PYTHON=yes                              \
+          -D PKG_PYTHON=yes                                       \
+          -D PKG_ML-SNAP=yes                                      \
+          -D PKG_ML-IAP=yes                                       \
+          -D PKG_ML-PACE=yes                                      \
+          -D PKG_SPIN=yes                                         \
+          -D PYTHON_EXECUTABLE:FILEPATH=`which python`            \
+          -D CMAKE_INSTALL_PREFIX=$INSTDIR                        \
+          #-D MPI_CXX_COMPILER=${ROCM_PATH}/bin/hipcc              \
+          -D CMAKE_CXX_COMPILER=${ROCM_PATH}/bin/hipcc            \
+          -D CMAKE_BUILD_TYPE=RelWithDebInfo                      \
+          -D Kokkos_ENABLE_HIP=on                                 \
+          -D FFT=FFTW3                                            \
+          -D Kokkos_ENABLE_HIP_MULTIPLE_KERNEL_INSTANTIATIONS=ON  \
+          -D Kokkos_ENABLE_SERIAL=on                              \
+          -D BUILD_OMP=on                                         \
+          -D CMAKE_CXX_STANDARD=14                                \
+          -D Kokkos_ARCH_VEGA90A=ON                               \
+          -D CMAKE_CXX_FLAGS="${FLAGS}"                           \
+          -D CMAKE_EXE_LINKER_FLAGS="${LINKFLAGS}"                \
+          -D LAMMPS_MACHINE=${LMPMACH}                            \
+          ../cmake
+RUN make -j 16      && \
+    make install    && \
     make install-python
+ENV PATH=/opt/lammps/install/bin:${PATH}
 
 
 # tests

@@ -1,35 +1,23 @@
 FROM ghcr.io/freddude2004/matensemble-base:frontier
 
 ENV DEBIAN_FRONTEND=noninteractive
-SHELL ["/bin/bash", "-c"]
+WORKDIR /opt
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl    git    gcc
+    curl git gcc
 
 # install uv
-RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh; \
-    export PATH="/usr/local/bin:${PATH}"; \
+RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh && \
+    export PATH="/usr/local/bin:${PATH}" 					      && \
     uv --version
 
-# setup uv to install deps to /opt/venv
-ENV UV_PROJECT_ENVIRONMENT=/opt/venv
+# setup uv to install deps to /opt/basic
+ENV UV_PROJECT_ENVIRONMENT=/opt/basic
 
 # clone MatEnsemble
-RUN set -euo pipefail; \
-    mkdir -p /opt/src; \
-    cd /opt/src; \
-    rm -rf MatEnsemble; \
-    git clone --depth 1 https://github.com/FredDude2004/MatEnsemble.git; \
-    cd MatEnsemble; \
-    uv export --format requirements.txt --output-file requirements.txt; \ 
+RUN git clone --depth 1 https://github.com/FredDude2004/MatEnsemble.git matensemble && \
+    cd matensemble 						       && \
+    uv export --format requirements.txt --output-file requirements.txt && \ 
     uv pip install -r requirements.txt
 
-RUN printf '%s\n' \
-    /opt/lammps/lib \
-    /opt/lammps/lib64 \
-    /opt/rocm-6.3.1/lib \
-    /opt/rocm/lib/llvm/lib \
-    > /etc/ld.so.conf.d/matensemble.conf \
- && ldconfig
-
-ENV PATH="/opt/venv/bin:${PATH}"
+ENV PATH="/opt/basic/bin:${PATH}"

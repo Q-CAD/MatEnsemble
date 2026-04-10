@@ -1,4 +1,3 @@
-# ./functions.py
 from matensemble.pipeline import Pipeline
 
 pipe = Pipeline()

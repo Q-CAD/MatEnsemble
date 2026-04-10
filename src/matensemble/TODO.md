@@ -92,8 +92,9 @@
 
 **--- Science Example ---**
 - [x] Test the science example that Soumendu provided 
-- [ ] Update version of LAMMPS
-- [ ] Fix Bug with jobspec.env -> jobspec.environment 
+- [x] Update version of LAMMPS
+- [x] Fix Bug with jobspec.env -> jobspec.environment 
+- [ ] Test it again 
 
 **--- Polish Everything ---**
 - [x] Update all the documentation 
@@ -103,12 +104,41 @@
 - [ ] Change name of 'Pipeline' to something else
 - [ ] Make ChoreType.PYTHON have the ability to be defined in the runner script
 
+**--- Fix Containers ---**
+- [x] Install latest version of lammps in frontier images 
+- [ ] Test MPI problem with MatEnsemble in Frontier Images
+- [ ] Test Science Example with latest MPICH install 
+- [ ] Ping neil to ask about MPICH in image 
+
 **--- Model Context Protocol ---**
 - [ ] MCP implementation 
 - [ ] Map out the Tool and Resources
+- [ ] Implement the Resources 
+    - [ ] Resource to Fetch ALL Docs
+    - [ ] Resource to Fetch Relavant Source Code
+    - [ ] Resource to Fetch Examples General or system dependent 
+- [ ] Implement the Tools 
+    - [ ] Tool to create a directory for the workflow 
+    - [ ] Tool to write a file in that directory 
+    - [ ] Tool to delete a file in that directory 
+    - [ ] Tool to create a workflow 
+    - [ ] Tool to verify a workflow 
+    - [ ] Tool to create a batch script 
+    - [ ] Tool to setup container env
+    - [ ] Tool to submit a batch script 
+- [ ] Implement the Prompts 
+    - [ ] ???
+
 
 **--- Reading List ---**
 - [ ] [Agentic Orchestration of HPC Applications](https://vsoch.github.io/assets/posts/agentic-orchestration-hpc-workloads-cloud-sochat-milroy.pdf)
-- [ ] [Container Training Slides](https://drive.google.com/drive/folders/1_mTBBc98TEX3XFpNp0rqoqj1VjN9TKoO)
+- [x] [Container Training Slides](https://drive.google.com/drive/folders/1_mTBBc98TEX3XFpNp0rqoqj1VjN9TKoO)
 - [ ] [Containers as Jupyter Kernels](https://docs.nersc.gov/services/jupyter/how-to-guides/#how-to-use-a-container-to-run-a-jupyter-kernel)
 - [ ] [Using SPIN to Run Persistent Containers](https://docs.nersc.gov/services/spin/)
+- [ ] [Using uv to package lammps and flux into pip install???](https://sgoel.dev/posts/building-cython-or-c-extensions-using-uv/)
+
+- [ ] Ping Neil about MPICH 
+- [ ] Make Repo & Docs polished for JOSS submission and make sure that the code is testable and they can run it
+- [ ] Create a way to run matensemble without containers and just pip (posibly uv or conda) 
+- [ ] Convert Scaffold into PowerPoint Presentation 
+- [x] Email coordinatior about length of presentation and audience
