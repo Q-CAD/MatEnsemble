@@ -14,12 +14,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends             \
     && rm -rf /var/lib/apt/lists/*
 
 
-# Python env 
+# Python env
 RUN python3 -m venv /opt/basic && \
     ln -sf /opt/basic/bin/pip /usr/local/bin/pip
 ENV PATH=/opt/basic/bin:$PATH
 
-RUN python -m pip install --no-cache-dir --upgrade pip setuptools wheel cffi \
+RUN python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel cffi \
     PyYAML cython pyarrow pyfftw tqdm papermill py3Dmol ply pyyaml
 
 
@@ -72,5 +72,3 @@ RUN git clone -b v0.41.0 https://github.com/flux-framework/flux-sched.git && \
 
 RUN python -m pip install --no-cache-dir flux-python==0.70.0
 ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
-
-
