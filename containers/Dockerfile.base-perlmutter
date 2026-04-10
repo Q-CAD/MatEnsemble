@@ -4,15 +4,14 @@ ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /opt
 
 # System packages
-RUN apt-get update && apt-get install -y --no-install-recommends      \
-    bash ca-certificates curl git wget unzip build-essential gfortran \
-    pkg-config ninja-build cmake libblas-dev liblapack-dev libgsl-dev \
-    libfftw3-dev libopenblas-dev libhdf5-dev libsqlite3-dev           \
-    libarchive-dev libcurl4-openssl-dev libzmq3-dev libsodium-dev     \
-    libjansson-dev libczmq-dev libyaml-cpp-dev libedit-dev            \
-    libboost-all-dev uuid-dev lua5.3 liblua5.3-dev python3            \
-    python3-venv python3-dev                                          \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends               \
+    bash ca-certificates curl git wget unzip build-essential gfortran          \
+    pkg-config ninja-build cmake libblas-dev liblapack-dev libgsl-dev          \
+    libfftw3-dev libopenblas-dev libhdf5-dev libsqlite3-dev libarchive-dev     \
+    libcurl4-openssl-dev libzmq3-dev libsodium-dev libjansson-dev libczmq-dev  \
+    libyaml-cpp-dev libedit-dev libboost-all-dev uuid-dev lua5.3 liblua5.3-dev \
+    python3 python3-venv python3-dev                                           \        
+    && rm -rf /var/lib/apt/lists/*                                             
 
 # Python env
 RUN python3 -m venv /opt/basic && \
@@ -59,9 +58,26 @@ RUN python -m pip install --no-cache-dir                     \
     "cuequivariance==0.6.0"                                  \
     "cuequivariance-torch==0.6.0"                            \
     "cuequivariance-ops-torch-cu12==0.3.0"                   \
-    mace-torch
+    mace-torch==0.3.14
 
-# Build mpi4py
+
+
+# Build MPICH and install mpi4py
+ARG mpich=3.4.3
+ARG mpich_prefix=mpich-$mpich
+
+WORKDIR /opt
+RUN wget https://www.mpich.org/static/downloads/$mpich/$mpich_prefix.tar.gz && \
+    tar xvzf $mpich_prefix.tar.gz                                           && \
+    cd $mpich_prefix                                                        && \
+    FFLAGS=-fallow-argument-mismatch FCFLAGS=-fallow-argument-mismatch ./configure --with-device=ch4:ofi && \
+    make -j 4                                                               && \
+    make install                                                            && \
+    make clean                                                              && \
+    cd ..                                                                   && \
+    rm -rf $mpich_prefix
+RUN /sbin/ldconfig
+
 RUN MPICC="cc -shared" python -m pip install --no-cache-dir --force-reinstall --no-binary=mpi4py mpi4py==4.0.3
 
 
@@ -95,22 +111,54 @@ RUN git clone -b v0.36.0 https://github.com/flux-framework/flux-sched.git && \
     cmake --build build -t install                                        && \
     ldconfig
 
-RUN python -m pip install --no-cache-dir flux-python
+RUN python -m pip install --no-cache-dir flux-python==0.69.0
 ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
+
+
+# Install MPI-ping-pong from OLCF
+WORKDIR /opt
+ENV MPI_HOME "/opt/mpich/install"
+RUN git clone https://github.com/olcf-tutorials/MPI_ping_pong.git test_code
+RUN cd /opt/test_code/cpu                                                   && \
+    make
+RUN cd /opt/test_code/cuda_staged                                           && \
+    sed -i 's:-arch=sm_70:-arch=sm_80:g' Makefile                           && \
+    sed -i 's:OMPI_DIR:MPI_HOME:g' Makefile                                 && \
+    sed -i 's:-lmpi_ibm:-lmpi:g' Makefile                                   && \
+    make
+RUN cd /opt/test_code/cuda_aware                                            && \
+    sed -i 's:-arch=sm_70:-arch=sm_80:g' Makefile                           && \
+    sed -i 's:OMPI_DIR:MPI_HOME:g' Makefile                                 && \
+    sed -i 's:-lmpi_ibm:-lmpi:g' Makefile                                   && \
+    make
+ENV PATH=$PATH:/opt/test_code/cpu
+ENV PATH=$PATH:/opt/test_code/cuda_staged
+ENV PATH=$PATH:/opt/test_code/cuda_aware
+
+ENV PATH=$PATH:/opt/lammps/build/plumed_build-prefix/bin
+ENV PATH=$PATH:/opt/lammps/build/plumed_build-prefix/include
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/lammps/build/plumed_build-prefix/lib
+ENV PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/opt/lammps/build/plumed_build-prefix/lib/pkgconfig
+ENV PLUMED_KERNEL=/opt/lammps/build/plumed_build-prefix/lib/libplumedKernel.so
+ARG BLAS_LIBRARIES=/usr/local/blas/lib
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/fftw/install/lib
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/blas
+ENV PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/opt/fftw
+
 
 # ------------
 # LAMMPS build
 # ------------
 WORKDIR /opt
-RUN git clone https://github.com/brucefan1983/NEP_CPU.git nep_cpu
-RUN cp -r /opt/nep_cpu/src/* /opt/nep_cpu/interface/lammps/USER-NEP
-RUN wget https://github.com/lammps/lammps/archive/refs/tags/patch_2Apr2025.tar.gz && \
-    tar -xzvf patch_2Apr2025.tar.gz                                               && \
-    rm -rf patch_2Apr2025.tar.gz                                                  && \
-    mv lammps-patch_2Apr2025 lammps                                               && \
-    mkdir -p /opt/lammps/build
-RUN cp -r /opt/nep_cpu/interface/lammps/USER-NEP /opt/lammps/src
-RUN sed -i 's/F95FLAGS += /F90FLAGS += /' /opt/lammps/cmake/Modules/Packages/ML-QUIP.cmake
+RUN git clone https://github.com/brucefan1983/NEP_CPU.git nep_cpu                           && \
+    cp -r /opt/nep_cpu/src/* /opt/nep_cpu/interface/lammps/USER-NEP                         && \
+    wget https://github.com/lammps/lammps/archive/refs/tags/stable_22Jul2025_update3.tar.gz && \
+    tar -xzvf stable_22Jul2025_update3.tar.gz                                               && \
+    rm -rf stable_22Jul2025_update3.tar.gz                                                  && \
+    mv lammps-stable_22Jul2025_update3 lammps                                               && \
+    mkdir -p /opt/lammps/build                                                              && \
+    cp -r /opt/nep_cpu/interface/lammps/USER-NEP /opt/lammps/src                            && \
+    sed -i 's/F95FLAGS += /F90FLAGS += /' /opt/lammps/cmake/Modules/Packages/ML-QUIP.cmake
 ENV NVCC_WRAPPER_DEFAULT_ARCH=sm_80
 ENV OMPI_CXX=/opt/lammps/lib/kokkos/bin/nvcc_wrapper
 WORKDIR /opt/lammps/build
@@ -159,18 +207,16 @@ RUN cmake                                                            \
       -D DOWNLOAD_LATTE=YES                                          \
       -D PLUMED_MODE=STATIC                                          \
       ../cmake
-RUN make -j 16
-RUN make install
-RUN make install-python
+RUN make -j 16          && \
+    make install        && \
+    make install-python
 ENV PATH=/opt/lammps/install/bin:${PATH}
 
-
 # tests
-RUN python -c "import numpy, pandas, scipy, ase, pymatgen, torch, cupy, mpi4py; print('python stack ok')"
-RUN python -c "import lammps; print('lammps python ok')"
-RUN python -c "import flux; print('flux python ok')"
+RUN python -c "import numpy, pandas, scipy, ase, pymatgen, torch, cupy, mpi4py; print('python stack ok')" && \
+    python -c "import lammps; print('lammps python ok')"                                                  && \
+    rm -rf /usr/local/cuda/lib64/stubs && find /usr/local -path '*/lib/stubs' -type d -prune -exec rm -rf {} +
 
 # Remove CUDA stub libraries to fix runtime GPU detection
-RUN rm -rf /usr/local/cuda/lib64/stubs && find /usr/local -path '*/lib/stubs' -type d -prune -exec rm -rf {} +
 ENV LD_LIBRARY_PATH=/opt/lammps/install/lib:/opt/fftw/install/lib:/opt/hdf5/install/lib:/usr/local/lib:/usr/lib64:/usr/lib
 WORKDIR /opt

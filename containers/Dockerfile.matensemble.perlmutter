@@ -1,7 +1,7 @@
-FROM ghcr.io/freddude2004/matensemble-base:apr_patch_base25.11
+FROM ghcr.io/freddude2004/matensemble-base:perlmutter_mpich_lammps_jul
 
-RUN apt-get update && apt-get install -y --no-install-recommends    \
-    curl git gcc                                                 && \
+RUN apt-get update && apt-get install -y --no-install-recommends           \
+    curl git gcc                                                        && \
     rm -rf /var/lib/apt/lists/*
 
 RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh && \
@@ -13,7 +13,7 @@ ENV LD_LIBRARY_PATH="/opt/lammps/install/lib:/usr/local/lib:${LD_LIBRARY_PATH}"
 ENV PATH="/opt/basic/bin:/opt/lammps/install/bin:/usr/local/bin:${PATH}"
 
 # clone MatEnsemble
-WORKDIR opt/src
+WORKDIR /opt/src
 RUN rm -rf /opt/basic/lib/python3.12/site-packages/tabulate*            && \
     git clone --depth 1 https://github.com/FredDude2004/MatEnsemble.git && \
     cd MatEnsemble                                                      && \

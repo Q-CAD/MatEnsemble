@@ -124,7 +124,7 @@ srun -N2 -n2 --mpi=pmi2 --gpus-per-node=4 \
     -v "$PWD:$PWD" -w "$PWD" \
     -e SLURM_* -e PMI_* -e PALS_* \
     ghcr.io/freddude2004/matensemble:perlmutter_mace_0.3.14 \
-    flux start flux run -n 4 python run_mace_workflow.py
+    flux start flux run -n 4 python lammps.py
 
 
 

@@ -1,164 +1,107 @@
 FROM savannah.ornl.gov/olcf-container-images/cpe:25.03_gnu_ubuntu AS builder
 ENV DEBIAN_FRONTEND=noninteractive
-SHELL ["/bin/bash", "-lc"]
 
-ARG FLUX_CORE_VER=0.66.0
-ARG FLUX_SCHED_VER=0.38.0
-ARG LAMMPS_TAG=stable_2Aug2023_update3
-
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    autoconf            automake                libtool \
-    make                pkg-config              libc6-dev \
-    libzmq3-dev         uuid-dev                libjansson-dev \
-    liblz4-dev          libarchive-dev          libhwloc-dev \
-    libsqlite3-dev      lua5.1                  liblua5.1-dev \
-    lua-posix           python3-dev             python3-cffi \
-    python3-ply         python3-setuptools      python3-yaml \
-    python3-sphinx      aspell                  aspell-en \
-    time                valgrind                libmpich-dev jq \
-    libhwloc-dev        libboost-dev            libboost-graph-dev \
-    libedit-dev         libyaml-cpp-dev         python3-yaml \
-    git                 curl                    build-essential \
-    wget                ninja-build             cmake \
-    python3.12-venv \
-    && rm -rf /var/lib/apt/lists/*
-
-ENV VIRTUAL_ENV=/opt/venv
-ENV FLUX_PREFIX=/opt/flux
-ENV LAMMPS_PREFIX=/opt/lammps
-
-RUN python3 -m venv "${VIRTUAL_ENV}" \
- && "${VIRTUAL_ENV}/bin/python" -m pip install --no-cache-dir -U pip setuptools wheel \
- && "${VIRTUAL_ENV}/bin/python" -m pip install --no-cache-dir cffi PyYAML ply jsonschema \
- && ln -sf "${VIRTUAL_ENV}/bin/python" /usr/local/bin/python
+RUN apt-get update && apt-get install -y --no-install-recommends               \
+    bash ca-certificates curl git wget unzip build-essential gfortran          \
+    pkg-config ninja-build cmake libblas-dev liblapack-dev libgsl-dev          \
+    libfftw3-dev libopenblas-dev libhdf5-dev libsqlite3-dev libarchive-dev     \
+    libcurl4-openssl-dev libzmq3-dev libsodium-dev libjansson-dev libczmq-dev  \
+    libyaml-cpp-dev libedit-dev libboost-all-dev uuid-dev lua5.3 liblua5.3-dev \
+    python3 python3-venv python3-dev                                           \        
+    && rm -rf /var/lib/apt/lists/*                                             
 
 
-# build flux-core
-RUN set -euo pipefail; \
-    cd /tmp; \
-    wget -O flux-core.tgz "https://github.com/flux-framework/flux-core/releases/download/v${FLUX_CORE_VER}/flux-core-${FLUX_CORE_VER}.tar.gz"; \
-    tar xzf flux-core.tgz; \
-    cd "flux-core-${FLUX_CORE_VER}"; \
-    PYTHON="${VIRTUAL_ENV}/bin/python" PYTHON_VERSION=3.12 \
-    ./configure --prefix="${FLUX_PREFIX}" --disable-docs; \
-    make -j"$(nproc)"; \
-    make install; \
-    rm -rf /tmp/flux-core.tgz "/tmp/flux-core-${FLUX_CORE_VER}"
+# Python env 
+RUN python3 -m venv /opt/basic && \
+    ln -sf /opt/basic/bin/pip /usr/local/bin/pip
+ENV PATH=/opt/basic/bin:$PATH
+ENV VIRTUAL_ENV=/opt/basic
+ENV PIP_CONFIG_FILE=/dev/null
+ENV PIP_REQUIRE_HASHES=0
+ENV PIP_CONSTRAINT=
+ENV PIP_REQUIREMENT=
+ENV CONSTRAINT=
+ENV REQUIREMENT=
 
-ENV PATH="${FLUX_PREFIX}/bin:${PATH}"
-ENV LD_LIBRARY_PATH="${FLUX_PREFIX}/lib:${FLUX_PREFIX}/lib64"
-ENV PKG_CONFIG_PATH="${FLUX_PREFIX}/lib/pkgconfig:${FLUX_PREFIX}/lib64/pkgconfig"
+RUN python -m pip install --no-cache-dir --upgrade pip setuptools wheel cffi
 
-# creating a .pth file to the flux-python bindings
-# check https://docs.python.org/3/library/site.html for more info
-RUN set -euo pipefail; \
-    site="$("${VIRTUAL_ENV}/bin/python" -c 'import site; print(site.getsitepackages()[0])')"; \
-    flux_pythonpath="$("${FLUX_PREFIX}/bin/flux" env | sed -n 's/^export PYTHONPATH="\([^"]*\)".*/\1/p')"; \
-    test -n "${flux_pythonpath}"; \
-    printf "%s" "${flux_pythonpath}" | tr ':' '\n' | sed '/^$/d' > "${site}/flux.pth"
+# Build mpim4py
+RUN MPICC="hipcc -L${MPICH_DIR}/lib -lmpi ${PE_MPICH_GTL_DIR_amd_gfx90a} ${PE_MPICH_GTL_LIBS_amd_gfx90a} -I${MPICH_DIR}/include" pip install --no-cache-dir --no-binary=mpi4py mpi4py
 
-# build flux-sched
-RUN set -euo pipefail; \
-    cd /tmp; \
-    wget -O flux-sched.tgz "https://github.com/flux-framework/flux-sched/releases/download/v${FLUX_SCHED_VER}/flux-sched-${FLUX_SCHED_VER}.tar.gz"; \
-    tar xzf flux-sched.tgz; \
-    cd "flux-sched-${FLUX_SCHED_VER}"; \
-    PYTHON="${VIRTUAL_ENV}/bin/python" cmake -S . -B build \
-      -DCMAKE_BUILD_TYPE=Release \
-      -DCMAKE_INSTALL_PREFIX="${FLUX_PREFIX}" \
-      -DCMAKE_PREFIX_PATH="${FLUX_PREFIX}" \
-      -DENABLE_DOCS=Off; \
-    cmake --build build -j"$(nproc)"; \
-    cmake --install build; \
-    rm -rf /tmp/flux-sched.tgz "/tmp/flux-sched-${FLUX_SCHED_VER}"
+
+# Flux & Fluxion Build
+WORKDIR /opt
+
+RUN git clone -b v0.69.0 https://github.com/flux-framework/flux-core.git && \
+    cd flux-core                                                         && \
+    ./autogen.sh                                                         && \
+    ./configure                                                          && \
+    make -j16                                                            && \
+    make install                                                         && \
+    ldconfig
+
+RUN git clone -b v0.36.0 https://github.com/flux-framework/flux-sched.git && \
+    cd flux-sched                                                         && \
+    cmake -B build                                                        && \
+    cmake --build build -j 16                                             && \
+    cmake --build build -t install                                        && \
+    ldconfig
+
+RUN python -m pip install --no-cache-dir flux-python==0.69.0
+ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
+
 
 # build lammps
-RUN set -euo pipefail; \
-    cd /tmp; \
-    wget -O lammps.tgz "https://github.com/lammps/lammps/archive/refs/tags/${LAMMPS_TAG}.tar.gz"; \
-    tar xzf lammps.tgz; \
-    SRC="/tmp/lammps-${LAMMPS_TAG}"; \
-    cmake -S "${SRC}/cmake" -B /tmp/lammps_build \
-      -DPKG_MOLECULE=ON \
-      -DPKG_KSPACE=ON \
-      -DPKG_BODY=ON \
-      -DPKG_RIGID=ON \
-      -DPKG_MC=ON \
-      -DPKG_MANYBODY=ON \
-      -DPKG_REAXFF=ON \
-      -DPKG_REPLICA=ON \
-      -DPKG_QEQ=ON \
-      -DPKG_INTERLAYER=ON \
-      -DPKG_PYTHON=ON \
-      -DPKG_ML-SNAP=ON \
-      -DPKG_ML-IAP=ON \
-      -DPKG_ML-PACE=ON \
-      -DPKG_KOKKOS=ON \
-      -DPKG_SPIN=ON \
-      -DCMAKE_BUILD_TYPE=Release \
-      -DCMAKE_INSTALL_PREFIX="${LAMMPS_PREFIX}" \
-      -DCMAKE_CXX_COMPILER=/opt/rocm-6.3.1/bin/hipcc \
-      -DKokkos_ENABLE_HIP=ON \
-      -DKokkos_ARCH_VEGA90A=ON \
-      -DKokkos_ENABLE_OPENMP=ON \
-      -DBUILD_SHARED_LIBS=ON; \
-    cmake --build /tmp/lammps_build -j"$(nproc)"; \
-    cmake --install /tmp/lammps_build
+WORKDIR /opt
+ENV LINKFLAGS="-L${MPICH_DIR}/lib -lmpi ${PE_MPICH_GTL_DIR_amd_gfx90a} ${PE_MPICH_GTL_LIBS_amd_gfx90a}"
+RUN wget https://github.com/lammps/lammps/archive/refs/tags/stable_22Jul2025_update3.tar.gz && \
+    tar -xzvf stable_22Jul2025_update3.tar.gz && \
+    rm -rf stable_22Jul2025_update3.tar.gz    && \
+    mv lammps-stable_22Jul2025_update3 lammps && \
+    mkdir -p /opt/lammps/build               
+WORKDIR /opt/lammps/build
+RUN cmake -D PKG_KOKKOS=on                                        \
+	  -D PKG_MOLECULE=on                                      \
+	  -D PKG_KSPACE=on                                        \
+	  -D PKG_BODY=on                                          \
+	  -D PKG_RIGID=on                                         \
+	  -D PKG_MC=on                                            \
+	  -D PKG_MANYBODY=on                                      \
+	  -D PKG_REAXFF=on                                        \
+	  -D PKG_REPLICA=on                                       \
+	  -D PKG_QEQ=on                                           \
+	  -D PKG_INTERLAYER=on                                    \
+	  -D BUILD_SHARED_LIBS=yes                                \
+	  -D BUILD_MPI=yes                                        \
+	  -D MLIAP_ENABLE_PYTHON=yes                              \
+	  -D PKG_PYTHON=yes                                       \
+	  -D PKG_ML-SNAP=yes                                      \
+	  -D PKG_ML-IAP=yes                                       \
+	  -D PKG_ML-PACE=yes                                      \
+	  -D PKG_SPIN=yes                                         \
+	  -D PYTHON_EXECUTABLE:FILEPATH=`which python`            \
+	  -D CMAKE_INSTALL_PREFIX=$INSTDIR                        \
+	  -D MPI_CXX_COMPILER=${ROCM_PATH}/bin/hipcc              \
+	  -D CMAKE_CXX_COMPILER=${ROCM_PATH}/bin/hipcc            \
+	  -D CMAKE_BUILD_TYPE=RelWithDebInfo                      \
+	  -D CMAKE_SHARED_LINKER_FLAGS="-Wl,-rpath,${CRAY_LD_LIBRARY_PATH} ${CRAY_MPICH_DIR}/lib/libmpi_amd.so ${CRAY_MPICH_ROOTDIR}/gtl/lib/libmpi_gtl_hsa.so" \
+	  -D Kokkos_ENABLE_HIP=on                                 \
+	  -D FFT=FFTW3                                            \
+	  -D Kokkos_ENABLE_HIP_MULTIPLE_KERNEL_INSTANTIATIONS=ON  \
+	  -D Kokkos_ENABLE_SERIAL=on                              \
+	  -D BUILD_OMP=on                                         \
+	  -D CMAKE_CXX_STANDARD=14                                \
+	  -D Kokkos_ARCH_VEGA90A=ON                               \
+	  -D CMAKE_CXX_FLAGS="${FLAGS}"                           \
+	  -D CMAKE_EXE_LINKER_FLAGS="${LINKFLAGS}"                \
+	  -D LAMMPS_MACHINE=${LMPMACH}                            \
+	  ../cmake
+RUN make VERBOSE=1 -j 16 	    && \
+    cp liblammps.* ../python/lammps && \
+    make install-python
 
-# install lammps wheel into venv
-RUN set -euo pipefail; \
-    SRC="/tmp/lammps-${LAMMPS_TAG}"; \
-    cd "${SRC}/python"; \
-    "${VIRTUAL_ENV}/bin/python" -m pip install --no-cache-dir -U build wheel setuptools; \
-    "${VIRTUAL_ENV}/bin/python" -m build --wheel; \
-    "${VIRTUAL_ENV}/bin/python" -m pip install --no-cache-dir --force-reinstall dist/lammps-*.whl; \
-    rm -rf /tmp/lammps.tgz "${SRC}" /tmp/lammps_build
 
-# quick test of lammps and flux bindings
-RUN set -euo pipefail; \
-    "${FLUX_PREFIX}/bin/flux" --version; \
-    "${VIRTUAL_ENV}/bin/python" -c "import flux; print('flux:', flux.__file__)"; \
-    "${VIRTUAL_ENV}/bin/python" -c "import lammps; print('lammps:', lammps.__file__)"
-
-
-FROM savannah.ornl.gov/olcf-container-images/cpe:25.03_gnu_ubuntu
-ENV DEBIAN_FRONTEND=noninteractive
-SHELL ["/bin/bash", "-c"]
-
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates libzmq5 libuuid1 \
-    libjansson4 liblz4-1 libarchive13 \
-    libhwloc15 libsqlite3-0 \
-    lua5.1 liblua5.1-0 \
-    lua-posix libyaml-cpp0.8 libedit2 \
-    mpich libboost-graph1.83.0 libboost-system1.83.0 \
-    libboost-thread1.83.0 libboost-filesystem1.83.0 libboost-program-options1.83.0 \
-    libboost-regex1.83.0 libboost-serialization1.83.0 \
-    && rm -rf /var/lib/apt/lists/*
-
-COPY --from=builder /opt/flux /opt/flux
-COPY --from=builder /opt/venv /opt/venv
-COPY --from=builder /opt/lammps /opt/lammps
-
-RUN printf '%s\n' \
-    /opt/lammps/lib \
-    /opt/lammps/lib64 \
-    /opt/rocm-6.3.1/lib \
-    /opt/rocm/lib/llvm/lib \
-    > /etc/ld.so.conf.d/matensemble.conf \
- && ldconfig
-
-ENV PATH="/opt/flux/bin:/opt/venv/bin:/opt/lammps/bin:${PATH}"
-ENV LD_LIBRARY_PATH="/opt/flux/lib:/opt/flux/lib64:/opt/lammps/lib:/opt/lammps/lib64:/opt/rocm-6.3.1/lib:/opt/rocm/lib/llvm/lib:${LD_LIBRARY_PATH}"
-ENV LAMMPS_LIBRARY="/opt/lammps/lib/liblammps.so"
-
-RUN set -euo pipefail; \
-    /opt/venv/bin/python - <<'PY'
-import ctypes
-import lammps
-ctypes.CDLL("/opt/lammps/lib/liblammps.so")
-lmp = lammps.lammps()
-print("ok")
-PY
-RUN flux --version
+# tests
+RUN python -c "import mpi4py; print('python stack ok')" && \
+    python -c "import lammps; print('lammps python ok')"                                                  && \
+    rm -rf /usr/local/cuda/lib64/stubs && find /usr/local -path '*/lib/stubs' -type d -prune -exec rm -rf {} +
