@@ -3,9 +3,6 @@ FROM ghcr.io/freddude2004/matensemble-base:frontier
 ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /opt
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl git gcc
-
 # install uv
 RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh && \
     export PATH="/usr/local/bin:${PATH}" 					      && \

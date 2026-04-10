@@ -1,16 +1,10 @@
-FROM ghcr.io/freddude2004/matensemble-base:perlmutter_mpich_lammps_jul
-
-RUN apt-get update && apt-get install -y --no-install-recommends           \
-    curl git gcc                                                        && \
-    rm -rf /var/lib/apt/lists/*
+FROM ghcr.io/freddude2004/matensemble-base:perlmutter
 
 RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh && \
     /usr/local/bin/uv --version
 
-ENV VIRTUAL_ENV=/opt/basic
+# setup uv to install deps to /opt/basic
 ENV UV_PROJECT_ENVIRONMENT=/opt/basic
-ENV LD_LIBRARY_PATH="/opt/lammps/install/lib:/usr/local/lib:${LD_LIBRARY_PATH}"
-ENV PATH="/opt/basic/bin:/opt/lammps/install/bin:/usr/local/bin:${PATH}"
 
 # clone MatEnsemble
 WORKDIR /opt/src
