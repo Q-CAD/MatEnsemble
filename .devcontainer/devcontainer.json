@@ -1,0 +1,14 @@
+{
+  "name": "matensemble-devel",
+  "image": "ghcr.io/freddude2004/matensemble-base:baseline",
+  "runArgs": ["--platform=linux/amd64"],
+  "workspaceFolder": "/workspace",
+  "forwardPorts": [3000],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.vscode-typescript-next"
+      ]
+    }
+  }
+}
