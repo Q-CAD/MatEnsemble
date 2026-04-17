@@ -87,7 +87,7 @@ def test_chore_decorator_collects_dependencies(tmp_path):
     assert pipe._chore_list[1].deps == ("chore-top_level_add-0001",)
 
 
-def test_nested_local_function_is_rejected(tmp_path):
+def test_nested_local_function_is_serialized(tmp_path):
     pipe = Pipeline(basedir=str(tmp_path))
 
     def outer():
@@ -97,8 +97,13 @@ def test_nested_local_function_is_rejected(tmp_path):
         return inner
 
     wrapped = pipe.chore()(outer())
-    with pytest.raises(ValueError, match="top-level callables"):
-        wrapped(1)
+    ref = wrapped(1)
+
+    assert ref.chore_id == "chore-inner-0001"
+    chore = pipe._chore_list[0]
+    assert chore.func_module is None
+    assert chore.func_qualname is None
+    assert chore.serialized_callable is not None
 
 
 def test_exec_builds_executable_chore(tmp_path):

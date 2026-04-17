@@ -11,7 +11,7 @@ RUN uv --version
 ENV UV_PROJECT_ENVIRONMENT=/opt/basic
 
 # clone MatEnsemble
-RUN git clone -b dev_container --depth 1 https://github.com/FredDude2004/MatEnsemble.git matensemble && \
+RUN git clone --depth 1 https://github.com/FredDude2004/MatEnsemble.git matensemble && \
     cd matensemble 						       && \
     uv export --format requirements.txt --output-file requirements.txt && \ 
     uv pip install -r requirements.txt

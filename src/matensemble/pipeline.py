@@ -5,6 +5,7 @@ import functools
 import datetime
 import sys
 
+import cloudpickle
 import networkx as nx
 
 from typing import Callable, Any
@@ -138,11 +139,6 @@ class Pipeline:
         def decorator(func: Callable[..., Any]) -> Callable[..., OutputReference]:
             @functools.wraps(func)
             def wrapper(*args: Any, **kwargs: Any) -> OutputReference:
-                if "<locals>" in func.__qualname__:
-                    raise ValueError(
-                        "MatEnsemble chores must wrap importable top-level callables, not nested/local functions."
-                    )
-
                 self._counter += 1
 
                 source_root = str(self._base_dir.parent.resolve())
@@ -183,14 +179,21 @@ class Pipeline:
                     str(spec_file),
                 ]
 
+                needs_serialization = (
+                    func.__module__ == "__main__" or "<locals>" in func.__qualname__
+                )
+
+                serialized_callable = cloudpickle.dumps(func) if needs_serialization else None
+
                 chore = Chore(
                     id=chore_id,
                     command=cmd,
                     chore_type=ChoreType.PYTHON,
                     resources=res,
                     workdir=workdir,
-                    func_module=func.__module__,
-                    func_qualname=func.__qualname__,
+                    func_module=None if needs_serialization else func.__module__,
+                    func_qualname=None if needs_serialization else func.__qualname__,
+                    serialized_callable=serialized_callable,
                     deps=deps,
                     args=copy.deepcopy(args),
                     kwargs=copy.deepcopy(kwargs),

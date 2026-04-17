@@ -1,14 +1,15 @@
 {
-  "name": "matensemble-devel",
-  "image": "ghcr.io/freddude2004/matensemble-base:baseline",
-  "runArgs": ["--platform=linux/amd64"],
-  "workspaceFolder": "/workspace",
-  "forwardPorts": [3000],
+  "name": "matensemble-dev",
+  "image": "ghcr.io/freddude2004/matensemble:baseline-arm64",
   "customizations": {
     "vscode": {
       "extensions": [
-        "ms-vscode.vscode-typescript-next"
+        "ms-vscode-remote.remote-containers",
+        "ms-python.python",
+        "ms-toolsai.jupyter"
       ]
     }
-  }
+  },
+  "forwardPorts": [8888],
+  "postCreateCommand": "python -m pip install -U pip && python -m pip install -e . jupyterlab ipykernel"
 }

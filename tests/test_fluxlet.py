@@ -32,6 +32,7 @@ def test_fluxlet_submit_writes_chore_spec_and_sets_jobspec_fields(tmp_path):
         workdir=workdir,
         func_module="tasks",
         func_qualname="run",
+        serialized_callable=b"hello",
     )
 
     executor = RecordingExecutor()

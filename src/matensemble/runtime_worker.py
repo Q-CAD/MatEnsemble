@@ -46,16 +46,32 @@ When Flux starts that command on an allocated worker, this module:
 
 """
 
-import argparse
 import importlib
-import json
+import argparse
 import inspect
 import pickle
+import json
 import sys
+
+import cloudpickle
 
 from pathlib import Path
 
 from matensemble.utils import _json_safe, _resolve_output_references
+
+
+def _load_callable(chore):
+    serialized = getattr(chore, "serialized_callable", None)
+    if serialized is not None:
+        return cloudpickle.loads(serialized)
+
+    if chore.func_module is None or chore.func_qualname is None:
+        raise ValueError(
+            "Python chore is missing both serialized_callable and func_module/func_qualname"
+        )
+
+    module = importlib.import_module(chore.func_module)
+    return _resolve_qualname(module, chore.func_qualname)
 
 
 def _resolve_qualname(module, qualname: str):
@@ -128,8 +144,7 @@ def main():
     if str(source_root) not in sys.path:
         sys.path.insert(0, str(source_root))
 
-    module = importlib.import_module(chore.func_module)
-    func = _resolve_qualname(module, chore.func_qualname)
+    func = _load_callable(chore)
 
     dep_results = {dep: _load_dep_result(spec_file, dep) for dep in chore.deps}
     args = _resolve_output_references(chore.args, dep_results)

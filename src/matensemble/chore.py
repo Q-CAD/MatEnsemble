@@ -34,6 +34,7 @@ class Chore:
         workdir: Path,
         func_module: str | None = None,
         func_qualname: str | None = None,
+        serialized_callable: bytes | None = None,
         deps: tuple[str, ...] = (),
         args: tuple = (),
         kwargs: dict | None = None,
@@ -60,6 +61,8 @@ class Chore:
             is PYTHON
         func_qualname : str
             The name of the function if the type of the :obj:`Chore` is PYTHON
+        serialized_callable : bytes
+            The original function that was wrapped stored as bytes
         deps : tuple[str, ...]
             A tupele of chore-id's which results this :obj:`Chore
         args : tuple
@@ -74,17 +77,20 @@ class Chore:
         )
 
         if chore_type == ChoreType.PYTHON:
-            if not func_module:
-                raise ValueError("Python chores require importable func_module")
-            if not func_qualname:
-                raise ValueError("Python chores require func_qualname")
+            if serialized_callable is None and not (func_module and func_qualname):
+                raise ValueError(
+                    "Python chores require either serialized_callable or func_module+func_qualname"
+                )
 
         self.chore_type = chore_type
         self.resources = resources
         self.workdir = workdir.resolve()
         self.spec_path = self.workdir / "chore.pkl"
+
         self.func_module = func_module
         self.func_qualname = func_qualname
+        self.serialized_callable = serialized_callable
+        
         self.deps = deps
         self.args = args
         self.kwargs = {} if kwargs is None else kwargs
@@ -108,6 +114,7 @@ class Chore:
             "spec_file": str(self.spec_path),
             "func_module": self.func_module,
             "func_qualname": self.func_qualname,
+            "has_serialized_callable": self.serialized_callable is not None,
             "deps": list(self.deps),
             "args": _json_safe(self.args),
             "kwargs": _json_safe(self.kwargs),

@@ -3,72 +3,44 @@ FROM docker.io/ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /opt
 
-RUN apt-get update && apt-get install -y --no-install-recommends             \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     autoconf automake libtool make pkg-config libc6-dev libzmq3-dev uuid-dev \
-    libjansson-dev liblz4-dev libarchive-dev libhwloc-dev libsqlite3-dev     \
-    lua5.1 liblua5.1-dev lua-posix python3 python3-dev python3-cffi          \
-    python3-ply python3-setuptools python3-yaml python3-sphinx aspell        \
-    aspell-en time valgrind libmpich-dev jq libhwloc-dev libboost-dev        \
-    libboost-graph-dev libedit-dev libyaml-cpp-dev python3-yaml git curl     \
-    build-essential wget ninja-build cmake python3-venv python3-pip          \
+    libjansson-dev liblz4-dev libarchive-dev libhwloc-dev libsqlite3-dev \
+    lua5.1 liblua5.1-dev lua-posix python3 python3-dev python3-cffi \
+    python3-ply python3-setuptools python3-yaml python3-sphinx aspell \
+    aspell-en time valgrind mpich libmpich-dev jq libboost-dev \
+    libboost-graph-dev libedit-dev libyaml-cpp-dev git curl ca-certificates \
+    build-essential wget ninja-build cmake python3-venv python3-pip \
+    && update-ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+    
+RUN git config --global http.sslVerify false
 
-
-# Python env
 RUN python3 -m venv /opt/basic && \
     ln -sf /opt/basic/bin/pip /usr/local/bin/pip
 ENV PATH=/opt/basic/bin:$PATH
 
 RUN python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel cffi \
-    PyYAML cython pyarrow pyfftw tqdm papermill py3Dmol ply pyyaml
+    PyYAML cython pyarrow pyfftw tqdm papermill py3Dmol ply pyyaml sphinx
 
-
-# Build MPICH and install mpi4py
-ARG mpich=3.4.3
-ARG mpich_prefix=mpich-$mpich
-
-WORKDIR /opt
-RUN wget https://www.mpich.org/static/downloads/$mpich/$mpich_prefix.tar.gz && \
-    tar xvzf $mpich_prefix.tar.gz                                           && \
-    cd $mpich_prefix                                                        && \
-    FFLAGS=-fallow-argument-mismatch FCFLAGS=-fallow-argument-mismatch ./configure --with-device=ch4:ofi && \
-    make -j 4                                                               && \
-    make install                                                            && \
-    make clean                                                              && \
-    cd ..                                                                   && \
-    rm -rf $mpich_prefix
-RUN /sbin/ldconfig
-
-RUN MPICC="cc -shared" python -m pip install --no-cache-dir --force-reinstall --no-binary=mpi4py mpi4py==4.0.3
-
-
-# Install HWLOC
-WORKDIR /opt
-RUN git clone -b v2.11 https://github.com/open-mpi/hwloc.git hwloc && \
-    cd hwloc                                                       && \
-    ./autogen.sh                                                   && \
-    ./configure                                                    && \
-    make -j 16                                                     && \
-    make install
-
+RUN MPICC=mpicc python -m pip install --no-cache-dir --force-reinstall --no-binary=mpi4py mpi4py==4.0.3
 
 # Flux & Fluxion Build
 WORKDIR /opt
-
 RUN git clone -b v0.70.0 https://github.com/flux-framework/flux-core.git && \
     cd flux-core                                                         && \
     PYTHON=/opt/basic/bin/python ./autogen.sh                            && \
     ./configure                                                          && \
-    make -j16                                                            && \
+    make -j8                                                             && \
     make install                                                         && \
     ldconfig
 
 RUN git clone -b v0.41.0 https://github.com/flux-framework/flux-sched.git && \
     cd flux-sched                                                         && \
     cmake -B build                                                        && \
-    cmake --build build -j 16                                             && \
+    cmake --build build -j1                                               && \
     cmake --build build -t install                                        && \
     ldconfig
 
 RUN python -m pip install --no-cache-dir flux-python==0.70.0
-ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
+ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH:-}
