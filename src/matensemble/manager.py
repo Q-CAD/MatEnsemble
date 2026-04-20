@@ -1,4 +1,8 @@
+import os
+import copy
 import time
+import pickle
+import threading
 
 import flux
 import flux.job
@@ -50,26 +54,26 @@ class FluxManager:
         A :obj:`Fluxlet` that is where all the chores are submitted
     _write_restart_freq : int
         The number of chores to be completed before pickling a restart file
-    _nnodes : int
+    _nnodes_on_allocation : int
         The number of nodes available on the allocaiton minus one for flux broker
     _cores_per_node : int
         The number of cores that are on each node
     _gpus_per_node : int
         The number of gpus that are on each node
-    _status_writer : StatusWriter
-        A :obj:`StatusWriter` for logging the status of the workflow in JSON
-    _logger : logging.Logger
-        A :obj:`Logger` to log the progress of the workflow
     _set_cpu_affinity : bool
         Whether or not CPU affinity will be set
     _set_gpu_affinity : bool
         Whether or not GPU affinity will be set
+    _status_writer : StatusWriter
+        A :obj:`StatusWriter` for logging the status of the workflow in JSON
+    _logger : logging.Logger
+        A :obj:`Logger` to log the progress of the workflow
     """
 
     def __init__(
         self,
-        chore_list: list[Chore],
-        base_dir: Path,
+        chore_list: list[Chore] | None = None,
+        base_dir: Path | None = None,
         write_restart_freq: int | None = 100,
         set_cpu_affinity: bool = True,
         set_gpu_affinity: bool = True,
@@ -96,6 +100,18 @@ class FluxManager:
         ------
         None
         """
+
+        if restart_file:
+            self._load_restart(restart_file)
+            return None
+        if not chore_list:
+            raise Exception(
+                f"Error: expected chore_list to be a `list[Chore]` instead got {chore_list}"
+            )
+        if not base_dir:
+            raise Exception(
+                f"Error: expected base_dir to be a `Path` instead got {base_dir}"
+            )
 
         self._base_dir = Path(base_dir)
         self._base_dir.mkdir(parents=True, exist_ok=True)
@@ -135,30 +151,34 @@ class FluxManager:
         self._write_restart_freq = write_restart_freq
 
         # setup logging to be able to communicate with dashboard
-        self._nnodes, self._cores_per_node, self._gpus_per_node = (
+        self._nnodes_on_allocation, self._cores_per_node, self._gpus_per_node = (
             self._get_allocation_info()
         )
+        self._set_cpu_affinity = set_cpu_affinity
+        self._set_gpu_affinity = set_gpu_affinity
+
         self._status_writer = _setup_status_writer(
             self._base_dir / "status.json",
-            nnodes=self._nnodes,
+            nnodes=self._nnodes_on_allocation,
             cores_per_node=self._cores_per_node,
             gpus_per_node=self._gpus_per_node,
         )
         self._logger = _setup_logger(self._base_dir)
 
-        self._set_cpu_affinity = set_cpu_affinity
-        self._set_gpu_affinity = set_gpu_affinity
-
-        if restart_file:
-            self._load_restart(restart_file)
-
     def _make_restart(self) -> None:
         """
         Pickle the current state of the manager and dump it to a file
         """
-        raise NotImplementedError("Restart checkpoints are not implemented yet")
 
-    def _load_restart(self, path: str | Path) -> None:
+        fm = copy.deepcopy(self)
+        fm._ready.extendleft(fm._running_chores)
+        fm._running_chores = set()
+        fm._futures = set()
+
+        pickle.dump(fm, open(f"restart_{len(self._completed_chores)}.dat", "wb"))
+        self._logger.info("=== CREATING RESTART FILE ===")
+
+    def _load_restart(self, path: str) -> None:
         """
         Load the pickled restart file and pick up where it left off.
 
@@ -167,7 +187,45 @@ class FluxManager:
         path : str, Path
             The path to the restart file.
         """
-        raise NotImplementedError("Restart checkpoints are not implemented yet")
+
+        if path and os.path.exists(path):
+            try:
+                fm = pickle.load(open(path, "rb"))
+                self._base_dir = fm._base_dir
+                self._chores_by_id = fm._chores_by_id
+
+                self._dependents = fm._dependents
+                self._remaining_deps = fm._remaining_deps
+
+                self._ready = fm._ready
+                self._blocked = fm._blocked
+                self._running_chores = fm._running_chores
+                self._completed_chores = fm._completed_chores
+                self._failed_chores = fm._failed_chores
+                self._futures = fm._futures
+
+                self._flux_handle = flux.Flux()
+                self._fluxlet = Fluxlet(self._flux_handle)
+
+                self._write_restart_freq = fm._write_restart_freq
+                self._nnodes_on_allocation = fm._nnodes_on_allocation
+                self._cores_per_node = fm.cores_per_node
+                self._gpus_per_node = fm.gpus_per_node
+                self._set_cpu_affinity = fm.set_cpu_affinity
+                self._set_gpu_affinity = fm.set_gpu_affinity
+
+                self._logger = fm._logger
+                self._status_writer = fm._status_writer
+
+                self._start_time = fm._start_time
+            except Exception as e:
+                self._logger.error(e)
+                raise e
+
+        # TODO: Create a way to call the run method with all the previous
+        #       arguments or expose a function that users can call that
+        #       can restart a workflow with all of the args that they want
+        # self.run(buffer_time)
 
     def _log_progress(self) -> None:
         """
@@ -227,8 +285,8 @@ class FluxManager:
         needed_cores = chore.resources.num_tasks * chore.resources.cores_per_task
         needed_gpus = chore.resources.num_tasks * chore.resources.gpus_per_task
 
-        total_cores = self._nnodes * self._cores_per_node
-        total_gpus = self._nnodes * self._gpus_per_node
+        total_cores = self._nnodes_on_allocation * self._cores_per_node
+        total_gpus = self._nnodes_on_allocation * self._gpus_per_node
 
         return needed_cores <= total_cores and needed_gpus <= total_gpus
 
@@ -409,13 +467,33 @@ class FluxManager:
         self._ready = deferred
         return submitted_any
 
+    def _log_worker(self, delay: float) -> None:
+        """
+        Function that updates the logs every so often
+        """
+        done = (
+            len(self._ready) == 0
+            and len(self._running_chores) == 0
+            and len(self._blocked) == 0
+        )
+        while not done:
+            self._log_progress()
+            time.sleep(delay)
+            done = (
+                len(self._ready) == 0
+                and len(self._running_chores) == 0
+                and len(self._blocked) == 0
+            )
+
     def run(
         self,
         buffer_time: float = 1.0,
+        log_delay: float = 5.0,
         adaptive: bool = True,
         dynopro: bool = False,
         processing_strategy: FutureProcessingStrategy | None = None,
         dashboard: bool = False,
+        restarting: bool = False,
     ) -> None:
         """
         Runs the 'Super Loop' until there are no more ready, running or blocked
@@ -425,12 +503,20 @@ class FluxManager:
         ----------
         buffer_time : float
             The amount of time in seconds buffer the submission of :obj:`Chore`'s
+        log_delay : float
+            The amount of time in seconds that the log files will be written to
         adaptive : bool
             Whether or not :obj:`Chore`'s should be submitted adaptively, defaults
             to True
         dynopro : bool
             Currently does nothing because I couldn't figure out what it did
             to begin with.
+        dashboard : bool
+            Whether or not the dashboard should be started
+        restarting : bool
+            Whether :method:`run` is being invoked for the first time or after a
+            restart file has been loaded
+
 
         Notes
         -----
@@ -462,8 +548,19 @@ class FluxManager:
         with flux.job.FluxExecutor() as executor:
             self._executor = executor
 
-            self._logger.info("=== ENTERING WORKFLOW ENVIRONMENT ===")
-            start = time.perf_counter()
+            if restarting:
+                self._logger.info("=== RESTARTING WORKFLOW ENVIRONMENT ===")
+            else:
+                self._logger.info("=== ENTERING WORKFLOW ENVIRONMENT ===")
+                self._start_time = time.perf_counter()
+
+            # starting a thread to continueally log every {log_delay} seconds
+            logging_thread = threading.Thread(
+                target=self._log_worker,
+                args=(log_delay,),
+                daemon=True,
+            )
+            logging_thread.start()
 
             self._validate_chores()
 
@@ -475,7 +572,6 @@ class FluxManager:
             )
             while not done:
                 self._check_resources()
-                self._log_progress()
                 self._submit_until_ooresources(buffer_time=buffer_time)
                 proc_strat.process_futures(buffer_time=buffer_time)
 
@@ -487,5 +583,9 @@ class FluxManager:
             ### Super Loop ###
 
             end = time.perf_counter()
+            logging_thread.join()
+            self._log_progress()
             self._logger.info("=== EXITING WORKFLOW ENVIRONMENT ===")
-            self._logger.info("Workflow took %.4f seconds to run.", end - start)
+            self._logger.info(
+                "Workflow took %.4f seconds to run.", end - self._start_time
+            )

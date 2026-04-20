@@ -23,7 +23,7 @@ ENV PATH=/opt/basic/bin:$PATH
 RUN python3 -m pip install --no-cache-dir --upgrade pip setuptools wheel cffi \
     PyYAML cython pyarrow pyfftw tqdm papermill py3Dmol ply pyyaml sphinx
 
-RUN MPICC=mpicc python -m pip install --no-cache-dir --force-reinstall --no-binary=mpi4py mpi4py==4.0.3
+RUN MPICC=mpicc python -m pip install --no-cache-dir --force-reinstall --no-binary=mpi4py mpi4py
 
 # Flux & Fluxion Build
 WORKDIR /opt

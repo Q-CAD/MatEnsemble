@@ -115,9 +115,9 @@ def _setup_logger(base_dir: Path) -> logging.Logger:
     logger.addHandler(file_handler)
 
     hint = (
-        f"Status file: {base_dir}/status.json\n"
-        f"Verbose log: {base_dir}/matensemble_workflow.log\n"
-        f"Chore outputs: {base_dir}/out\n"
+        f"Logs: {base_dir}/matensemble_workflow.log\n"
+        f"Outputs: {base_dir}/out\n\n"
+        f"Watch logs: watch tail -n 5 {base_dir}/matensemble_workflow.log"
     )
     print(hint, file=sys.stderr)
 

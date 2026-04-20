@@ -38,3 +38,30 @@ def run_mpi_hello(task_id: int):
 def build_workflow() -> None:
     for i in range(1, N_CHORES + 1):
         run_mpi_hello(i)
+
+
+# ============================================== ==============================================
+
+from matensemble.pipeline import Pipeline
+from mpi4py import MPI
+
+pipe = Pipeline()
+
+
+@pipe.chore(
+    name="mpi-hello",
+    num_tasks=10,
+    cores_per_task=1,
+    gpus_per_task=0,
+    mpi=True,
+)
+def mpi_helloworld():
+    comm = MPI.COMM_WORLD
+    size = comm.Get_size()
+    rank = comm.Get_rank()
+
+    with open(f"rank_{rank}.txt", "w", encoding="utf-8") as f:
+        f.write(f"Hello, World! I am process {rank} of {size}. ")
+
+
+pipe.submit()

@@ -1,3 +1,6 @@
+import pickle
+
+from pathlib import Path
 from dataclasses import dataclass
 from enum import StrEnum, auto
 
@@ -5,10 +8,19 @@ from enum import StrEnum, auto
 @dataclass(frozen=True)
 class OutputReference:
     """
-    An object to encapsulate the result of a chore as the input to another chore
+    An object to encapsulate the result of a chore as the input to another chore.
     """
 
     chore_id: str
+    spec_file: Path
+
+    def __str__(self) -> str:
+        """
+        Return the deserialized result of the referenced chore as a string.
+        """
+        dep_result = self.spec_file.parent / "result.pkl"
+        with dep_result.open("rb") as f:
+            return str(pickle.load(f))
 
 
 @dataclass

@@ -111,9 +111,21 @@
 - [ ] Ping neil to ask about MPICH in image 
 
 ## --- Finish presentation ---
-- [ ] Conda environment might make this very simple 
-- [ ] Create a jupyter notebook and screen record it 
-- [ ] Place that at the end of the presentation
+- [x] Conda environment might make this very simple 
+- [x] Create a jupyter notebook and screen record it 
+- [x] Place that at the end of the presentation
+
+
+## MatEnsemble Fixes
+
+- [x] Add the ability to print the results of the OutputReference objects 
+- [x] Give the user the ability to define workflows in a single file 
+- [x] Make the log updates threaded 
+- [x] Implement the restart files
+- [x] Bring back the terminal view the log command 
+- [x] Dynopro fix thingy (read flux docs JobspecV1.from_command vs. JobspecV1.per_resource)
+- [ ] Test all the fixes with a simple dynopro example and print an 
+      OutputReference and watch the logs and make a single file workflow and 
 
 ## --- Test Perlmutter Container ---
 - [ ] Give them a test with the current command that you have been running 
@@ -130,8 +142,8 @@
     - [ ] Combine all the pieces 
 
 ## --- Test Frontier Apptainer container ---
-- [ ] Need lots more help here 
-- [ ] Make something that is very small first 
+- [x] Need lots more help here 
+- [x] Make something that is very small first 
 
 ## --- Create first draft for JOSS ---
 - [ ] Read some example papers 
