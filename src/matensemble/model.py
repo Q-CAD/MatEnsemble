@@ -18,6 +18,7 @@ class OutputReference:
         """
         Return the deserialized result of the referenced chore as a string.
         """
+        # TODO: Make sure that this file exists and add some exception handling
         dep_result = self.spec_file.parent / "result.pkl"
         with dep_result.open("rb") as f:
             return str(pickle.load(f))
