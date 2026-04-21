@@ -183,7 +183,9 @@ class Pipeline:
                     func.__module__ == "__main__" or "<locals>" in func.__qualname__
                 )
 
-                serialized_callable = cloudpickle.dumps(func) if needs_serialization else None
+                serialized_callable = (
+                    cloudpickle.dumps(func) if needs_serialization else None
+                )
 
                 chore = Chore(
                     id=chore_id,
@@ -199,7 +201,7 @@ class Pipeline:
                     kwargs=copy.deepcopy(kwargs),
                 )
                 self._chore_list.append(chore)
-                return OutputReference(chore_id)
+                return OutputReference(chore_id, workdir)
 
             return wrapper
 
