@@ -1,15 +1,33 @@
 {
-  "name": "matensemble-dev",
-  "image": "ghcr.io/freddude2004/matensemble:baseline-arm64",
+  "name": "MatEnsemble v0.2.1",
+  "dockerFile": "Dockerfile",
+  "context": "../",
+
   "customizations": {
     "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash",
+
+        "python.defaultInterpreterPath": "/opt/basic/bin/python",
+        "python.autoComplete.extraPaths": [
+          "/opt/basic/lib/python3.12",
+          "/opt/basic/lib/python3.12/site-packages",
+          "/opt/flux-core/src/bindings/python"
+        ],
+        "python.analysis.extraPaths": [
+          "/opt/basic/lib/python3.12/site-packages",
+          "/opt/flux-core/src/bindings/python"
+        ]
+      },
       "extensions": [
-        "ms-vscode-remote.remote-containers",
         "ms-python.python",
-        "ms-toolsai.jupyter"
+        "ms-python.debugpy",
+        "ms-python.vscode-pylance",
+        "ms-toolsai.jupyter",
+        "GitHub.vscode-pull-request-github"
       ]
     }
   },
-  "forwardPorts": [8888],
-  "postCreateCommand": "python -m pip install -U pip && python -m pip install -e . jupyterlab ipykernel"
+
+  "postStartCommand": "git config --global --add safe.directory /opt/matensemble"
 }

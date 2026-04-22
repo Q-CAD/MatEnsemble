@@ -115,7 +115,7 @@ salloc -N 2 -t 60 -C gpu --qos interactive -A m5014_g -G 8
 srun -N2 -n2 --mpi=pmi2 --gpus-per-node=4 \
     podman-hpc run --rm --gpu --net host \
     -e SLURM_* -e PMI_* -e PALS_* \
-    ghcr.io/freddude2004/matensemble:perlmutter_mace_0.3.14 \
+    ghcr.io/freddude2004/matensemble:perlmutter2 \
     flux start flux resource list
 
 # RUN THE MATENSEMBLE WORKFLOW 
@@ -123,9 +123,27 @@ srun -N2 -n2 --mpi=pmi2 --gpus-per-node=4 \
     podman-hpc run --rm --gpu --net host \
     -v "$PWD:$PWD" -w "$PWD" \
     -e SLURM_* -e PMI_* -e PALS_* \
-    ghcr.io/freddude2004/matensemble:perlmutter_mace_0.3.14 \
-    flux start flux run -n 4 python lammps.py
+    ghcr.io/freddude2004/matensemble:perlmutter3 \
+    flux start ...
 
+
+
+
+
+root@bbabf9d5afb8:/opt# python
+Python 3.12.3 (main, Nov  6 2025, 13:44:16) [GCC 13.3.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import lammps
+>>> lammps.__version__
+20250722
+>>> import mace
+>>> mace.__version__
+'0.3.14'
+>>> import torch
+>>> torch.__version__
+'2.5.0+cu124'
+>>> exit()
+root@bbabf9d5afb8:/opt# exit
 
 
 

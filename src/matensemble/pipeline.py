@@ -340,6 +340,7 @@ class Pipeline:
         self,
         write_restart_freq: int | None = 100,
         buffer_time: float = 1.0,
+        log_delay: float = 5.0,
         set_cpu_affinity: bool = True,
         set_gpu_affinity: bool = False,
         adaptive: bool = True,
@@ -361,6 +362,8 @@ class Pipeline:
         buffer_time : float
             The amount of seconds that the :obj:`FluxManager` should wait between
             submission of chores, defaults to 1.0s.
+        log_delay : float
+            The amount delay is seconds between the writing of logs 
         set_cpu_affinity : bool
             Whether CPU affinity should be set for flux jobspecs, defaults to True.
         set_gpu_affinity : bool
@@ -395,6 +398,7 @@ class Pipeline:
         )
         manager.run(
             buffer_time=buffer_time,
+            log_delay=log_delay,
             adaptive=adaptive,
             dynopro=dynopro,
             processing_strategy=processing_strategy,

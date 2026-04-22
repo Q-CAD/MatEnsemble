@@ -555,6 +555,7 @@ class FluxManager:
                 self._start_time = time.perf_counter()
 
             # starting a thread to continueally log every {log_delay} seconds
+            self._check_resources()
             logging_thread = threading.Thread(
                 target=self._log_worker,
                 args=(log_delay,),

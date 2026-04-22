@@ -114,6 +114,12 @@ def _setup_logger(base_dir: Path) -> logging.Logger:
     file_handler.setFormatter(fmt)
     logger.addHandler(file_handler)
 
+    if sys.stderr.isatty():
+        console_handler = logging.StreamHandler(stream=sys.stderr)
+        console_handler.setLevel(logging.INFO)
+        console_handler.setFormatter(fmt)
+        logger.addHandler(console_handler)
+
     hint = (
         f"Logs: {base_dir}/matensemble_workflow.log\n"
         f"Outputs: {base_dir}/out\n\n"

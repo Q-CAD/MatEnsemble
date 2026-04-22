@@ -3,15 +3,10 @@ from __future__ import annotations
 import json
 import threading
 
-import uvicorn
-
 from pathlib import Path
 from dataclasses import fields, is_dataclass, replace
 from enum import Enum
 
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from collections.abc import Iterable, Mapping
 
 from matensemble.model import OutputReference
