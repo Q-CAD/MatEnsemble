@@ -363,7 +363,7 @@ class Pipeline:
             The amount of seconds that the :obj:`FluxManager` should wait between
             submission of chores, defaults to 1.0s.
         log_delay : float
-            The amount delay is seconds between the writing of logs 
+            The amount delay in seconds between the writing of logs
         set_cpu_affinity : bool
             Whether CPU affinity should be set for flux jobspecs, defaults to True.
         set_gpu_affinity : bool

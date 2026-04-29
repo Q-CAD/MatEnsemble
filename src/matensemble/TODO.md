@@ -161,6 +161,7 @@
 - [ ] Change runtime worker to load function from registry and call it with args/kwargs
 - [ ] Stop writing chore.pkl and just write chore.json 
 - [ ] Add a set of OutputReference objects in the pipeline
+- [ ] Connect the added chores back to the pipeline somehow 
 - [ ] Add a method in pipeline where you can get the results of all of your chores
 
 ## === AFTER EVERYTHING ABOVE IS DONE AND STABLE === 
