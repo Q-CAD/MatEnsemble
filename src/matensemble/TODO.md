@@ -1,25 +1,27 @@
 # === TODO === 
+
+## --- Refactor MatEnsemble ---
 - [x] Create strategy base class 
 - [x] Implement the stategies 
 - [x] Create strategy base class for processing futures
 - [x] Implement strategies for processing futures
 - [x] Refactor matflux.py and matfluxGen.py to be more modular and in one manager.py 
-
 - [x] Test matflux/matfluxGen refactor make sure it works before doing anything else
 - [x] Fix problems and test again 
-    ### --- Problems ---
-    - [x] Use *ONE* executor in the manager super loop instead of spawning new ones each time
-    - [x] Make sure future objects have proper fields appended at creation (task_ or task + job_spec)
-    - [x] Move writing of restart files into the FutureProcessingStrategy implementations
-    - [x] Make sure you remove the finished future rather than popleft in FutureProcessingStrategy implementations
 
-## NOTE: Refactored code runs way slower 
+### --- Problems ---
+- [x] Use *ONE* executor in the manager super loop instead of spawning new ones each time
+- [x] Make sure future objects have proper fields appended at creation (task_ or task + job_spec)
+- [x] Move writing of restart files into the FutureProcessingStrategy implementations
+- [x] Make sure you remove the finished future rather than popleft in FutureProcessingStrategy implementations
 
+## --- NOTE: Refactored code runs way slower --- 
 - [x] Fix problems causing slowdown and test again
-    ### --- More Problems ---
-    - [x] Make tests consistent so that we have an apples to apples comparison
-    - [x] Remove extra logging and RPC calls to limit traffic 
-    - [x] Update resources calls to update in place in submit_until_ooresources()
+
+### --- More Problems ---
+- [x] Make tests consistent so that we have an apples to apples comparison
+- [x] Remove extra logging and RPC calls to limit traffic 
+- [x] Update resources calls to update in place in submit_until_ooresources()
 
 - [x] Test matensemble again until it is working as before
 
@@ -37,14 +39,13 @@
 - [x] Make a script to build the documentation 
 - [x] Remove all artifacts from the repository 
 
-**--- Add Testing ---**
+## --- Add Testing ---
 - [x] Make sure the simple hello world tests work
 - [x] Figure out what is going on with the GPU tasks
 - [x] Make some tests that have failures to make sure the failed tasks get logged appropriately 
 - [x] NOTE: Come back later -- Unit tests | Integration Tests --
 
-### Find Solution For Distribution 
-
+## --- Find Solution For Distribution ---
 - [x] Turn Matensemble into a uv project
 - [x] Build the initial Apptainer container 
     - [x] Create the matensemble.def file
@@ -65,8 +66,8 @@
 - [x] Push images to GitHub Container Registry
 - [x] Build MatEnsemble Images with each base image
 - [x] Test Images on each respective system
-- [ ] NOTE: Come back later -- Test Perlmutter Image
-- [ ] Create Perlmutter image from new base image [Neil's Containerfiles](https://github.com/namehta4/Containerfiles/blob/main/Base/GPU/Dockerfile)
+- [x] NOTE: Come back later -- Test Perlmutter Image
+- [x] Create Perlmutter image from new base image [Neil's Containerfiles](https://github.com/namehta4/Containerfiles/blob/main/Base/GPU/Dockerfile)
 
 ## --- Setup GitHub Actions ---
 - [x] Setup Matrix build action to build MatEnsemble images for baseline, frontier, and perlmutter and push them to ghcr
@@ -94,68 +95,75 @@
 - [x] Test the science example that Soumendu provided 
 - [x] Update version of LAMMPS
 - [x] Fix Bug with jobspec.env -> jobspec.environment 
-- [ ] Test it again 
+- [x] Test it again 
 
 ## --- Polish Everything ---
 - [x] Update all the documentation 
 - [x] Update the example workflows 
 - [x] Provide tutorials for how to run the example workflows 
 - [x] Change name of 'Job' to 'Chore'
-- [ ] Change name of 'Pipeline' to something else
-- [ ] Make ChoreType.PYTHON have the ability to be defined in the runner script
+- [x] Change name of 'Pipeline' to something else
+- [x] Make ChoreType.PYTHON have the ability to be defined in the runner script
 
 ## --- Fix Containers ---
 - [x] Install latest version of lammps in frontier images 
 - [x] Test MPI problem with MatEnsemble in Frontier Images
-- [ ] Test Science Example with latest MPICH install 
-- [ ] Ping neil to ask about MPICH in image 
+- [x] Test Science Example with latest MPICH install 
+- [x] Ping neil to ask about MPICH in image 
 
 ## --- Finish presentation ---
 - [x] Conda environment might make this very simple 
 - [x] Create a jupyter notebook and screen record it 
 - [x] Place that at the end of the presentation
 
-
 ## MatEnsemble Fixes
-
 - [x] Add the ability to print the results of the OutputReference objects 
 - [x] Give the user the ability to define workflows in a single file 
 - [x] Make the log updates threaded 
 - [x] Implement the restart files
 - [x] Bring back the terminal view the log command 
 - [x] Dynopro fix thingy (read flux docs JobspecV1.from_command vs. JobspecV1.per_resource)
-- [ ] Test all the fixes with a simple dynopro example and print an 
+- [x] Test all the fixes with a simple dynopro example and print an 
       OutputReference and watch the logs and make a single file workflow and 
 
 ## --- Test Perlmutter Container ---
-- [ ] Give them a test with the current command that you have been running 
-- [ ] If that doesn't work break it down into smaller pieces 
-  ### Smaller pieces 
-    - [ ] Maybe start with an nvidia image rather than Neil's image 
-    - [ ] Make sure that flux works in the container 
-
-    - [ ] Create a container that just has flux and have some different tests for that
-    - [ ] Create a container that has just MPI and test that make sure it works 
-
-    - [ ] Combine flux and MPI and see if that works 
-    - [ ] Create a container that has lammps and make sure that that is working
-    - [ ] Combine all the pieces 
+- [x] Give them a test with the current command that you have been running 
+- [x] If that doesn't work break it down into smaller pieces 
+  ## --- Smaller pieces ---
+  - [x] Maybe start with an nvidia image rather than Neil's image 
+  - [ ] Make sure that flux works in the container 
+  - [ ] Create a container that just has flux and have some different tests for that
+  - [ ] Create a container that has just MPI and test that make sure it works 
+  - [ ] Combine flux and MPI and see if that works 
+  - [ ] Create a container that has lammps and make sure that that is working
+  - [ ] Combine all the pieces 
 
 ## --- Test Frontier Apptainer container ---
 - [x] Need lots more help here 
-- [x] Make something that is very small first 
+- [x] Make test that is very small first 
+- [x] Test new container against the running examples 
 
-## --- Create first draft for JOSS ---
-- [ ] Read some example papers 
-- [ ] Create draft and show Dr. Bagchi 
-- [ ] Polish the repository to be ready for review 
-- [ ] Make sure that the tests work 
-- [ ] Make sure that the example workflows work correctly 
-- [ ] Make sure that they can easily test the code and 
-- [ ] Create a conda package that they can easily test the code without having 
-      to compile flux and flux-sched themselves 
+## --- Clean some things up ---
+- [x] Make ticket for neil 
+- [x] Update frontier Dockerfile
+- [ ] Update README.md  
+- [ ] Create multi architecture builds for baseline image 
+- [ ] Run release script 
 
-## AFTER EVERYTHING ABOVE IS DONE AND STABLE 
+## --- Create new strategy to enable autonomous workflows --- 
+- [ ] Update the OutputReference objects to have the ability to get the results 
+- [ ] Create a method in the Pipeline to be able to get the results of all chores
+- [ ] Make a strategy that can take in function and does processing which spawns a new chore
+- [x] Figure out how to spawn a new chore 
+- [ ] Change to only use cloudpickle and only pickle the actual function once 
+- [ ] Change the chore objects to not store the function 
+- [ ] Change the chore objects to reference a function in the registry 
+- [ ] Change runtime worker to load function from registry and call it with args/kwargs
+- [ ] Stop writing chore.pkl and just write chore.json 
+- [ ] Add a set of OutputReference objects in the pipeline
+- [ ] Add a method in pipeline where you can get the results of all of your chores
+
+## === AFTER EVERYTHING ABOVE IS DONE AND STABLE === 
 
 ## --- Model Context Protocol ---
 - [ ] MCP implementation 
@@ -179,7 +187,6 @@
 - [ ] Test the server on an HPC cluster 
 - [ ] Create documentation for setting it up 
 
-
 ## --- Reading List ---
 - [ ] [Agentic Orchestration of HPC Applications](https://vsoch.github.io/assets/posts/agentic-orchestration-hpc-workloads-cloud-sochat-milroy.pdf)
 - [x] [Container Training Slides](https://drive.google.com/drive/folders/1_mTBBc98TEX3XFpNp0rqoqj1VjN9TKoO)
@@ -191,4 +198,12 @@
 - [x] Convert Scaffold into PowerPoint Presentation 
 - [x] Email coordinatior about length of presentation and audience
 
-
+## --- Create first draft for JOSS ---
+- [ ] Read some example papers 
+- [ ] Create draft and show Dr. Bagchi 
+- [ ] Polish the repository to be ready for review 
+- [ ] Make sure that the tests work 
+- [ ] Make sure that the example workflows work correctly 
+- [ ] Make sure that they can easily test the code and 
+- [ ] Create a conda package that they can easily test the code without having 
+      to compile flux and flux-sched themselves 

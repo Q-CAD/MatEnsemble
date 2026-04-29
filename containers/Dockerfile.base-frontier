@@ -1,4 +1,4 @@
-FROM savannah.ornl.gov/olcf-container-images/cpe:25.03_gnu_ubuntu AS builder
+FROM savannah.ornl.gov/olcf-container-images/cpe:25.03_gnu_ubuntu 
 
 ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /opt
@@ -56,6 +56,13 @@ RUN git clone -b v0.41.0 https://github.com/flux-framework/flux-sched.git && \
 RUN python -m pip install --no-cache-dir flux-python==0.70.0
 ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
 
+# build symmetrix and then lammps with symmetrix support
+RUN git clone --recursive https://github.com/wcwitt/symmetrix && \
+    cd symmetrix && \
+    git checkout daeda1c1cf5eee633c3f3f409b6bba327f29b4b7 && \
+    cd symmetrix && \
+    pip install .
+
 
 # build lammps
 WORKDIR /opt
@@ -65,47 +72,91 @@ RUN wget https://github.com/lammps/lammps/archive/refs/tags/stable_22Jul2025_upd
     rm -rf stable_22Jul2025_update3.tar.gz    && \
     mv lammps-stable_22Jul2025_update3 lammps && \
     mkdir -p /opt/lammps/build
+
+# patch lammps to use pair_style symmetrix
+WORKDIR /opt/symmetrix/pair_symmetrix
+RUN    ./install.sh /opt/lammps
+
 WORKDIR /opt/lammps/build
-RUN cmake -D PKG_KOKKOS=on                                        \
-          -D PKG_MOLECULE=on                                      \
-          -D PKG_KSPACE=on                                        \
-          -D PKG_BODY=on                                          \
-          -D PKG_RIGID=on                                         \
-          -D PKG_MC=on                                            \
-          -D PKG_MANYBODY=on                                      \
-          -D PKG_REAXFF=on                                        \
-          -D PKG_REPLICA=on                                       \
-          -D PKG_QEQ=on                                           \
-          -D PKG_INTERLAYER=on                                    \
-          -D BUILD_SHARED_LIBS=yes                                \
-          -D BUILD_MPI=yes                                        \
-          -D MLIAP_ENABLE_PYTHON=yes                              \
-          -D PKG_PYTHON=yes                                       \
-          -D PKG_ML-SNAP=yes                                      \
-          -D PKG_ML-IAP=yes                                       \
-          -D PKG_ML-PACE=yes                                      \
-          -D PKG_SPIN=yes                                         \
-          -D PYTHON_EXECUTABLE:FILEPATH=`which python`            \
-          -D CMAKE_INSTALL_PREFIX=$INSTDIR                        \
-          #-D MPI_CXX_COMPILER=${ROCM_PATH}/bin/hipcc              \
-          -D CMAKE_CXX_COMPILER=${ROCM_PATH}/bin/hipcc            \
-          -D CMAKE_BUILD_TYPE=RelWithDebInfo                      \
-          -D Kokkos_ENABLE_HIP=on                                 \
-          -D FFT=FFTW3                                            \
-          -D Kokkos_ENABLE_HIP_MULTIPLE_KERNEL_INSTANTIATIONS=ON  \
-          -D Kokkos_ENABLE_SERIAL=on                              \
-          -D BUILD_OMP=on                                         \
-          -D CMAKE_CXX_STANDARD=14                                \
-          -D Kokkos_ARCH_VEGA90A=ON                               \
-          -D CMAKE_CXX_FLAGS="${FLAGS}"                           \
-          -D CMAKE_EXE_LINKER_FLAGS="${LINKFLAGS}"                \
-          -D LAMMPS_MACHINE=${LMPMACH}                            \
-          ../cmake
+
+ENV LMP_MACH=frontier_gfx90a
+ENV FLAGS='-fdenormal-fp-math=ieee -fgpu-flush-denormals-to-zero -munsafe-fp-atomics -I${MPICH_DIR}/include'
+ENV LINKFLAGS="-L${MPICH_DIR}/lib -lmpi ${PE_MPICH_GTL_DIR_amd_gfx90a} ${PE_MPICH_GTL_LIBS_amd_gfx90a}"
+ENV MPICH_GPU_SUPPORT_ENABLED=1
+
+RUN cmake ../cmake \
+    -D CMAKE_INSTALL_PREFIX=${INSTDIR:-$PWD/install} \
+    -D CMAKE_BUILD_TYPE=Release \
+    -D BUILD_SHARED_LIBS=ON \
+    -D BUILD_MPI=ON \
+    -D CMAKE_CXX_COMPILER=${ROCM_PATH}/bin/hipcc \
+    -D CMAKE_CXX_STANDARD=20 \
+    -D CMAKE_CXX_STANDARD_REQUIRED=ON \
+    -D CMAKE_CXX_SCAN_FOR_MODULES=OFF \
+    -D CMAKE_CXX_FLAGS="-fdenormal-fp-math=ieee -fgpu-flush-denormals-to-zero -munsafe-fp-atomics -D__HIP_PLATFORM_AMD__=1" \
+    -D KokkosKernels_ENABLE_ETI=OFF \
+    -D KokkosKernels_INST_DOUBLE=OFF \
+    -D KokkosKernels_INST_LAYOUTLEFT=OFF \
+    -D CMAKE_EXE_LINKER_FLAGS="-lmpi" \
+    -D CMAKE_SHARED_LINKER_FLAGS="" \
+    -D PKG_KOKKOS=ON \
+    -D Kokkos_ENABLE_HIP=ON \
+    -D Kokkos_ARCH_VEGA90A=ON \
+    -D Kokkos_ARCH_ZEN3=ON \
+    -D Kokkos_ENABLE_SERIAL=ON \
+    -D Kokkos_ENABLE_OPENMP=ON \
+    -D Kokkos_ENABLE_HIP_MULTIPLE_KERNEL_INSTANTIATIONS=ON \
+    -D Kokkos_ENABLE_AGGRESSIVE_VECTORIZATION=ON \
+    -D SYMMETRIX_KOKKOS=ON \
+    -D BUILD_OMP=ON \
+    -D FFT=FFTW3 \
+    -D BLAS_LIBRARIES="${LIBSCI_PATH}" \
+    -D LAPACK_LIBRARIES="${LIBSCI_PATH}" \
+    -D PYTHON_EXECUTABLE=$(which python) \
+    -D PKG_MANYBODY=ON \
+    -D PKG_MOLECULE=ON \
+    -D PKG_KSPACE=ON \
+    -D PKG_RIGID=ON \
+    -D PKG_REAXFF=ON \
+    -D PKG_REPLICA=ON \
+    -D PKG_ML-SNAP=ON \
+    -D PKG_ML-IAP=ON \
+    -D PKG_ML-PACE=ON \
+    -D PKG_SPIN=ON \
+    -D PKG_PYTHON=ON \
+    -D MLIAP_ENABLE_PYTHON=ON
+
+
+
 RUN make -j 16      && \
     make install    && \
     make install-python
 ENV PATH=/opt/lammps/install/bin:${PATH}
 
+
+# install ovito
+RUN apt update && apt install -y \
+    freeglut3-dev \
+    libgl1-mesa-dev \
+    libglu1-mesa-dev \
+    libglew-dev \
+    mesa-utils
+
+RUN pip uninstall -y ovito && \
+    pip install -U ovito
+
+RUN python -c "import ovito; print('ovito installation ok')"
+
+
+#------------------ LAMMPS RELATED FLAGS (e.g., FOR KOKKOS)
+ENV OMP_PROC_BIND=spread
+ENV OMP_PLACES=threads
+ENV HIP_VISIBLE_DEVICES=$ROCR_VISIBLE_DEVICES
+# Fixes the HIPManagedSpace warning
+ENV HSA_XNACK=1 
+# Fixes the MPICH GPU-aware MPI warning you saw in the log
+ENV MPICH_GPU_SUPPORT_ENABLED=1
+ENV SLURM_GPUS_PER_NODE=8
 
 # tests
 RUN python -c "import mpi4py; print('python stack ok')" && \

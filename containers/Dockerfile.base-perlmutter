@@ -198,14 +198,6 @@ RUN cmake                                                            \
       -D PKG_ML-IAP=YES                                              \
       -D PKG_ML-PACE=YES                                             \
       -D MLIAP_ENABLE_PYTHON=YES                                     \
-      -D DOWNLOAD_PLUMED=YES                                         \
-      -D DOWNLOAD_MSCG=YES                                           \
-      -D DOWNLOAD_SCAFACOS=YES                                       \
-      -D DOWNLOAD_QUIP=YES                                           \
-      -D DOWNLOAD_KIM=YES                                            \
-      -D DOWNLOAD_EIGEN3=YES                                         \
-      -D DOWNLOAD_LATTE=YES                                          \
-      -D PLUMED_MODE=STATIC                                          \
       ../cmake
 RUN make -j 16          && \
     make install        && \
