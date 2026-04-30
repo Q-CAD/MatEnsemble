@@ -153,7 +153,7 @@
 ## --- Create new strategy to enable autonomous workflows --- 
 - [ ] Update the OutputReference objects to have the ability to get the results 
 - [ ] Create a method in the Pipeline to be able to get the results of all chores
-- [ ] Make a strategy that can take in function and does processing which spawns a new chore
+- [ ] Make a strategy that can take in chore and does processing which spawns a new chore
 - [x] Figure out how to spawn a new chore 
 - [ ] Change to only use cloudpickle and only pickle the actual function once 
 - [ ] Change the chore objects to not store the function 
