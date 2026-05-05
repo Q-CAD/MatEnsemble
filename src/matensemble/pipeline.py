@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 import copy
 import functools
 import datetime
@@ -8,12 +9,13 @@ import sys
 import cloudpickle
 import networkx as nx
 
+from concurrent.futures import Future, ThreadPoolExecutor
 from typing import Callable, Any
 from pathlib import Path
 
 from matensemble.manager import FluxManager
-from matensemble.strategy import FutureProcessingStrategy
-from matensemble.chore import Chore
+from matensemble.strategy import FutureProcessingStrategy, UserStrategy
+from matensemble.chore import Chore, ChoreSpec
 from matensemble.model import OutputReference, Resources, ChoreType
 from matensemble.utils import _collect_dep_ids
 
@@ -75,12 +77,16 @@ class Pipeline:
 
         self._counter = 0
         self._chore_list: list[Chore] = []
+        self._registry: dict[str, Callable] = {}
+        self._output_reference_list: list[OutputReference] = []
 
         root = Path.cwd() if basedir is None else Path(basedir)
         self._base_dir = (
             root / f"matensemble_workflow-{datetime.datetime.now():%Y%m%d_%H%M%S}"
         )
         self._out_dir = self._base_dir / "out"
+
+        self._strategy_spec = None
 
     def chore(
         self,
@@ -137,6 +143,12 @@ class Pipeline:
         """
 
         def decorator(func: Callable[..., Any]) -> Callable[..., OutputReference]:
+
+            if name:
+                self._registry[name] = func
+            else:
+                self._registry[str(func.__qualname__)] = func
+
             @functools.wraps(func)
             def wrapper(*args: Any, **kwargs: Any) -> OutputReference:
                 self._counter += 1
@@ -150,6 +162,21 @@ class Pipeline:
                 else:
                     merged_env["PYTHONPATH"] = source_root
 
+                chore_id = (
+                    f"chore-{name}-{self._counter:04d}"
+                    if name
+                    else f"chore-{func.__name__}-{self._counter:04d}"
+                )
+                workdir = self._out_dir / chore_id
+                cmd = [
+                    sys.executable,
+                    "-m",
+                    "matensemble.runtime_worker",
+                    "--chore-id",
+                    chore_id,
+                    "--spec-file",
+                    str(workdir / "chore.pkl"),
+                ]
                 res = Resources(
                     num_tasks=num_tasks,
                     cores_per_task=cores_per_task,
@@ -158,54 +185,32 @@ class Pipeline:
                     env=merged_env,
                     inherit_env=inherit_env,
                 )
-
-                chore_id = (
-                    f"chore-{name}-{self._counter:04d}"
-                    if name
-                    else f"chore-{func.__name__}-{self._counter:04d}"
-                )
-
-                workdir = self._out_dir / chore_id
-                spec_file = workdir / "chore.pkl"
+                chore_qualname = func.__qualname__
                 deps = _collect_dep_ids(args, kwargs)
-
-                cmd = [
-                    sys.executable,
-                    "-m",
-                    "matensemble.runtime_worker",
-                    "--chore-id",
-                    chore_id,
-                    "--spec-file",
-                    str(spec_file),
-                ]
-
-                needs_serialization = (
-                    func.__module__ == "__main__" or "<locals>" in func.__qualname__
-                )
-
-                serialized_callable = (
-                    cloudpickle.dumps(func) if needs_serialization else None
-                )
 
                 chore = Chore(
                     id=chore_id,
+                    workdir=workdir,
                     command=cmd,
                     chore_type=ChoreType.PYTHON,
                     resources=res,
-                    workdir=workdir,
-                    func_module=None if needs_serialization else func.__module__,
-                    func_qualname=None if needs_serialization else func.__qualname__,
-                    serialized_callable=serialized_callable,
+                    chore_qualname=chore_qualname,
                     deps=deps,
                     args=copy.deepcopy(args),
                     kwargs=copy.deepcopy(kwargs),
                 )
+                out_ref = OutputReference(chore_id, workdir)
+
                 self._chore_list.append(chore)
-                return OutputReference(chore_id, workdir)
+                self._output_reference_list.append(out_ref)
+
+                return out_ref
 
             return wrapper
 
         return decorator
+
+    # def strategy_callback(self, ) -> Chore | None:
 
     def exec(
         self,
@@ -270,10 +275,10 @@ class Pipeline:
         # TODO: make sure that the command paths are absolute paths
         chore = Chore(
             id=chore_id,
+            workdir=workdir,
             command=command,
             chore_type=ChoreType.EXECUTABLE,
             resources=res,
-            workdir=workdir,
         )
         self._chore_list.append(chore)
         return chore
@@ -336,6 +341,144 @@ class Pipeline:
                             cycle found by topological sort"
                 )
 
+    def _spawn_chore_from_name(
+        self,
+        chore_name: str,
+        resources: Resources | None = None,
+        dependent: OutputReference | None = None,
+    ) -> Chore:
+        self._counter += 1
+
+        chore_id = f"chore-{chore_name}-{self._counter:04d}"
+        workdir = self._out_dir / chore_id
+        cmd = [
+            sys.executable,
+            "-m",
+            "matensemble.runtime_worker",
+            "--chore-id",
+            chore_id,
+            "--spec-file",
+            str(workdir / "chore.pickle"),
+        ]
+
+        chore = Chore(
+            id=chore_id,
+            workdir=workdir,
+            command=cmd,
+            chore_type=ChoreType.PYTHON,
+            resources=resources if resources else Resources(),
+            chore_qualname=chore_name,
+            args=(dependent,),
+        )
+        out_ref = OutputReference(chore_id, workdir)
+
+        self._chore_list.append(chore)
+        self._output_reference_list.append(out_ref)
+
+        return chore
+
+    def _spawn_chore_from_spec(self, spec: ChoreSpec) -> Chore:
+        self._counter += 1
+
+        chore_id = f"chore-{spec.qualname}-{self._counter:04d}"
+        workdir = self._out_dir / chore_id
+        cmd = [
+            sys.executable,
+            "-m",
+            "matensemble.runtime_worker",
+            "--chore-id",
+            chore_id,
+            "--spec-file",
+            str(workdir / "chore.pickle"),
+        ]
+
+        chore = Chore(
+            id=chore_id,
+            workdir=workdir,
+            command=cmd,
+            chore_type=ChoreType.PYTHON,
+            resources=spec.resources,
+            chore_qualname=spec.qualname,
+            args=copy.deepcopy(spec.args),
+            kwargs=copy.deepcopy(spec.kwargs),
+        )
+        out_ref = OutputReference(chore_id, workdir)
+
+        self._chore_list.append(chore)
+        self._output_reference_list.append(out_ref)
+
+        return chore
+
+    def _submit(
+        self,
+        write_restart_freq: int | None = 100,
+        buffer_time: float = 1.0,
+        log_delay: float = 5.0,
+        set_cpu_affinity: bool = True,
+        set_gpu_affinity: bool = False,
+        adaptive: bool = True,
+        dynopro: bool = False,
+        processing_strategy: FutureProcessingStrategy | None = None,
+        dashboard: bool = False,
+    ):
+        """
+        The actual submit under the API hood
+
+        Returns
+        -------
+        dict
+            The results of the workflow with each key being the chores ID and
+            the value being the results of the chore.
+        """
+
+        dag = self._create_graph()
+        ordered_ids = self._sort_graph(dag)
+        ordered_chores = [dag.nodes[chore_id]["chore"] for chore_id in ordered_ids]
+
+        self._out_dir.mkdir(parents=True, exist_ok=True)
+        registry_dir = self._out_dir / "registry"
+        registry_dir.mkdir(parents=True, exist_ok=True)
+        for key in self._registry:
+            with open(registry_dir / key, "wb") as file:
+                cloudpickle.dumps(self._registry[key], file)
+
+        manager = FluxManager(
+            chore_list=ordered_chores,
+            base_dir=self._base_dir,
+            write_restart_freq=write_restart_freq,
+            set_cpu_affinity=set_cpu_affinity,
+            set_gpu_affinity=set_gpu_affinity,
+        )
+
+        if self._strategy_spec:
+            strat = UserStrategy(
+                manager=manager,
+                pipeline=self,
+                processing_chore=self._strategy_spec["name"],
+                bolo_list=self._strategy_spec["bolo_list"],
+            )
+        else:
+            strat = None
+
+        self._finished = False
+        manager.run(
+            buffer_time=buffer_time,
+            log_delay=log_delay,
+            adaptive=adaptive,
+            dynopro=dynopro,
+            processing_strategy=strat,
+            dashboard=dashboard,
+        )
+        self._finished = True
+
+        return self.results()
+
+    def add_user_strat(self, chore_name: str, bolo_list: list[str]):
+        self._strategy_spec = {"name": chore_name, "bolo_list": bolo_list}
+
+    def graph(self) -> nx.DiGraph:
+        return self._create_graph()
+
     def submit(
         self,
         write_restart_freq: int | None = 100,
@@ -347,7 +490,7 @@ class Pipeline:
         dynopro: bool = False,
         processing_strategy: FutureProcessingStrategy | None = None,
         dashboard: bool = False,
-    ) -> None:
+    ) -> Future:
         """
         Submit the current number of chores. Builds the graph, sorts the graph, and
         creates a :obj:`FluxManager` and runs the workflow with that.
@@ -381,29 +524,49 @@ class Pipeline:
             Whether or not MatEnsemble will server a GUI Dashboard on port 8000
             as the workflow runs. Defaults to False.
 
+        Returns
+        -------
+        Future
+            A Future object which represents the run of the workflow. The results will be a
+            dictionary with the keys being the ID's of the chores and the values being the
+            results of each respective chore.
         """
 
-        dag = self._create_graph()
-        ordered_ids = self._sort_graph(dag)
-        ordered_chores = [dag.nodes[chore_id]["chore"] for chore_id in ordered_ids]
+        with ThreadPoolExecutor() as executor:
+            # Returns a concurrent.futures.Future object
+            return executor.submit(
+                self._submit,
+                write_restart_freq=write_restart_freq,
+                buffer_time=buffer_time,
+                log_delay=log_delay,
+                set_cpu_affinity=set_cpu_affinity,
+                set_gpu_affinity=set_gpu_affinity,
+                adaptive=adaptive,
+                dynopro=dynopro,
+                processing_strategy=processing_strategy,
+                dashboard=dashboard,
+            )
 
-        self._out_dir.mkdir(parents=True, exist_ok=True)
+    # TODO: Add logic to make the funciton work with ChoreType.EXECUTABLE
+    def results(self, timeout=100):
+        """
+        Returns a dictionary of each chore to its results
+        """
+        deadline = time.monotonic() + timeout
 
-        manager = FluxManager(
-            chore_list=ordered_chores,
-            base_dir=self._base_dir,
-            write_restart_freq=write_restart_freq,
-            set_cpu_affinity=set_cpu_affinity,
-            set_gpu_affinity=set_gpu_affinity,
-        )
-        manager.run(
-            buffer_time=buffer_time,
-            log_delay=log_delay,
-            adaptive=adaptive,
-            dynopro=dynopro,
-            processing_strategy=processing_strategy,
-            dashboard=dashboard,
-        )
+        # if the workflow is not finished spin wait until it is or you reach a timeout
+        while not self._finished and time.monotonic() < deadline:
+            time.sleep(0.1)
 
-    def graph(self) -> nx.DiGraph:
-        return self._create_graph()
+        if self._finished:
+            results = {}
+            for out_ref in self._output_reference_list:
+                try:
+                    results[f"{out_ref.chore_id}"] = out_ref.result()
+                except Exception as e:
+                    results[f"{out_ref.chore_id}"] = (
+                        f"Error: Could not access the results of {out_ref.chore_id} due to exception -> {e}"
+                    )
+            return results
+        else:
+            return "Error: The results are not ready (timeout reached)."

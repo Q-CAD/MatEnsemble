@@ -18,11 +18,19 @@ class OutputReference:
         """
         Return the deserialized result of the referenced chore as a string.
         """
-        # TODO: Make sure that this file exists and add some exception handling
-        dep_result = self.workdir / "result.pkl"
+
+        dep_result = self.workdir / "result.pickle"
         try:
             with dep_result.open("rb") as f:
                 return str(pickle.load(f))
+        except Exception as e:
+            return f"Error: Could not open result of chore: {self.chore_id} becuase of the following exception: {e}"
+
+    def result(self):
+        dep_result = self.workdir / "result.pickle"
+        try:
+            with dep_result.open("rb") as f:
+                return pickle.load(f)
         except Exception as e:
             return f"Error: Could not open result of chore: {self.chore_id} becuase of the following exception: {e}"
 

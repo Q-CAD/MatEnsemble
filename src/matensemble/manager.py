@@ -485,6 +485,14 @@ class FluxManager:
                 and len(self._blocked) == 0
             )
 
+    def _add_chore(self, chore: Chore) -> None:
+        """
+        Add a UserStrategy spawned chore to the queue
+        """
+
+        self._chores_by_id[chore.id] = chore
+        self._ready.appendleft(chore)
+
     def run(
         self,
         buffer_time: float = 1.0,

@@ -149,20 +149,24 @@
 - [ ] Update README.md  
 - [ ] Create multi architecture builds for baseline image 
 - [ ] Run release script 
+- [ ] Try the MPI Hello examples in perlmutter image and see if they work 
 
 ## --- Create new strategy to enable autonomous workflows --- 
-- [ ] Update the OutputReference objects to have the ability to get the results 
-- [ ] Create a method in the Pipeline to be able to get the results of all chores
-- [ ] Make a strategy that can take in chore and does processing which spawns a new chore
+- [x] Update the OutputReference objects to have the ability to get the results 
+- [x] Create a method in the Pipeline to be able to get the results of all chores
 - [x] Figure out how to spawn a new chore 
-- [ ] Change to only use cloudpickle and only pickle the actual function once 
-- [ ] Change the chore objects to not store the function 
-- [ ] Change the chore objects to reference a function in the registry 
-- [ ] Change runtime worker to load function from registry and call it with args/kwargs
-- [ ] Stop writing chore.pkl and just write chore.json 
-- [ ] Add a set of OutputReference objects in the pipeline
-- [ ] Connect the added chores back to the pipeline somehow 
-- [ ] Add a method in pipeline where you can get the results of all of your chores
+- [x] Change to only use cloudpickle and only pickle the actual function once 
+- [x] Change the chore objects to not store the function 
+- [x] Change the chore objects to reference a function in the registry 
+- [x] Change runtime worker to load function from registry and call it with args/kwargs
+- [x] Add a set of OutputReference objects in the pipeline
+- [x] Connect the added chores back to the pipeline somehow 
+- [x] Add a method in pipeline where you can get the results of all of your chores
+- [x] Make the Pipeline.submit() function asynchronous
+- [x] Factor out the common pieces of the FutureProcessingStrategy into the base class
+- [x] Add a UserStrategy class
+- [ ] Make a strategy that can take in chore and does processing which spawns a new chore
+- [ ] Make a method in the pipeline that constructs a UserStrategy 
 
 ## === AFTER EVERYTHING ABOVE IS DONE AND STABLE === 
 
