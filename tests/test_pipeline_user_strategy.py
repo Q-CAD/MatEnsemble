@@ -44,7 +44,7 @@ def test_results_waits_for_finished_flag(tmp_path: Path):
 
     timer = threading.Timer(0.01, setattr, args=(pipeline, "_finished", True))
     timer.start()
-    out = pipeline.results(timeout=0.01)
+    out = pipeline.results(timeout=1.0)
     timer.join()
     assert "missing" in out
 

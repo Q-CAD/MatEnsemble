@@ -248,6 +248,7 @@ class UserStrategy(FutureProcessingStrategy):
         for fut in completed:
             chore_id = fut.chore_id
             chore = fut.chore_obj
+            chore_name = chore_id.removeprefix("chore-").rsplit("-", 1)[0]
             self.manager._running_chores.remove(chore_id)
 
             try:
@@ -308,6 +309,9 @@ class UserStrategy(FutureProcessingStrategy):
             # --- Processing the chore and spawning the new one ---
             if self.proc_chore == chore_name:
                 try:
+                    # Trust boundary: result.pickle is written by matensemble.runtime_worker
+                    # in this workflow's chore workdir only—do not load pickles from
+                    # untrusted paths or third-party producers.
                     with (chore.workdir / "result.pickle").open("rb") as f:
                         chore_spec = pickle.load(f)
                     new_chore = self.pipeline._spawn_chore_from_spec(chore_spec)

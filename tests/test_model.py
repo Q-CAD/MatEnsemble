@@ -14,7 +14,7 @@ def test_resources_validates_basic_inputs():
 
 
 def test_resources_rejects_invalid_values():
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="num_tasks must be an integer >= 1"):
         Resources(num_tasks=0)
 
 

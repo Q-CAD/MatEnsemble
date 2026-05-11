@@ -499,6 +499,33 @@ class FluxManager:
             self._fail_dependents(chore.id)
             return
 
+        if chore.id in self._chores_by_id:
+            self._logger.error(
+                "CHORE DUPLICATE: chore=%s already exists, rejecting spawn",
+                chore.id,
+            )
+            return
+
+        for dep in chore.deps:
+            if dep not in self._chores_by_id:
+                self._record_failure(
+                    chore.id, reason="unknown_dependency", upstream=dep
+                )
+                self._logger.error(
+                    "CHORE INVALID: chore=%s has unknown dependency %s",
+                    chore.id,
+                    dep,
+                )
+                return
+            if self._has_failed(dep):
+                self._record_failure(chore.id, reason="dependency_failed", upstream=dep)
+                self._logger.error(
+                    "CHORE SKIPPED: chore=%s because dependency %s already failed",
+                    chore.id,
+                    dep,
+                )
+                return
+
         self._chores_by_id[chore.id] = chore
         self._dependents.setdefault(chore.id, [])
 

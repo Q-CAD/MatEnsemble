@@ -17,7 +17,8 @@ def _chore(chore_id: str, deps=()):
     )
 
 
-def test_add_chore_adds_ready_chore_without_deps():
+def _bare_manager():
+    """Partial FluxManager (no __init__) with fields required by _add_chore."""
     manager = FluxManager.__new__(FluxManager)
     manager._chores_by_id = {}
     manager._dependents = {}
@@ -25,6 +26,15 @@ def test_add_chore_adds_ready_chore_without_deps():
     manager._ready = deque()
     manager._blocked = set()
     manager._completed_chores = []
+    manager._failed_chores = []
+    manager._nnodes_on_allocation = 1
+    manager._cores_per_node = 1
+    manager._gpus_per_node = 0
+    return manager
+
+
+def test_add_chore_adds_ready_chore_without_deps():
+    manager = _bare_manager()
 
     chore = _chore("chore-a")
     manager._add_chore(chore)
@@ -35,12 +45,10 @@ def test_add_chore_adds_ready_chore_without_deps():
 
 
 def test_add_chore_with_completed_dependency_becomes_ready():
-    manager = FluxManager.__new__(FluxManager)
+    manager = _bare_manager()
     manager._chores_by_id = {"dep-1": _chore("dep-1")}
     manager._dependents = {"dep-1": []}
     manager._remaining_deps = {"dep-1": 0}
-    manager._ready = deque()
-    manager._blocked = set()
     manager._completed_chores = ["dep-1"]
 
     chore = _chore("chore-b", deps=("dep-1",))

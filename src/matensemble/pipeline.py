@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import atexit
 import time
 import copy
 import functools
@@ -18,6 +19,20 @@ from matensemble.strategy import FutureProcessingStrategy, UserStrategy
 from matensemble.chore import Chore, ChoreSpec
 from matensemble.model import OutputReference, Resources, ChoreType
 from matensemble.utils import _collect_dep_ids
+
+
+def _registry_entry_filename(key: str) -> str:
+    """Return *key* as a basename-only registry filename or raise ValueError."""
+    if key in (".", "..") or not key:
+        raise ValueError(f"invalid registry key: {key!r}")
+    if "\x00" in key:
+        raise ValueError(f"registry key contains null byte: {key!r}")
+    if "/" in key or "\\" in key:
+        raise ValueError(f"registry key must not contain path separators: {key!r}")
+    safe = Path(key).name
+    if safe != key:
+        raise ValueError(f"registry key must be a single path segment: {key!r}")
+    return safe
 
 
 class Pipeline:
@@ -88,6 +103,7 @@ class Pipeline:
 
         self._strategy_spec = None
         self._finished = False
+        self._submission_exception: Exception | None = None
         self._submission_executor: ThreadPoolExecutor | None = None
 
     def chore(
@@ -415,6 +431,17 @@ class Pipeline:
 
         return chore
 
+    def close(self) -> None:
+        if self._submission_executor is not None:
+            self._submission_executor.shutdown(wait=True)
+            self._submission_executor = None
+
+    def __enter__(self) -> Pipeline:
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.close()
+
     def _submit(
         self,
         write_restart_freq: int | None = 100,
@@ -438,6 +465,7 @@ class Pipeline:
         """
 
         self._finished = False
+        self._submission_exception = None
         try:
             dag = self._create_graph()
             ordered_ids = self._sort_graph(dag)
@@ -447,7 +475,8 @@ class Pipeline:
             registry_dir = self._out_dir / "registry"
             registry_dir.mkdir(parents=True, exist_ok=True)
             for key in self._registry:
-                with open(registry_dir / key, "wb") as file:
+                safe_name = _registry_entry_filename(key)
+                with open(registry_dir / safe_name, "wb") as file:
                     cloudpickle.dump(self._registry[key], file)
 
             manager = FluxManager(
@@ -476,7 +505,9 @@ class Pipeline:
                 processing_strategy=strat,
                 dashboard=dashboard,
             )
-        except Exception:
+        except Exception as exc:
+            self._submission_exception = exc
+            self._finished = True
             raise
         else:
             self._finished = True
@@ -554,6 +585,7 @@ class Pipeline:
 
         if self._submission_executor is None:
             self._submission_executor = ThreadPoolExecutor(max_workers=1)
+            atexit.register(self.close)
 
         self._finished = False
 
@@ -582,6 +614,8 @@ class Pipeline:
         while not self._finished and time.monotonic() < deadline:
             time.sleep(0.1)
 
+        if self._submission_exception is not None:
+            raise self._submission_exception
         if self._finished:
             return self._collect_results()
         else:
