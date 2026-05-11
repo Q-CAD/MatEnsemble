@@ -87,6 +87,8 @@ class Pipeline:
         self._out_dir = self._base_dir / "out"
 
         self._strategy_spec = None
+        self._finished = False
+        self._submission_executor: ThreadPoolExecutor | None = None
 
     def chore(
         self,
@@ -175,7 +177,7 @@ class Pipeline:
                     "--chore-id",
                     chore_id,
                     "--spec-file",
-                    str(workdir / "chore.pkl"),
+                    str(workdir / "chore.pickle"),
                 ]
                 res = Resources(
                     num_tasks=num_tasks,
@@ -361,6 +363,9 @@ class Pipeline:
             str(workdir / "chore.pickle"),
         ]
 
+        args = (dependent,) if dependent is not None else ()
+        deps = _collect_dep_ids(args, {})
+
         chore = Chore(
             id=chore_id,
             workdir=workdir,
@@ -368,7 +373,8 @@ class Pipeline:
             chore_type=ChoreType.PYTHON,
             resources=resources if resources else Resources(),
             chore_qualname=chore_name,
-            args=(dependent,),
+            deps=deps,
+            args=args,
         )
         out_ref = OutputReference(chore_id, workdir)
 
@@ -392,6 +398,10 @@ class Pipeline:
             str(workdir / "chore.pickle"),
         ]
 
+        args = copy.deepcopy(spec.args)
+        kwargs = copy.deepcopy(spec.kwargs)
+        deps = _collect_dep_ids(args, kwargs)
+
         chore = Chore(
             id=chore_id,
             workdir=workdir,
@@ -399,8 +409,9 @@ class Pipeline:
             chore_type=ChoreType.PYTHON,
             resources=spec.resources,
             chore_qualname=spec.qualname,
-            args=copy.deepcopy(spec.args),
-            kwargs=copy.deepcopy(spec.kwargs),
+            deps=deps,
+            args=args,
+            kwargs=kwargs,
         )
         out_ref = OutputReference(chore_id, workdir)
 
@@ -431,53 +442,66 @@ class Pipeline:
             the value being the results of the chore.
         """
 
-        dag = self._create_graph()
-        ordered_ids = self._sort_graph(dag)
-        ordered_chores = [dag.nodes[chore_id]["chore"] for chore_id in ordered_ids]
-
-        self._out_dir.mkdir(parents=True, exist_ok=True)
-        registry_dir = self._out_dir / "registry"
-        registry_dir.mkdir(parents=True, exist_ok=True)
-        for key in self._registry:
-            with open(registry_dir / key, "wb") as file:
-                cloudpickle.dumps(self._registry[key], file)
-
-        manager = FluxManager(
-            chore_list=ordered_chores,
-            base_dir=self._base_dir,
-            write_restart_freq=write_restart_freq,
-            set_cpu_affinity=set_cpu_affinity,
-            set_gpu_affinity=set_gpu_affinity,
-        )
-
-        if self._strategy_spec:
-            strat = UserStrategy(
-                manager=manager,
-                pipeline=self,
-                processing_chore=self._strategy_spec["name"],
-                bolo_list=self._strategy_spec["bolo_list"],
-            )
-        else:
-            strat = None
-
         self._finished = False
-        manager.run(
-            buffer_time=buffer_time,
-            log_delay=log_delay,
-            adaptive=adaptive,
-            dynopro=dynopro,
-            processing_strategy=strat,
-            dashboard=dashboard,
-        )
-        self._finished = True
+        try:
+            dag = self._create_graph()
+            ordered_ids = self._sort_graph(dag)
+            ordered_chores = [dag.nodes[chore_id]["chore"] for chore_id in ordered_ids]
 
-        return self.results()
+            self._out_dir.mkdir(parents=True, exist_ok=True)
+            registry_dir = self._out_dir / "registry"
+            registry_dir.mkdir(parents=True, exist_ok=True)
+            for key in self._registry:
+                with open(registry_dir / key, "wb") as file:
+                    cloudpickle.dump(self._registry[key], file)
+
+            manager = FluxManager(
+                chore_list=ordered_chores,
+                base_dir=self._base_dir,
+                write_restart_freq=write_restart_freq,
+                set_cpu_affinity=set_cpu_affinity,
+                set_gpu_affinity=set_gpu_affinity,
+            )
+
+            if self._strategy_spec:
+                strat = UserStrategy(
+                    manager=manager,
+                    pipeline=self,
+                    processing_chore=self._strategy_spec["name"],
+                    bolo_list=self._strategy_spec["bolo_list"],
+                )
+            else:
+                strat = processing_strategy
+
+            manager.run(
+                buffer_time=buffer_time,
+                log_delay=log_delay,
+                adaptive=adaptive,
+                dynopro=dynopro,
+                processing_strategy=strat,
+                dashboard=dashboard,
+            )
+
+            return self._collect_results()
+        finally:
+            self._finished = True
 
     def add_user_strat(self, chore_name: str, bolo_list: list[str]):
         self._strategy_spec = {"name": chore_name, "bolo_list": bolo_list}
 
     def graph(self) -> nx.DiGraph:
         return self._create_graph()
+
+    def _collect_results(self) -> dict[str, Any]:
+        results = {}
+        for out_ref in self._output_reference_list:
+            try:
+                results[f"{out_ref.chore_id}"] = out_ref.result()
+            except Exception as e:
+                results[f"{out_ref.chore_id}"] = (
+                    f"Error: Could not access the results of {out_ref.chore_id} due to exception -> {e}"
+                )
+        return results
 
     def submit(
         self,
@@ -532,20 +556,24 @@ class Pipeline:
             results of each respective chore.
         """
 
-        with ThreadPoolExecutor() as executor:
-            # Returns a concurrent.futures.Future object
-            return executor.submit(
-                self._submit,
-                write_restart_freq=write_restart_freq,
-                buffer_time=buffer_time,
-                log_delay=log_delay,
-                set_cpu_affinity=set_cpu_affinity,
-                set_gpu_affinity=set_gpu_affinity,
-                adaptive=adaptive,
-                dynopro=dynopro,
-                processing_strategy=processing_strategy,
-                dashboard=dashboard,
-            )
+        if self._submission_executor is None:
+            self._submission_executor = ThreadPoolExecutor(max_workers=1)
+
+        self._finished = False
+
+        # Returns a concurrent.futures.Future object
+        return self._submission_executor.submit(
+            self._submit,
+            write_restart_freq=write_restart_freq,
+            buffer_time=buffer_time,
+            log_delay=log_delay,
+            set_cpu_affinity=set_cpu_affinity,
+            set_gpu_affinity=set_gpu_affinity,
+            adaptive=adaptive,
+            dynopro=dynopro,
+            processing_strategy=processing_strategy,
+            dashboard=dashboard,
+        )
 
     # TODO: Add logic to make the funciton work with ChoreType.EXECUTABLE
     def results(self, timeout=100):
@@ -559,14 +587,6 @@ class Pipeline:
             time.sleep(0.1)
 
         if self._finished:
-            results = {}
-            for out_ref in self._output_reference_list:
-                try:
-                    results[f"{out_ref.chore_id}"] = out_ref.result()
-                except Exception as e:
-                    results[f"{out_ref.chore_id}"] = (
-                        f"Error: Could not access the results of {out_ref.chore_id} due to exception -> {e}"
-                    )
-            return results
+            return self._collect_results()
         else:
             return "Error: The results are not ready (timeout reached)."

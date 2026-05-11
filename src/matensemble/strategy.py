@@ -292,7 +292,8 @@ class UserStrategy(FutureProcessingStrategy):
             # --- Processing the chore and spawning the new one ---
             if self.proc_chore in chore_id:
                 try:
-                    chore_spec = pickle.load(chore.workdir / "result.pickle")
+                    with (chore.workdir / "result.pickle").open("rb") as f:
+                        chore_spec = pickle.load(f)
                     new_chore = self.pipeline._spawn_chore_from_spec(chore_spec)
                     self.manager._add_chore(new_chore)
                 except Exception as e:
@@ -303,7 +304,9 @@ class UserStrategy(FutureProcessingStrategy):
                 for chore_name in self.bolo_list:
                     if chore_name in chore_id:
                         out_ref = OutputReference(chore_id, chore.workdir)
-                        new_chore = self.pipeline._spawn_chore(self.proc_chore, out_ref)
+                        new_chore = self.pipeline._spawn_chore_from_name(
+                            self.proc_chore, dependent=out_ref
+                        )
                         self.manager._add_chore(new_chore)
 
             if self.manager._write_restart_freq and (

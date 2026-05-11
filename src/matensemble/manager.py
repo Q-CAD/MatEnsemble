@@ -491,7 +491,19 @@ class FluxManager:
         """
 
         self._chores_by_id[chore.id] = chore
-        self._ready.appendleft(chore)
+        self._dependents.setdefault(chore.id, [])
+
+        remaining = sum(1 for dep in chore.deps if dep not in self._completed_chores)
+        self._remaining_deps[chore.id] = remaining
+
+        for dep in chore.deps:
+            self._dependents.setdefault(dep, []).append(chore.id)
+
+        if remaining == 0:
+            self._ready.appendleft(chore.id)
+            self._blocked.discard(chore.id)
+        else:
+            self._blocked.add(chore.id)
 
     def run(
         self,

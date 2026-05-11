@@ -72,7 +72,7 @@ def _load_dep_result(spec_file: Path, dep_id: str):
     Loads the results of the dependencies and returns them
     """
 
-    dep_result = spec_file.parent.parent / dep_id / "result.pkl"
+    dep_result = spec_file.parent.parent / dep_id / "result.pickle"
     with dep_result.open("rb") as f:
         return pickle.load(f)
 
