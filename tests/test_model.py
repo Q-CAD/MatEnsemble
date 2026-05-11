@@ -2,6 +2,8 @@ import pickle
 
 from pathlib import Path
 
+import pytest
+
 from matensemble.model import ChoreType, OutputReference, Resources
 
 
@@ -12,11 +14,8 @@ def test_resources_validates_basic_inputs():
 
 
 def test_resources_rejects_invalid_values():
-    try:
+    with pytest.raises(ValueError):
         Resources(num_tasks=0)
-        assert False, "Expected ValueError for num_tasks"
-    except ValueError:
-        pass
 
 
 def test_output_reference_result_reads_pickled_value(tmp_path: Path):

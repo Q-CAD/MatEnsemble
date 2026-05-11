@@ -64,9 +64,11 @@ class AdaptiveStrategy(FutureProcessingStrategy):
             self.manager._futures, timeout=buffer_time
         )
 
+        had_failure = False
         for fut in completed:
             chore_id = fut.chore_id
             chore = fut.chore_obj
+            chore_name = chore_id.removeprefix("chore-").rsplit("-", 1)[0]
             self.manager._running_chores.remove(chore_id)
 
             try:
@@ -92,7 +94,8 @@ class AdaptiveStrategy(FutureProcessingStrategy):
                     exception=f"{type(e).__name__}: {e}",
                 )
                 self.manager._fail_dependents(chore_id)
-                return
+                had_failure = True
+                continue
 
             if rc != 0:
                 append_text(
@@ -112,7 +115,8 @@ class AdaptiveStrategy(FutureProcessingStrategy):
                     reason=f"nonzero_exit:{rc}",
                 )
                 self.manager._fail_dependents(chore_id)
-                return
+                had_failure = True
+                continue
 
             self.manager._completed_chores.append(chore_id)
 
@@ -131,6 +135,9 @@ class AdaptiveStrategy(FutureProcessingStrategy):
             ):
                 self.manager._make_restart()
 
+        if had_failure:
+            return
+
 
 class NonAdaptiveStrategy(FutureProcessingStrategy):
     """
@@ -146,6 +153,7 @@ class NonAdaptiveStrategy(FutureProcessingStrategy):
             self.manager._futures, timeout=buffer_time
         )
 
+        had_failure = False
         for fut in completed:
             chore_id = fut.chore_id
             chore = fut.chore_obj
@@ -174,7 +182,8 @@ class NonAdaptiveStrategy(FutureProcessingStrategy):
                     exception=f"{type(e).__name__}: {e}",
                 )
                 self.manager._fail_dependents(chore_id)
-                return
+                had_failure = True
+                continue
 
             if rc != 0:
                 append_text(
@@ -194,7 +203,8 @@ class NonAdaptiveStrategy(FutureProcessingStrategy):
                     reason=f"nonzero_exit:{rc}",
                 )
                 self.manager._fail_dependents(chore_id)
-                return
+                had_failure = True
+                continue
 
             self.manager._completed_chores.append(chore_id)
 
@@ -209,6 +219,9 @@ class NonAdaptiveStrategy(FutureProcessingStrategy):
                 == 0
             ):
                 self.manager._make_restart()
+
+        if had_failure:
+            return
 
 
 # TODO: Make the strategy look through the bolo list and spawn a new chore with the output of another
@@ -231,6 +244,7 @@ class UserStrategy(FutureProcessingStrategy):
             self.manager._futures, timeout=buffer_time
         )
 
+        had_failure = False
         for fut in completed:
             chore_id = fut.chore_id
             chore = fut.chore_obj
@@ -259,7 +273,8 @@ class UserStrategy(FutureProcessingStrategy):
                     exception=f"{type(e).__name__}: {e}",
                 )
                 self.manager._fail_dependents(chore_id)
-                return
+                had_failure = True
+                continue
 
             if rc != 0:
                 append_text(
@@ -279,7 +294,8 @@ class UserStrategy(FutureProcessingStrategy):
                     reason=f"nonzero_exit:{rc}",
                 )
                 self.manager._fail_dependents(chore_id)
-                return
+                had_failure = True
+                continue
 
             self.manager._completed_chores.append(chore_id)
 
@@ -290,7 +306,7 @@ class UserStrategy(FutureProcessingStrategy):
                     self.manager._blocked.discard(dep_id)
 
             # --- Processing the chore and spawning the new one ---
-            if self.proc_chore in chore_id:
+            if self.proc_chore == chore_name:
                 try:
                     with (chore.workdir / "result.pickle").open("rb") as f:
                         chore_spec = pickle.load(f)
@@ -301,8 +317,8 @@ class UserStrategy(FutureProcessingStrategy):
                         f"FAILED TO SPAWN CHORE: chore={self.proc_chore} | due the following Exception ->\n{e}"
                     )
             else:
-                for chore_name in self.bolo_list:
-                    if chore_name in chore_id:
+                for bolo_name in self.bolo_list:
+                    if bolo_name == chore_name:
                         out_ref = OutputReference(chore_id, chore.workdir)
                         new_chore = self.pipeline._spawn_chore_from_name(
                             self.proc_chore, dependent=out_ref
@@ -314,6 +330,9 @@ class UserStrategy(FutureProcessingStrategy):
                 == 0
             ):
                 self.manager._make_restart()
+
+        if had_failure:
+            return
 
 
 def append_text(path: Path, text: str) -> None:

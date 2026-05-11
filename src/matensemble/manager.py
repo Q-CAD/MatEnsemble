@@ -490,6 +490,15 @@ class FluxManager:
         Add a UserStrategy spawned chore to the queue
         """
 
+        if not self._chore_fits_allocation(chore):
+            self._record_failure(chore.id, reason="chore exceeds allocation")
+            self._logger.error(
+                "CHORE INVALID: chore=%s requires more resources than the allocation can provide",
+                chore.id,
+            )
+            self._fail_dependents(chore.id)
+            return
+
         self._chores_by_id[chore.id] = chore
         self._dependents.setdefault(chore.id, [])
 

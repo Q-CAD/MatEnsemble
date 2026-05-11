@@ -16,8 +16,26 @@ def _install_flux_stub() -> None:
         def __exit__(self, exc_type, exc, tb):
             return False
 
+        def submit(self, *args, **kwargs):
+            return _DummyFuture(*args, **kwargs)
+
     class _DummyFuture:
-        pass
+        def __init__(self, fn=None, *args, **kwargs):
+            self._exception = None
+            self._result = None
+            if fn is not None:
+                try:
+                    self._result = fn(*args, **kwargs)
+                except Exception as exc:
+                    self._exception = exc
+
+        def result(self, timeout=None):
+            if self._exception is not None:
+                raise self._exception
+            return self._result
+
+        def exception(self, timeout=None):
+            return self._exception
 
     class _DummyFlux:
         def rpc(self, *_args, **_kwargs):
@@ -55,7 +73,7 @@ def _install_flux_stub() -> None:
 
 try:
     import flux  # noqa: F401
-except Exception:
+except ModuleNotFoundError:
     _install_flux_stub()
 
 
@@ -72,5 +90,5 @@ def _install_redis_stub() -> None:
 
 try:
     import redis  # noqa: F401
-except Exception:
+except ModuleNotFoundError:
     _install_redis_stub()

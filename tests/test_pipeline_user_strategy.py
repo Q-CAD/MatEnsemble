@@ -1,4 +1,5 @@
 import time
+import threading
 
 from concurrent.futures import Future
 from pathlib import Path
@@ -27,21 +28,23 @@ def test_submit_returns_before_background_work_finishes(monkeypatch, tmp_path: P
 
     monkeypatch.setattr(pipeline, "_submit", fake_submit)
 
-    started = time.perf_counter()
     fut = pipeline.submit()
-    elapsed = time.perf_counter() - started
 
     assert isinstance(fut, Future)
-    assert elapsed < 0.1
+    assert not fut.done()
     assert fut.result(timeout=2) == {"ok": 1}
 
 
 def test_results_waits_for_finished_flag(tmp_path: Path):
     pipeline = Pipeline(basedir=str(tmp_path))
-    pipeline._finished = True
+    pipeline._finished = False
     pipeline._output_reference_list = [
         OutputReference("missing", tmp_path / "does-not-exist"),
     ]
+
+    timer = threading.Timer(0.01, setattr, args=(pipeline, "_finished", True))
+    timer.start()
     out = pipeline.results(timeout=0.01)
+    timer.join()
     assert "missing" in out
 

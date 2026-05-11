@@ -145,11 +145,8 @@ class Pipeline:
         """
 
         def decorator(func: Callable[..., Any]) -> Callable[..., OutputReference]:
-
-            if name:
-                self._registry[name] = func
-            else:
-                self._registry[str(func.__qualname__)] = func
+            registry_key = name or str(func.__qualname__)
+            self._registry[registry_key] = func
 
             @functools.wraps(func)
             def wrapper(*args: Any, **kwargs: Any) -> OutputReference:
@@ -187,7 +184,7 @@ class Pipeline:
                     env=merged_env,
                     inherit_env=inherit_env,
                 )
-                chore_qualname = func.__qualname__
+                chore_qualname = registry_key
                 deps = _collect_dep_ids(args, kwargs)
 
                 chore = Chore(
@@ -330,10 +327,8 @@ class Pipeline:
 
         """
         if not nx.is_directed_acyclic_graph(G):
-            raise Exception(
-                "Error: MatEnsemble workflow graph cannot contain cycles, \
-                        topological sort not possible"
-            )
+            raise Exception("Error: MatEnsemble workflow graph cannot contain cycles, \
+                        topological sort not possible")
         else:
             try:
                 return list(nx.topological_sort(G))
@@ -481,10 +476,11 @@ class Pipeline:
                 processing_strategy=strat,
                 dashboard=dashboard,
             )
-
-            return self._collect_results()
-        finally:
+        except Exception:
+            raise
+        else:
             self._finished = True
+            return self._collect_results()
 
     def add_user_strat(self, chore_name: str, bolo_list: list[str]):
         self._strategy_spec = {"name": chore_name, "bolo_list": bolo_list}
