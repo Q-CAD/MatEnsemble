@@ -26,4 +26,7 @@ def test_output_reference_result_reads_pickled_value(tmp_path: Path):
 
     ref = OutputReference("chore-a", workdir)
     assert ref.result() == {"x": 1}
+
+
+def test_choretype_enum_distinct():
     assert ChoreType.PYTHON != ChoreType.EXECUTABLE

@@ -314,8 +314,12 @@ class UserStrategy(FutureProcessingStrategy):
                     # untrusted paths or third-party producers.
                     with (chore.workdir / "result.pickle").open("rb") as f:
                         chore_spec = pickle.load(f)
-                    new_chore = self.pipeline._spawn_chore_from_spec(chore_spec)
-                    self.manager._add_chore(new_chore)
+                    new_chore, new_out = self.pipeline._spawn_chore_from_spec(
+                        chore_spec
+                    )
+                    self.pipeline._admit_spawned_chore(
+                        new_chore, new_out, self.manager
+                    )
                 except Exception as e:
                     self.manager._logger.exception(
                         f"FAILED TO SPAWN CHORE: chore={self.proc_chore} | due the following Exception ->\n{e}"
@@ -324,10 +328,12 @@ class UserStrategy(FutureProcessingStrategy):
                 for bolo_name in self.bolo_list:
                     if bolo_name == chore_name:
                         out_ref = OutputReference(chore_id, chore.workdir)
-                        new_chore = self.pipeline._spawn_chore_from_name(
+                        new_chore, new_out = self.pipeline._spawn_chore_from_name(
                             self.proc_chore, dependent=out_ref
                         )
-                        self.manager._add_chore(new_chore)
+                        self.pipeline._admit_spawned_chore(
+                            new_chore, new_out, self.manager
+                        )
 
             if self.manager._write_restart_freq and (
                 len(self.manager._completed_chores) % self.manager._write_restart_freq

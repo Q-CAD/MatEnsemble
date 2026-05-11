@@ -485,26 +485,31 @@ class FluxManager:
                 and len(self._blocked) == 0
             )
 
-    def _add_chore(self, chore: Chore) -> None:
+    def _add_chore(self, chore: Chore) -> bool:
         """
-        Add a UserStrategy spawned chore to the queue
+        Add a UserStrategy spawned chore to the queue.
+
+        Returns
+        -------
+        bool
+            True if *chore* was admitted to the manager, False if it was rejected.
         """
 
         if not self._chore_fits_allocation(chore):
-            self._record_failure(chore.id, reason="chore exceeds allocation")
+            self._record_failure(chore.id, reason="chore_exceeds_allocation")
             self._logger.error(
                 "CHORE INVALID: chore=%s requires more resources than the allocation can provide",
                 chore.id,
             )
             self._fail_dependents(chore.id)
-            return
+            return False
 
         if chore.id in self._chores_by_id:
             self._logger.error(
                 "CHORE DUPLICATE: chore=%s already exists, rejecting spawn",
                 chore.id,
             )
-            return
+            return False
 
         for dep in chore.deps:
             if dep not in self._chores_by_id:
@@ -516,7 +521,7 @@ class FluxManager:
                     chore.id,
                     dep,
                 )
-                return
+                return False
             if self._has_failed(dep):
                 self._record_failure(chore.id, reason="dependency_failed", upstream=dep)
                 self._logger.error(
@@ -524,7 +529,7 @@ class FluxManager:
                     chore.id,
                     dep,
                 )
-                return
+                return False
 
         self._chores_by_id[chore.id] = chore
         self._dependents.setdefault(chore.id, [])
@@ -540,6 +545,8 @@ class FluxManager:
             self._blocked.discard(chore.id)
         else:
             self._blocked.add(chore.id)
+
+        return True
 
     def run(
         self,

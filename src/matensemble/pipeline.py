@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import atexit
+import threading
 import time
 import copy
 import functools
@@ -104,6 +105,7 @@ class Pipeline:
         self._strategy_spec = None
         self._finished = False
         self._submission_exception: Exception | None = None
+        self._submission_state_lock = threading.Lock()
         self._submission_executor: ThreadPoolExecutor | None = None
 
     def chore(
@@ -359,7 +361,7 @@ class Pipeline:
         chore_name: str,
         resources: Resources | None = None,
         dependent: OutputReference | None = None,
-    ) -> Chore:
+    ) -> tuple[Chore, OutputReference]:
         self._counter += 1
 
         chore_id = f"chore-{chore_name}-{self._counter:04d}"
@@ -389,12 +391,9 @@ class Pipeline:
         )
         out_ref = OutputReference(chore_id, workdir)
 
-        self._chore_list.append(chore)
-        self._output_reference_list.append(out_ref)
+        return chore, out_ref
 
-        return chore
-
-    def _spawn_chore_from_spec(self, spec: ChoreSpec) -> Chore:
+    def _spawn_chore_from_spec(self, spec: ChoreSpec) -> tuple[Chore, OutputReference]:
         self._counter += 1
 
         chore_id = f"chore-{spec.qualname}-{self._counter:04d}"
@@ -426,10 +425,26 @@ class Pipeline:
         )
         out_ref = OutputReference(chore_id, workdir)
 
+        return chore, out_ref
+
+    def _admit_spawned_chore(
+        self, chore: Chore, out_ref: OutputReference, manager: FluxManager
+    ) -> None:
+        """
+        Validate registry membership, admit *chore* to *manager*, then record it
+        on this pipeline. Raises if the spawn cannot be admitted.
+        """
+        if chore.chore_qualname not in self._registry:
+            raise ValueError(
+                f"spawned chore qualname {chore.chore_qualname!r} is not in the pipeline registry"
+            )
+        if not manager._add_chore(chore):
+            raise RuntimeError(
+                f"FluxManager rejected spawned chore {chore.id!r} (duplicate id, "
+                "dependency error, or allocation)"
+            )
         self._chore_list.append(chore)
         self._output_reference_list.append(out_ref)
-
-        return chore
 
     def close(self) -> None:
         if self._submission_executor is not None:
@@ -464,8 +479,9 @@ class Pipeline:
             the value being the results of the chore.
         """
 
-        self._finished = False
-        self._submission_exception = None
+        with self._submission_state_lock:
+            self._finished = False
+            self._submission_exception = None
         try:
             dag = self._create_graph()
             ordered_ids = self._sort_graph(dag)
@@ -506,11 +522,13 @@ class Pipeline:
                 dashboard=dashboard,
             )
         except Exception as exc:
-            self._submission_exception = exc
-            self._finished = True
+            with self._submission_state_lock:
+                self._submission_exception = exc
+                self._finished = True
             raise
         else:
-            self._finished = True
+            with self._submission_state_lock:
+                self._finished = True
             return self._collect_results()
 
     def add_user_strat(self, chore_name: str, bolo_list: list[str]):
@@ -587,7 +605,9 @@ class Pipeline:
             self._submission_executor = ThreadPoolExecutor(max_workers=1)
             atexit.register(self.close)
 
-        self._finished = False
+        with self._submission_state_lock:
+            self._submission_exception = None
+            self._finished = False
 
         # Returns a concurrent.futures.Future object
         return self._submission_executor.submit(
@@ -611,12 +631,18 @@ class Pipeline:
         deadline = time.monotonic() + timeout
 
         # if the workflow is not finished spin wait until it is or you reach a timeout
-        while not self._finished and time.monotonic() < deadline:
+        while True:
+            with self._submission_state_lock:
+                finished = self._finished
+            if finished or time.monotonic() >= deadline:
+                break
             time.sleep(0.1)
 
-        if self._submission_exception is not None:
-            raise self._submission_exception
-        if self._finished:
+        with self._submission_state_lock:
+            exc = self._submission_exception
+            done = self._finished
+        if exc is not None:
+            raise exc
+        if done:
             return self._collect_results()
-        else:
-            return "Error: The results are not ready (timeout reached)."
+        return "Error: The results are not ready (timeout reached)."

@@ -12,7 +12,9 @@ def test_spawn_chore_from_name_infers_dependency(tmp_path: Path):
     pipeline = Pipeline(basedir=str(tmp_path))
     upstream_ref = OutputReference("upstream-001", tmp_path / "out" / "upstream-001")
 
-    chore = pipeline._spawn_chore_from_name("process_done", dependent=upstream_ref)
+    chore, _out = pipeline._spawn_chore_from_name(
+        "process_done", dependent=upstream_ref
+    )
 
     assert chore.deps == ("upstream-001",)
     assert chore.args[0] == upstream_ref
