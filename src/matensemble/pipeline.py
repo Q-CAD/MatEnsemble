@@ -107,6 +107,7 @@ class Pipeline:
         self._submission_exception: Exception | None = None
         self._submission_state_lock = threading.Lock()
         self._submission_executor: ThreadPoolExecutor | None = None
+        self._submission_future: Future | None = None
 
     def chore(
         self,
@@ -601,16 +602,23 @@ class Pipeline:
             results of each respective chore.
         """
 
+        with self._submission_state_lock:
+            if (
+                self._submission_future is not None
+                and not self._submission_future.done()
+            ):
+                raise RuntimeError(
+                    "submit() called while a workflow is already running"
+                )
+            self._submission_exception = None
+            self._finished = False
+
         if self._submission_executor is None:
             self._submission_executor = ThreadPoolExecutor(max_workers=1)
             atexit.register(self.close)
 
-        with self._submission_state_lock:
-            self._submission_exception = None
-            self._finished = False
-
         # Returns a concurrent.futures.Future object
-        return self._submission_executor.submit(
+        fut = self._submission_executor.submit(
             self._submit,
             write_restart_freq=write_restart_freq,
             buffer_time=buffer_time,
@@ -622,6 +630,9 @@ class Pipeline:
             processing_strategy=processing_strategy,
             dashboard=dashboard,
         )
+        with self._submission_state_lock:
+            self._submission_future = fut
+        return fut
 
     # TODO: Add logic to make the funciton work with ChoreType.EXECUTABLE
     def results(self, timeout=100):

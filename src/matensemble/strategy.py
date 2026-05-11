@@ -327,13 +327,19 @@ class UserStrategy(FutureProcessingStrategy):
             else:
                 for bolo_name in self.bolo_list:
                     if bolo_name == chore_name:
-                        out_ref = OutputReference(chore_id, chore.workdir)
-                        new_chore, new_out = self.pipeline._spawn_chore_from_name(
-                            self.proc_chore, dependent=out_ref
-                        )
-                        self.pipeline._admit_spawned_chore(
-                            new_chore, new_out, self.manager
-                        )
+                        try:
+                            out_ref = OutputReference(chore_id, chore.workdir)
+                            new_chore, new_out = self.pipeline._spawn_chore_from_name(
+                                self.proc_chore, dependent=out_ref
+                            )
+                            self.pipeline._admit_spawned_chore(
+                                new_chore, new_out, self.manager
+                            )
+                        except Exception as e:
+                            self.manager._logger.exception(
+                                f"FAILED TO SPAWN CHORE: proc_chore={self.proc_chore} "
+                                f"bolo_match={chore_name} | due the following Exception ->\n{e}"
+                            )
 
             if self.manager._write_restart_freq and (
                 len(self.manager._completed_chores) % self.manager._write_restart_freq
