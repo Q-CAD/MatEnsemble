@@ -60,26 +60,8 @@ RUN python -m pip install --no-cache-dir                     \
     "cuequivariance-ops-torch-cu12==0.3.0"                   \
     mace-torch==0.3.14
 
-
-
-# Build MPICH and install mpi4py
-ARG mpich=3.4.3
-ARG mpich_prefix=mpich-$mpich
-
-WORKDIR /opt
-RUN wget https://www.mpich.org/static/downloads/$mpich/$mpich_prefix.tar.gz && \
-    tar xvzf $mpich_prefix.tar.gz                                           && \
-    cd $mpich_prefix                                                        && \
-    FFLAGS=-fallow-argument-mismatch FCFLAGS=-fallow-argument-mismatch ./configure --with-device=ch4:ofi && \
-    make -j 4                                                               && \
-    make install                                                            && \
-    make clean                                                              && \
-    cd ..                                                                   && \
-    rm -rf $mpich_prefix
-RUN /sbin/ldconfig
-
 RUN MPICC="cc -shared" python -m pip install --no-cache-dir --force-reinstall --no-binary=mpi4py mpi4py==4.0.3
-
+# RUN python -m pip install mpi4py -i https://pypi.anaconda.org/mpi4py/simple
 
 #Install HWLOC
 WORKDIR /opt

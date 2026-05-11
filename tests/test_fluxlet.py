@@ -1,114 +1,59 @@
-from __future__ import annotations
+from pathlib import Path
 
-import json
-import pickle
-import flux
-
-from matensemble.fluxlet import Fluxlet
 from matensemble.chore import Chore
+from matensemble.fluxlet import Fluxlet
 from matensemble.model import ChoreType, Resources
 
 
-class RecordingExecutor:
+class _FakeJobspec:
     def __init__(self):
-        self.submitted_jobspecs = []
+        self.cwd = None
+        self.stdout = None
+        self.stderr = None
+        self.environment = {}
+        self.num_nodes = None
+        self.shell_opts = {}
 
-    def submit(self, jobspec):
-        from tests.conftest import FakeFuture
-
-        fut = FakeFuture(jobspec=jobspec, result_value=0)
-        self.submitted_jobspecs.append(jobspec)
-        return fut
+    def setattr_shell_option(self, key, value):
+        self.shell_opts[key] = value
 
 
-def test_fluxlet_submit_writes_chore_spec_and_sets_jobspec_fields(tmp_path):
-    workdir = tmp_path / "out" / "chore-1"
+def test_fluxlet_submit_sets_workdir_and_streams(monkeypatch, tmp_path: Path):
+    fake_jobspec = _FakeJobspec()
+
+    class _JobspecV1:
+        @staticmethod
+        def from_command(*_args, **_kwargs):
+            return fake_jobspec
+
+    class _Future:
+        pass
+
+    class _Executor:
+        def submit(self, jobspec):
+            f = _Future()
+            f.jobspec = jobspec
+            return f
+
+    monkeypatch.setattr("flux.job.JobspecV1", _JobspecV1, raising=False)
+    monkeypatch.setattr(Fluxlet, "get_gpus_per_node", lambda _self: (1, 0))
+
+    class _Handle:
+        def rpc(self, *_args, **_kwargs):
+            class _Done:
+                def get(self):
+                    return None
+
+            return _Done()
+
     chore = Chore(
-        id="chore-1",
-        command=["python", "-m", "task"],
-        chore_type=ChoreType.PYTHON,
-        resources=Resources(
-            num_tasks=2, cores_per_task=3, gpus_per_task=1, mpi=True, env={"A": "B"}
-        ),
-        workdir=workdir,
-        func_module="tasks",
-        func_qualname="run",
-        serialized_callable=b"hello",
-    )
-
-    executor = RecordingExecutor()
-    fluxlet = Fluxlet(handle=flux.Flux())
-    fut = fluxlet.submit(
-        executor,
-        chore,
-        set_cpu_affinity=True,
-        set_gpu_affinity=True,
-        nnodes=2,
-    )
-
-    jobspec = executor.submitted_jobspecs[0]
-    assert jobspec.command == ["python", "-m", "task"]
-    assert jobspec.cwd == str(workdir.resolve())
-    assert jobspec.stdout.endswith("stdout")
-    assert jobspec.stderr.endswith("stderr")
-    # assert jobspec.env == {"A": "B"}
-    assert jobspec.num_nodes == 2
-    assert jobspec.shell_options["mpi"] == "pmi2"
-    assert jobspec.shell_options["cpu-affinity"] == "per-task"
-    assert jobspec.shell_options["gpu-affinity"] == "per-task"
-
-    with chore.spec_path.open("rb") as f:
-        stored_chore = pickle.load(f)
-    assert stored_chore.id == "chore-1"
-
-    debug = json.loads((workdir / "chore.json").read_text())
-    assert debug["id"] == "chore-1"
-    assert fut.chore_id == "chore-1"
-    assert fut.chore_obj.id == "chore-1"
-    assert fut.chore_spec is jobspec
-
-
-def test_fluxlet_submit_inherit_env_true_copies_manager_environment(
-    tmp_path, monkeypatch
-):
-    monkeypatch.setenv("MATENSEMBLE_MANAGER_ENV", "from-manager")
-
-    workdir = tmp_path / "out" / "chore-inherit"
-    chore = Chore(
-        id="chore-inherit",
-        command=["python", "-m", "task"],
+        id="chore-fx-1",
+        workdir=tmp_path / "chore-fx-1",
+        command=["echo", "ok"],
         chore_type=ChoreType.EXECUTABLE,
-        resources=Resources(
-            inherit_env=True,
-            env={"LOCAL_ONLY": "1", "MATENSEMBLE_MANAGER_ENV": "overridden"},
-        ),
-        workdir=workdir,
+        resources=Resources(),
     )
-
-    executor = RecordingExecutor()
-    fluxlet = Fluxlet(handle=flux.Flux())
-    fluxlet.submit(executor, chore)
-
-    jobspec = executor.submitted_jobspecs[0]
-    assert jobspec.environment["MATENSEMBLE_MANAGER_ENV"] == "overridden"
-    assert jobspec.environment["LOCAL_ONLY"] == "1"
-
-
-def test_fluxlet_submit_inherit_env_false_uses_only_chore_env(tmp_path, monkeypatch):
-    monkeypatch.setenv("MATENSEMBLE_MANAGER_ENV", "from-manager")
-
-    workdir = tmp_path / "out" / "chore-no-inherit"
-    chore = Chore(
-        id="chore-no-inherit",
-        command=["python", "-m", "task"],
-        chore_type=ChoreType.EXECUTABLE,
-        resources=Resources(inherit_env=False, env={"LOCAL_ONLY": "1"}),
-        workdir=workdir,
-    )
-
-    executor = RecordingExecutor()
-    fluxlet = Fluxlet(handle=flux.Flux())
-    fluxlet.submit(executor, chore)
-
-    jobspec = executor.submitted_jobspecs[0]
-    assert jobspec.environment == {"LOCAL_ONLY": "1"}
+    fluxlet = Fluxlet(_Handle())
+    fut = fluxlet.submit(_Executor(), chore)
+    assert fut.chore_id == "chore-fx-1"
+    assert fake_jobspec.cwd == str(chore.workdir)

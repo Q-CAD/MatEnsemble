@@ -46,11 +46,8 @@ When Flux starts that command on an allocated worker, this module:
 
 """
 
-import importlib
 import argparse
-import inspect
 import pickle
-import json
 import sys
 
 import cloudpickle
@@ -60,31 +57,14 @@ from pathlib import Path
 from matensemble.utils import _json_safe, _resolve_output_references
 
 
-def _load_callable(chore):
-    serialized = getattr(chore, "serialized_callable", None)
-    if serialized is not None:
-        return cloudpickle.loads(serialized)
-
-    if chore.func_module is None or chore.func_qualname is None:
-        raise ValueError(
-            "Python chore is missing both serialized_callable and func_module/func_qualname"
-        )
-
-    module = importlib.import_module(chore.func_module)
-    return _resolve_qualname(module, chore.func_qualname)
-
-
-def _resolve_qualname(module, qualname: str):
+def _load_callable(chore_qualname: str, registry: Path):
     """
-    Gets the function name from the module
+    Loads the function from the registry
     """
 
-    obj = module
-    for part in qualname.split("."):
-        if part == "<locals>":
-            raise ValueError("Chores must reference importable top-level callables")
-        obj = getattr(obj, part)
-    return inspect.unwrap(obj)
+    func = registry / chore_qualname
+    with func.open("rb") as f:
+        return cloudpickle.load(f)
 
 
 def _load_dep_result(spec_file: Path, dep_id: str):
@@ -92,21 +72,9 @@ def _load_dep_result(spec_file: Path, dep_id: str):
     Loads the results of the dependencies and returns them
     """
 
-    dep_result = spec_file.parent.parent / dep_id / "result.pkl"
+    dep_result = spec_file.parent.parent / dep_id / "result.pickle"
     with dep_result.open("rb") as f:
         return pickle.load(f)
-
-
-def _try_write_result_json(result, out_file):
-    """
-    Tries to write a human readable version of the result
-    """
-
-    try:
-        with out_file.open("w") as f:
-            json.dump(_json_safe(result), f, indent=2)
-    except Exception:
-        pass
 
 
 def main():
@@ -144,7 +112,8 @@ def main():
     if str(source_root) not in sys.path:
         sys.path.insert(0, str(source_root))
 
-    func = _load_callable(chore)
+    registry = spec_file.parent.parent.parent / "registry"
+    func = _load_callable(chore.chore_qualname, registry)
 
     dep_results = {dep: _load_dep_result(spec_file, dep) for dep in chore.deps}
     args = _resolve_output_references(chore.args, dep_results)
@@ -152,10 +121,8 @@ def main():
 
     result = func(*args, **kwargs)
 
-    with (spec_file.parent / "result.pkl").open("wb") as f:
+    with (spec_file.parent / "result.pickle").open("wb") as f:
         pickle.dump(result, f)
-
-    _try_write_result_json(result, spec_file.parent / "result.json")
 
 
 if __name__ == "__main__":

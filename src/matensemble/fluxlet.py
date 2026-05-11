@@ -148,7 +148,7 @@ class Fluxlet:
             jobspec.environment = base_env
 
             # helpful for debugging
-            chore._write_debug_json()
+            chore._write_metadata()
 
             # only set this if you truly want every chore to span a fixed node count
             if nnodes is not None:
