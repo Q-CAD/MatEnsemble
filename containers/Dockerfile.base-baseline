@@ -7,12 +7,13 @@ COPY --from=ghcr.io/astral-sh/uv:0.11.8 /uv /uvx /bin/
 RUN uv venv /opt/basic --seed --python 3.12
 ENV PATH="/opt/basic/bin:$PATH"
 
+RUN uv pip install setuptools wheel cffi ply PyYAML sphinx
+
 RUN apt-get update && apt-get install --yes \
-    build-essentials git wget mpich libmpich-dev \
+    build-essential git wget cmake mpich libmpich-dev \
     autoconf automake libtool make pkg-config libc6-dev libzmq3-dev uuid-dev \
     libjansson-dev liblz4-dev libarchive-dev libhwloc-dev libsqlite3-dev lua5.1 \
-    liblua5.1-dev lua-posix python3-dev python3-cffi python3-ply python3-setuptools \
-    python3-yaml python3-sphinx aspell aspell-en time valgrind libmpich-dev jq \
+    liblua5.1-dev lua-posix aspell aspell-en time valgrind libmpich-dev jq \
     libboost-dev libboost-graph-dev libedit-dev libyaml-cpp-dev \
     && apt-get clean
 
@@ -47,7 +48,7 @@ RUN wget https://github.com/lammps/lammps/archive/refs/tags/stable_22Jul2025_upd
         -D BUILD_LIB=on && \
     cmake --build lammps_build --target install -j8 && \
     make install-python && \
-    rm -r stable_2Aug2023_update3.tar.gz lammps-stable_2Aug2023_update3 lammps_build
+    rm -r stable_22Jul2025_update4.tar.gz lammps-stable_22Jul2025_update4 lammps_build
 
 RUN python -m pip install --no-cache-dir flux-python==0.70.0
 ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH:-}

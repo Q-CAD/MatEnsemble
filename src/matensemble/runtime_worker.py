@@ -112,7 +112,7 @@ def main():
     if str(source_root) not in sys.path:
         sys.path.insert(0, str(source_root))
 
-    registry = spec_file.parent.parent.parent / "registry"
+    registry = spec_file.parent.parent / "registry"
     func = _load_callable(chore.chore_qualname, registry)
 
     dep_results = {dep: _load_dep_result(spec_file, dep) for dep in chore.deps}
