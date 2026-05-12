@@ -9,6 +9,7 @@
 #SBATCH --gpus-per-node=4   # 4 GPUs per node
 #SBATCH --gpu-bind=closest
 
+# Command I was using to test the images
 # salloc -A m5014_g -C gpu --qos=debug -t 0:30:00 -N 2 --ntasks-per-node=1 --gpus-per-node=4 --gpu-bind=closest
 
 export NNODES=${SLURM_JOB_NUM_NODES}
@@ -24,8 +25,9 @@ export CRAY_ACCEL_TARGET=nvidia80
 export SUPPRESS_NVIDIA_HEADER=1
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
+# name of image and input to give after 'flux start'
 IMAGE="ghcr.io/freddude2004/matensemble:perlmutter-dev"
-INPUT="matensemble_test.py"
+INPUT="example_matensemble.py"
 
 LD_PATH="/opt/basic/lib/python3.12/site-packages/nvidia/nccl/lib"
 LD_PATH="${LD_PATH}:/usr/lib64"
@@ -65,11 +67,12 @@ PODMAN_ARGS="--rm \
   -v $SCRATCH:$SCRATCH -w $PWD"
 
 # --- Flux configuration (update per application) --------
-NTASKS=${NRANK}
-GPUS_PER_TASK=1
 GPU_RANGE="0-$((NGPUS - 1))"
 FLUX_CMD="python $INPUT"
 # ---------------------------------------------------------
+
+# This will create a script that will allow flux to see all the correct resources
+# vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv
 
 # Write container script to $SCRATCH (mounted inside the container) so it
 # can be passed as a path argument to bash — avoids stdin piping through srun/podman.
@@ -115,6 +118,8 @@ TOML
 FLUX_CONF_DIR=/tmp/fluxcfg flux start ${FLUX_CMD}
 SCRIPT_EOF
 
-srun --cpu-bind=none --mpi=pmi2 podman-hpc run "${PODMAN_ARGS}" "${IMAGE}" bash "${CONTAINER_SCRIPT}"
+# ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+srun --cpu-bind=none --mpi=pmi2 podman-hpc run ${PODMAN_ARGS} ${IMAGE} bash ${CONTAINER_SCRIPT}
 
 rm -f "${CONTAINER_SCRIPT}"
