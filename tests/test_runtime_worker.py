@@ -27,7 +27,7 @@ def test_load_callable_reads_registry_entry(tmp_path: Path):
 def test_main_executes_chore_and_writes_result(monkeypatch, tmp_path: Path):
     workflow = tmp_path / "wf"
     out_dir = workflow / "out"
-    registry = workflow / "registry"
+    registry = out_dir / "registry"
     chore_dir = out_dir / "chore-work-0001"
     registry.mkdir(parents=True)
     chore_dir.mkdir(parents=True)
