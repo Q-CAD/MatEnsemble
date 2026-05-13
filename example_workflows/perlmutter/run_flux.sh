@@ -27,7 +27,7 @@ export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 
 # name of image and input to give after 'flux start'
 IMAGE="ghcr.io/freddude2004/matensemble:perlmutter-dev"
-INPUT="example_matensemble.py"
+INPUT="matensemble_test.py"
 
 LD_PATH="/opt/basic/lib/python3.12/site-packages/nvidia/nccl/lib"
 LD_PATH="${LD_PATH}:/usr/lib64"
@@ -120,6 +120,6 @@ SCRIPT_EOF
 
 # ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-srun --cpu-bind=none --mpi=pmi2 podman-hpc run ${PODMAN_ARGS} ${IMAGE} bash ${CONTAINER_SCRIPT}
+srun -N $SLURM_NNODES -n $SLURM_NNODES --cpu-bind=none --mpi=pmi2 podman-hpc run ${PODMAN_ARGS} ${IMAGE} bash ${CONTAINER_SCRIPT}
 
 rm -f "${CONTAINER_SCRIPT}"

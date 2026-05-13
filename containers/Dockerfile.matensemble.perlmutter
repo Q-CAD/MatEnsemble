@@ -1,15 +1,16 @@
-FROM ghcr.io/freddude2004/matensemble-base:perlmutter
+FROM docker.io/nersc/flux:26.05
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh && \
-    /usr/local/bin/uv --version
+ENV PATH=/opt/basic/bin:$PATH
 
-# setup uv to install deps to /opt/basic
-ENV UV_PROJECT_ENVIRONMENT=/opt/basic
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-dev libglu1-mesa-dev mesa-utils
 
 # clone MatEnsemble
-WORKDIR /opt/src
-RUN rm -rf /opt/basic/lib/python3.12/site-packages/tabulate*            && \
-    git clone --depth 1 https://github.com/FredDude2004/MatEnsemble.git && \
-    cd MatEnsemble                                                      && \
-    uv export --format requirements.txt --output-file requirements.txt  && \
-    uv pip install -r requirements.txt
+WORKDIR /opt
+RUN git clone --depth 1 https://github.com/FredDude2004/MatEnsemble.git matensemble && \
+    cd matensemble && \
+    uv export --format requirements.txt --no-hashes --no-emit-project --output-file requirements.txt && \
+    /opt/basic/bin/python -m pip install -r requirements.txt && \
+    /opt/basic/bin/python -m pip install --no-deps .
+
