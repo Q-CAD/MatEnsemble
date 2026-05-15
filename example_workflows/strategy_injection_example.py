@@ -23,9 +23,14 @@ def guess(bottom: int, top: int, guess_num: int) -> dict:
 
 
 def higher_or_lower(guess, ans=answer):
+    """
+    Takes the results of a 'guess' chore and spawns a new guess chore based on
+    the results
+    """
     if guess["guess"] == ans:
         print(
-            f"Godd Job! I was thinking of {ans}, and you got it in {guess['num_guesses']}"
+            f"Godd Job! I was thinking of {ans},",
+            f"and you got it in {guess['num_guesses']}",
         )
     elif guess["guess"] < ans:
         return ChoreSpec(

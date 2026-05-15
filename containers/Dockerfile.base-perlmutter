@@ -1,121 +1,28 @@
-FROM docker.io/nersc/base_gpu:25.11
+# ATTENTION:
 
-ENV DEBIAN_FRONTEND=noninteractive
+# THIS IS SIMPLY A SHIM NOT THE ACTUAL CONTAINER USED TO BUILD THE BAESE IMAGE
+# THE ACTUAL IMAGE USED WAS: docker.io/nersc/flux:26.05
+
+# THIS IS SIMPLY MY BEST GUESS AS TO WHAT WAS USED TO BUILD THE BASE IMAGE
+
+FROM docker.io/nersc/base_gpu:26.04
 WORKDIR /opt
+ENV DEBIAN_FRONTEND noninteractive
 
-# System packages
-RUN apt-get update && apt-get install -y --no-install-recommends               \
-    bash ca-certificates curl git wget unzip build-essential gfortran          \
-    pkg-config ninja-build cmake libblas-dev liblapack-dev libgsl-dev          \
-    libfftw3-dev libopenblas-dev libhdf5-dev libsqlite3-dev libarchive-dev     \
-    libcurl4-openssl-dev libzmq3-dev libsodium-dev libjansson-dev libczmq-dev  \
-    libyaml-cpp-dev libedit-dev libboost-all-dev uuid-dev lua5.3 liblua5.3-dev \
-    python3 python3-venv python3-dev                                           \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update
+RUN apt-get install -y libblas-dev liblapack-dev libgsl-dev
 
-# Python env
-RUN python3 -m venv /opt/basic && \
-    ln -sf /opt/basic/bin/pip /usr/local/bin/pip
-ENV PATH=/opt/basic/bin:$PATH
-ENV VIRTUAL_ENV=/opt/basic
-ENV PIP_CONFIG_FILE=/dev/null
-ENV PIP_REQUIRE_HASHES=0
-ENV PIP_CONSTRAINT=
-ENV PIP_REQUIREMENT=
-ENV CONSTRAINT=
-ENV REQUIREMENT=
-
-RUN python -m pip install --no-cache-dir --upgrade pip setuptools wheel cffi
-
-RUN env                                  \
-    -u PIP_CONSTRAINT                    \
-    -u PIP_BUILD_CONSTRAINT              \
-    -u PIP_REQUIREMENT                   \
-    -u PIP_REQUIRE_HASHES                \
-    -u CONSTRAINT                        \
-    -u REQUIREMENT                       \
-    PIP_CONFIG_FILE=/dev/null            \
-    python -m pip install --no-cache-dir \
-      "numpy==2.0.0"                     \
-      "pandas>=1.3.0"                    \
-      "scipy>=1.7.0"                     \
-      "pymatgen>=2022.0.0"               \
-      "ase>=3.22.0"                      \
-      "scikit-learn>=1.0.0"              \
-      "matplotlib>=3.4.0"                \
-      "seaborn>=0.11.0"                  \
-      "botorch==0.13.0"                  \
-      "imageio>=2.9.0"                   \
-      cython pyarrow pyfftw tqdm papermill py3Dmol ply pyyaml
-
-RUN PIP_REQUIRE_HASHES=0 python -m pip install --no-cache-dir "b2[full]"
-
-# GPU python stack
-RUN python -m pip install --no-cache-dir                     \
-    --extra-index-url https://download.pytorch.org/whl/cu124 \
-    "torch==2.5.0+cu124"                                     \
-    "cupy-cuda12x==13.5.1"                                   \
-    "cuequivariance==0.6.0"                                  \
-    "cuequivariance-torch==0.6.0"                            \
-    "cuequivariance-ops-torch-cu12==0.3.0"                   \
-    mace-torch==0.3.14
-
-RUN MPICC="cc -shared" python -m pip install --no-cache-dir --force-reinstall --no-binary=mpi4py mpi4py==4.0.3
-# RUN python -m pip install mpi4py -i https://pypi.anaconda.org/mpi4py/simple
-
-#Install HWLOC
-WORKDIR /opt
-RUN git clone -b v2.11 https://github.com/open-mpi/hwloc.git hwloc && \
-    cd hwloc                                                       && \
-    ./autogen.sh                                                   && \
-    ./configure                                                    && \
-    make -j 16                                                     && \
-    make install
-
-
-# ----------
-# Flux build
-# ----------
-WORKDIR /opt
-
-RUN git clone -b v0.70.0 https://github.com/flux-framework/flux-core.git && \
-    cd flux-core                                                         && \
-    ./autogen.sh                                                         && \
-    ./configure                                                          && \
-    make -j 16                                                           && \
-    make install                                                         && \
-    ldconfig
-
-RUN git clone -b v0.41.0 https://github.com/flux-framework/flux-sched.git && \
-    cd flux-sched                                                         && \
-    cmake -B build                                                        && \
-    cmake --build build -j 16                                             && \
-    cmake --build build -t install                                        && \
-    ldconfig
-
-RUN python -m pip install --no-cache-dir flux-python==0.70.0
-ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH}
-
-
-# Install MPI-ping-pong from OLCF
-WORKDIR /opt
-ENV MPI_HOME "/opt/mpich/install"
-RUN git clone https://github.com/olcf-tutorials/MPI_ping_pong.git test_code
-RUN cd /opt/test_code/cpu                                                   && \
-    make
-RUN cd /opt/test_code/cuda_staged                                           && \
-    sed -i 's:-arch=sm_70:-arch=sm_80:g' Makefile                           && \
-    sed -i 's:OMPI_DIR:MPI_HOME:g' Makefile                                 && \
-    sed -i 's:-lmpi_ibm:-lmpi:g' Makefile                                   && \
-    make
-RUN cd /opt/test_code/cuda_aware                                            && \
-    sed -i 's:-arch=sm_70:-arch=sm_80:g' Makefile                           && \
-    sed -i 's:OMPI_DIR:MPI_HOME:g' Makefile                                 && \
-    sed -i 's:-lmpi_ibm:-lmpi:g' Makefile                                   && \
-    make
-ENV PATH=$PATH:/opt/test_code/cpu
-ENV PATH=$PATH:/opt/test_code/cuda_staged
-ENV PATH=$PATH:/opt/test_code/cuda_aware
+RUN python3 -m venv /opt/basic
+ENV PATH=$PATH:/opt/basic/bin
+RUN ln -sf /opt/basic/bin/pip /usr/local/bin/pip
+RUN pip install cuequivariance-ops-torch-cu12 cuequivariance-torch cuequivariance
+RUN pip install cupy-cuda12x
+RUN pip install cython setuptools pyfftw
+RUN pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+RUN pip install mace-torch==0.3.14
+RUN pip install mpi4py -i https://pypi.anaconda.org/mpi4py/simple
+ENV PATH=$PATH:/opt/basic/bin
+ENV PYTHONPATH=$PYTHONPATH:/opt/basic/lib/python3.12/site-packages
 
 ENV PATH=$PATH:/opt/lammps/build/plumed_build-prefix/bin
 ENV PATH=$PATH:/opt/lammps/build/plumed_build-prefix/include
@@ -127,70 +34,121 @@ ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/fftw/install/lib
 ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/blas
 ENV PKG_CONFIG_PATH=$PKG_CONFIG_PATH:/opt/fftw
 
-
-# ------------
-# LAMMPS build
-# ------------
+# Install Boost
 WORKDIR /opt
-RUN git clone https://github.com/brucefan1983/NEP_CPU.git nep_cpu                           && \
-    cp -r /opt/nep_cpu/src/* /opt/nep_cpu/interface/lammps/USER-NEP                         && \
-    wget https://github.com/lammps/lammps/archive/refs/tags/stable_22Jul2025_update3.tar.gz && \
-    tar -xzvf stable_22Jul2025_update3.tar.gz                                               && \
-    rm -rf stable_22Jul2025_update3.tar.gz                                                  && \
-    mv lammps-stable_22Jul2025_update3 lammps                                               && \
-    mkdir -p /opt/lammps/build                                                              && \
-    cp -r /opt/nep_cpu/interface/lammps/USER-NEP /opt/lammps/src                            && \
-    sed -i 's/F95FLAGS += /F90FLAGS += /' /opt/lammps/cmake/Modules/Packages/ML-QUIP.cmake
-ENV NVCC_WRAPPER_DEFAULT_ARCH=sm_80
-ENV OMPI_CXX=/opt/lammps/lib/kokkos/bin/nvcc_wrapper
+RUN wget 'https://sourceforge.net/projects/boost/files/boost/1.87.0/boost_1_87_0.zip'
+RUN unzip boost_1_87_0.zip
+RUN mv boost_1_87_0 boost
+RUN cd /opt/boost                                                           && \
+    ./bootstrap.sh                                                          && \
+    ./b2 install
+
+
+#Install HWLOC
+WORKDIR /opt
+RUN git clone -b v2.11 https://github.com/open-mpi/hwloc.git hwloc          && \
+    cd hwloc                                                                && \
+    ./autogen.sh                                                            && \
+    ./configure --with-cuda=/usr/local/cuda                                 && \
+    make -j 16                                                              && \
+    make install
+
+
+# Install dependencies required by flux-core
+RUN apt-get update && apt-get install -y \
+    lua5.3 liblua5.3-dev \
+    libzmq3-dev \
+    libjansson-dev \
+    libczmq-dev \
+    libsqlite3-dev \
+    libarchive-dev \
+    libsodium-dev \
+    uuid-dev \
+    libcurl4-openssl-dev \
+    libncurses-dev \
+    pkg-config \
+    libyaml-cpp-dev \
+    libedit-dev
+
+# Install flux-core
+WORKDIR /opt
+RUN git clone -b v0.69.0 https://github.com/flux-framework/flux-core.git    && \
+    cd flux-core                                                            && \
+    ./autogen.sh                                                            && \
+    ./configure                                                             && \
+    make -j 1                                                              && \
+    make install
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
+ENV LD_RUN_PATH=$LD_RUN_PATH:/usr/local/lib
+
+
+# Install flux-sched
+WORKDIR /opt
+RUN git clone -b v0.36.0 https://github.com/flux-framework/flux-sched.git   && \
+    cd flux-sched                                                           && \
+    cmake -B build                                                          && \
+    cmake --build build                                                     && \
+    cmake --build build -t install
+RUN pip install flux-python
+
+
+#Installing lammps
+WORKDIR /opt
+RUN git clone https://github.com/brucefan1983/NEP_CPU.git nep_cpu
+RUN cp -r /opt/nep_cpu/src/* /opt/nep_cpu/interface/lammps/USER-NEP
+RUN git clone -b stable_22Jul2025_update3 --recursive https://github.com/lammps/lammps.git lammps
+RUN cp -r /opt/nep_cpu/interface/lammps/USER-NEP /opt/lammps/src
+# Fix QUIP build: ML-QUIP.cmake generates arch/Makefile.lammps with F95FLAGS += but
+# QUIP's Makefile.rules uses F90FLAGS for .F90 files, so -ffree-line-length-none is never
+# applied, causing gfortran to error on long lines in System.F90.
+RUN sed -i 's/F95FLAGS += /F90FLAGS += /' /opt/lammps/cmake/Modules/Packages/ML-QUIP.cmake
+WORKDIR /opt/lammps
+RUN mkdir build
 WORKDIR /opt/lammps/build
-RUN sed -i 's/^default_arch="sm_70"/default_arch="sm_80"/' /opt/lammps/lib/kokkos/bin/nvcc_wrapper
-RUN cmake                                                            \
-      -D CMAKE_INSTALL_PREFIX=/opt/lammps/install                    \
-      -D CMAKE_BUILD_TYPE=Release                                    \
-      -D CMAKE_CXX_COMPILER=/opt/lammps/lib/kokkos/bin/nvcc_wrapper  \
-      -D CMAKE_CXX_STANDARD=17                                       \
-      -D CMAKE_POSITION_INDEPENDENT_CODE=ON                          \
-      -D CMAKE_CUDA_ARCHITECTURES=80                                 \
-      -D CMAKE_POSITION_INDEPENDENT_CODE=ON                          \
-      -D CMAKE_EXE_FLAGS="-dynamic"                                  \
-      -D BUILD_MPI=ON                                                \
-      -D BUILD_SHARED_LIBS=ON                                        \
-      -D LAMMPS_EXCEPTIONS=ON                                        \
-      -D LAMMPS_SIZES=BIGBIG                                         \
-      -D Kokkos_ARCH_ZEN3=YES                                        \
-      -D Kokkos_ARCH_AMPERE80=ON                                     \
-      -D Kokkos_ENABLE_CUDA=YES                                      \
-      -D Kokkos_ENABLE_OPENMP=YES                                    \
-      -D PKG_KOKKOS=YES                                              \
-      -D PKG_MANYBODY=ON                                             \
-      -D PKG_MOLECULE=ON                                             \
-      -D PKG_REPLICA=ON                                              \
-      -D GPU_API=CUDA                                                \
-      -D GPU_ARCH=sm_80                                              \
-      -D PKG_BODY=ON                                                 \
-      -D PKG_INTERLAYER=ON                                           \
-      -D PKG_MC=ON                                                   \
-      -D PKG_QEQ=ON                                                  \
-      -D PKG_RIGID=ON                                                \
-      -D PKG_SPIN=YES                                                \
-      -D PKG_REAXFF=ON                                               \
-      -D PKG_PYTHON=YES                                              \
-      -D PKG_ML-SNAP=YES                                             \
-      -D PKG_ML-IAP=YES                                              \
-      -D PKG_ML-PACE=YES                                             \
-      -D MLIAP_ENABLE_PYTHON=YES                                     \
-      ../cmake
-RUN make -j 16          && \
-    make install        && \
-    make install-python
-ENV PATH=/opt/lammps/install/bin:${PATH}
-
-# tests
-RUN python -c "import numpy, pandas, scipy, ase, pymatgen, torch, cupy, mpi4py; print('python stack ok')" && \
-    python -c "import lammps; print('lammps python ok')"                                                  && \
-    rm -rf /usr/local/cuda/lib64/stubs && find /usr/local -path '*/lib/stubs' -type d -prune -exec rm -rf {} +
-
-# Remove CUDA stub libraries to fix runtime GPU detection
-ENV LD_LIBRARY_PATH=/opt/lammps/install/lib:/opt/fftw/install/lib:/opt/hdf5/install/lib:/usr/local/lib:/usr/lib64:/usr/lib
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/cuda/compat
+RUN sed -i '/tag;/s/t_int_1d_randomread/t_tagint_1d_randomread/' /opt/lammps/src/KOKKOS/fix_electron_stopping_kokkos.h
+RUN cmake -DCMAKE_INSTALL_PREFIX=$PWD/../install -D CMAKE_BUILD_TYPE=Release \
+    -D CMAKE_CXX_COMPILER=/opt/lammps/lib/kokkos/bin/nvcc_wrapper -D LAMMPS_EXCEPTIONS=ON \
+    -D PKG_KOKKOS=yes -D Kokkos_ARCH_ZEN3=yes  -D Kokkos_ARCH_AMPERE80=ON -D Kokkos_ENABLE_CUDA=yes \
+    -D BUILD_MPI=ON -D BUILD_SHARED_LIBS=on -D CMAKE_CXX_STANDARD=17 -D Kokkos_ENABLE_OPENMP=yes \
+    -D BUILD_SHARED_LIBS=ON -D PKG_MANYBODY=ON -D PKG_MOLECULE=ON -D PKG_KSPACE=ON -D PKG_REPLICA=yes \
+    -D PKG_GPU=yes -D GPU_API=cuda -D GPU_ARCH=sm_80 -D LAMMPS_SIZES=bigbig \
+    -D PKG_RIGID=ON -D PKG_MPIIO=ON -D PKG_ML-SNAP=ON -D PKG_ASPHERE=yes -D PKG_BODY=yes -D PKG_CLASS2=yes \
+    -D PKG_COLLOID=yes -D PKG_COMPRESS=yes -D PKG_CORESHELL=yes -D PKG_DIPOLE=yes \
+    -D PKG_AMOEBA=yes -D PKG_BPM=yes -D PKG_BROWNIAN=yes -D PKG_CG-DNA=yes -D PKG_CG-SPICA=yes \
+    -D PKG_DIELECTRIC=yes -D PKG_DPD-BASIC=yes -D PKG_DPD-MESO=yes -D PKG_DPD-REACT=yes -D PKG_DPD-SMOOTH=yes \
+    -D PKG_ELECTRODE=yes -D PKG_EXTRA-COMPUTE=yes -D PKG_EXTRA-MOLECULE=yes -D PKG_INTERLAYER=yes -D PKG_LEPTON=yes \
+    -D PKG_MESONT=yes -D PKG_ML-IAP=yes -D MLIAP_ENABLE_PYTHON=yes -D PKG_ML-POD=yes -D PKG_PYTHON=yes \
+    -D PKG_ORIENT=yes -D PKG_PLUGIN=yes -D PKG_REACTION=yes \
+    -D PKG_AMBER=yes -D PKG_CHARMM=yes -D PKG_COMPASS=yes -D PKG_DREIDING=yes -D PKG_CLASS2=yes \
+    -D PKG_GRANULAR=yes -D PKG_EXTRA-DUMP=yes -D PKG_MANYBODY=yes -D PKG_MC=yes -D PKG_ML-PACE=yes \
+    -D PKG_MISC=yes -D PKG_MOLECULE=yes -D PKG_MPIIO=yes -D PKG_OPT=yes -D PKG_PERI=yes -D PKG_POEMS=yes \
+    -D PKG_QEQ=yes -D PKG_REPLICA=yes -D PKG_RIGID=yes -D PKG_SHOCK=yes -D PKG_SPIN=yes \
+    -D PKG_SRD=yes -D PKG_OPENMP=yes -D PKG_H5MD=yes -D PKG_AWPMD=yes -D PKG_BOCS=yes \
+    -D PKG_DIFFRACTION=yes -D PKG_DRUDE=yes -D PKG_EFF=yes -D PKG_FEP=yes -D PKG_INTEL=yes \
+    -D PKG_MANIFOLD=yes -D PKG_MGPT=yes -D PKG_MISC=yes -D PKG_MOFFF=yes -D PKG_MOLFILE=yes \
+    -D PKG_PHONON=yes -D PKG_PTM=yes -D PKG_QMMM=yes -D PKG_QTB=yes -D PKG_SMTBQ=yes -D PKG_SPH=yes \
+    -D PKG_TALLY=yes -D PKG_UEF=yes -D PKG_YAFF=yes -D PKG_EXTRA-FIX=yes -D PKG_EXTRA-PAIR=yes \
+    -D PKG_REAXFF=yes -D PKG_PLUMED=yes -D DOWNLOAD_PLUMED=yes -D PLUMED_MODE=static -D PKG_UEF=yes \
+    -D PKG_MSCG=ON -D DOWNLOAD_MSCG=yes -D PKG_H5MD=yes -D PKG_MEAM=yes \
+    -D PKG_SCFACOS=ON -D DOWNLOAD_SCAFACOS=yes \
+    -D PKG_ML-QUIP=ON -D DOWNLOAD_QUIP=yes -D PKG_KIM=ON -D DOWNLOAD_KIM=yes -WITH_FFMPEG=yes \
+    -D PKG_MACHDYN=ON -D DOWNLOAD_EIGEN3=yes -D PKG_LATTE=ON -D DOWNLOAD_LATTE=yes -D PKG_OPENMP=yes \
+    -D LAMMPS_SIZES=BIGBIG -D CMAKE_POSITION_INDEPENDENT_CODE=ON -D CMAKE_EXE_FLAGS="-dynamic" \
+    -D FFT=FFTW3 -D FFT_PACK=array -D FFT_KOKKOS=CUFFT ../cmake
+RUN make -j 4
+RUN make install
+WORKDIR /opt/lammps/python
+RUN pip install --no-cache-dir -U build wheel setuptools
+RUN pip wheel .
+RUN pip install --no-cache-dir --force-reinstall lammps-*.whl
 WORKDIR /opt
+
+# Setup entry point for production.
+ENV PATH="$PATH:/opt/lammps/install/bin"
+ENV PATH=/opt/lammps/install/bin:$PATH
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/lammps/install/lib
+ENV PATH=/opt/lammps/build/kim_build-prefix/bin:$PATH
+ENV PATH=/opt/lammps/build/kim_build-prefix/include:$PATH
+ENV LD_LIBRARY_PATH=/opt/lammps/build/kim_build-prefix/lib:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/basic/lib/python3.12/site-packages/torch/lib
