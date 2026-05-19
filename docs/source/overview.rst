@@ -27,10 +27,10 @@ In the context of high-throughput materials modeling, fully leveraging exascale 
 * Queue latency dominates when tasks are tiny relative to scheduler quanta.
 * Some centers cap how many job steps you may launch inside a single allocation.
 
-A common mitigation is **one large allocation** plus an **internal scheduler** that launches many child
-processes or MPI ranks inside that allocation. The remaining problem is **utilization**: if you launch work
+A common mitigation approach is **one large allocation** plus an **internal scheduler** that launches many child
+processes inside that allocation. The remaining problem is **utilization**: if one launches work
 in static waves, fast tasks finish early and cores sit idle while slow tasks run. MatEnsemble addresses that
-with its **adaptive** task orchestration capability, new/pending tasks are launched as soon as resources free up, keeping the allocation saturated until all work is done.
+with its **adaptive** task orchestration capability, where pending or even new (depending on user-defined acquisition strategies) tasks are backfilled/launched as soon as resources free up, keeping the allocation saturated until all work is done.
 
 
 What MatEnsemble does in one sentence
@@ -45,6 +45,10 @@ See :doc:`architecture` for the exact loop, artifacts, and environment assumptio
 Core concepts
 ==============================
 
+:class:`~matensemble.chore.Chore`
+    A unit of work. Can be a Python function, an executable, or a containerized command. Chores are
+    decorated with :func:`~matensemble.chore.chore` to turn them into delayed tasks.
+
 :class:`~matensemble.pipeline.Pipeline`
     User-facing builder. Decorated Python functions turn into delayed chores; :meth:`~matensemble.pipeline.Pipeline.exec`
     adds argv-style work.
@@ -52,10 +56,6 @@ Core concepts
 :class:`~matensemble.model.OutputReference`
     Placeholder returned from a delayed Python call. Passing it into another chore encodes a **dependency edge**
     and ensures upstream results are unpickled before the downstream function runs.
-
-:class:`~matensemble.chore.Chore`
-    Single Flux submission record—command, resources, working directory, and (for Python chores) pointers back
-    to your source module.
 
 :class:`~matensemble.manager.FluxManager`
     Runtime coordinator created when you call :meth:`~matensemble.pipeline.Pipeline.submit`.
@@ -94,7 +94,7 @@ allocation saturated when backlog exists.
 
 In **non-adaptive** mode, the manager only submits during the initial “fill until out of resources” phases;
 completion handling updates the DAG but **does not** proactively pull additional ready chores until the next
-outer-loop scheduling opportunity—use this when you want tighter control or simpler resource snapshots.
+outer-loop scheduling opportunity.
 
 .. image:: ../../images/Cap_1_adaptive_task_management.png
    :alt: Diagram contrasting static batching with adaptive back-filling of tasks
