@@ -21,7 +21,7 @@ available computing resource chunks for ensemble evaluations guided by adaptive 
 Scalable and adaptive scheduling
 =========================================
 
-In the context of high-throughput materials modeling, farming through raw Slurm has costs:
+In the context of high-throughput materials modeling, fully leveraging exascale resource capabilities with SLURM or similar schedulers is challenging due to:
 
 * Many short ``sbatch`` / ``srun`` invocations increase scheduler load and log volume.
 * Queue latency dominates when tasks are tiny relative to scheduler quanta.
@@ -30,14 +30,15 @@ In the context of high-throughput materials modeling, farming through raw Slurm 
 A common mitigation is **one large allocation** plus an **internal scheduler** that launches many child
 processes or MPI ranks inside that allocation. The remaining problem is **utilization**: if you launch work
 in static waves, fast tasks finish early and cores sit idle while slow tasks run. MatEnsemble addresses that
-with **adaptive** submission tied to live Flux resource reporting.
+with its **adaptive** task orchestration capability, new/pending tasks are launched as soon as resources free up, keeping the allocation saturated until all work is done.
+
 
 What MatEnsemble does in one sentence
 =====================================
 
-**Inside your Flux session**, MatEnsemble repeatedly: (1) reads free CPU/GPU counts, (2) submits ready DAG
-nodes that fit, (3) processes completed Flux jobs, (4) unblocks dependents, and (5) repeats until no ready,
-running, or blocked work remains.
+Inside a **Flux** session, MatEnsemble continuously: (1) tracks available computing resources, (2) submits ready DAG
+nodes in the queue, (3) processes completed flux jobs, (4) unblocks dependents, and (5) repeats until no ready,
+running, or blocked work remains and/or spawns new DAGs depending on user-defined strategies.
 
 See :doc:`architecture` for the exact loop, artifacts, and environment assumptions.
 
