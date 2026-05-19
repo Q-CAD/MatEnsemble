@@ -2,17 +2,20 @@
 Overview
 ========
 
-MatEnsemble is a framework to build, orchestrate and asynchronously manage scalable workflows, especially targeted for compute-intensive AI-driven materials modeling simulations (e.g., atomistic modeling, Phase-Field etc.) as efficiently as possible. 
-Apart from standard automated high-throughput computations, the core of MatEsnemble is designed to support "user-defined" aquistion strategie to dynamically steer workflows based on intermediate results, which is a common pattern in active learning and other autonomous workflows at scale.
-To enable extremely scalable paramettric sweeps and bypass standard scheduler bottlenecks, typically encountered in leadership computing platforms, MatEnsemble uses a single large allocation and an internal scheduler to manage arbitrarily larger workloads. The library is built on top of the Flux resource manager, which provides efficient job scheduling and resource management capabilities, making it well-suited for high-throughput computing scenarios.
+MatEnsemble is a framework to build, orchestrate, and asynchronously manage scalable workflows, especially targeted for compute-intensive AI-driven materials modeling simulations (e.g., atomistic modeling, Phase-Field, etc.) as efficiently as possible.
+Apart from standard automated high-throughput computations, the core of MatEnsemble is designed to support "user-defined" acquisition strategies to dynamically steer workflows based on intermediate results, which is a common pattern in active learning and other autonomous workflows at scale.
+To enable extremely scalable parametric sweeps and bypass standard scheduler bottlenecks, typically encountered in leadership computing platforms, MatEnsemble uses a single large allocation and an internal scheduler to manage arbitrarily large workloads. The library is built on top of the Flux resource manager, which provides efficient job scheduling and resource management capabilities, making it well-suited for high-throughput computing scenarios.
 
 
-MatEnsemble benefits from the native python executor-interface of \texttt{Flux} \cite{ahn2020flux}, \
-and the concurrent asynchronous programming model of core python through \texttt{Future} objects \cite{quinlan2009futures}. \
-A continuous throughput is maintained via dynamically spawning and monitoring task. Furthermore, to enable real-time streaming of post-processed data \
-from large-scale atomistic trajectories an \textit{in-memory} data analysis protocol is used by exploiting the heterogeneous (GPU+CPU) architecture of Exascale systems (e.g., Frontier) 
-via a round-robin MPI-communicator splitting approach (c.f. \cite{bagchi2025matensemble}). \
-As explained in the following sections, such an online adaptive framework enables efficiently coupling between available computing resource chunks for ensemble evaluations guided by adaptive sampling methods. 
+MatEnsemble benefits from the native Python executor interface of ``Flux`` [ahn2020flux]_
+and the concurrent asynchronous programming model of core Python through
+``concurrent.futures.Future`` objects [quinlan2009futures]_. Continuous throughput is maintained
+by dynamically spawning and monitoring tasks. Furthermore, to enable real-time streaming of
+post-processed data from large-scale atomistic trajectories, MatEnsemble uses an *in-memory*
+data analysis protocol that exploits the heterogeneous GPU+CPU architecture of exascale systems
+(e.g., Frontier) via a round-robin MPI communicator-splitting approach (cf. [bagchi2025matensemble]_).
+As explained in the following sections, such an online adaptive framework efficiently couples
+available computing resource chunks for ensemble evaluations guided by adaptive sampling methods.
 
 
 Scalable and adaptive scheduling
@@ -38,7 +41,7 @@ running, or blocked work remains.
 
 See :doc:`architecture` for the exact loop, artifacts, and environment assumptions.
 
-Core concepts (with pointers)
+Core concepts
 ==============================
 
 :class:`~matensemble.pipeline.Pipeline`
@@ -123,6 +126,22 @@ Roadmap and stability
 **Checkpointing:** ``write_restart_freq`` exists on :meth:`~matensemble.pipeline.Pipeline.submit`, but
 checkpoint serialization is **not implemented** yet. Long production runs should pass ``None`` until
 restart files are supported (:doc:`reference`).
+
+References
+==========
+
+.. [ahn2020flux] Ahn, D. H., Bass, N., Chu, A., Garlick, J., Grondona, M., Herbein, S.,
+   Ingolfsson, H. I., Koning, J., Patki, T., Scogland, T. R. W., Springmeyer, B.,
+   and Taufer, M. (2020). "Flux: Overcoming scheduling challenges for exascale workflows."
+   *Future Generation Computer Systems*, 110, 202-213. https://doi.org/10.1016/j.future.2020.04.006
+
+.. [quinlan2009futures] Quinlan, B. (2009). "PEP 3148 -- futures - execute computations
+   asynchronously." Python Enhancement Proposals. https://peps.python.org/pep-3148/
+
+.. [bagchi2025matensemble] Bagchi, S., Biswas, A., Balachandran, P. V., Ghosh, A.,
+   and Ganesh, P. (2025). "Towards 'on-demand' van der Waals epitaxy with an adaptive
+   resource-driven online ensemble sampling simulation framework." arXiv:2504.05539.
+   https://doi.org/10.48550/arXiv.2504.05539
 
 Next steps
 ==========
