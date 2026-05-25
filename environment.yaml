@@ -1,0 +1,14 @@
+name: matensemble-env
+channels:
+  - conda-forge
+channel_priority: strict
+
+dependencies:
+  - python=3.12
+  - pip
+  - flux-core
+  - flux-sched
+  - lammps
+  - mpi4py
+  - pip:
+      - matensemble
