@@ -1,4 +1,4 @@
-FROM ghcr.io/freddude2004/matensemble-base:baseline-arm64
+FROM ghcr.io/freddude2004/matensemble-base:baseline
 
 ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /opt
