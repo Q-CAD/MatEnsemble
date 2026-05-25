@@ -145,6 +145,9 @@ follow our `examples for Perlmutter <https://github.com/FredDude2004/MatEnsemble
 Conda
 -----
 
+We provide an environment.yaml file with all of the dependencies needed to run MatEnsemble (without GPU support).
+If you have Anaconda or Miniconda installed then you can build an environment to run MatEnsemble.
+
 .. warning::
    This has not been tested. Eventually when we have an official MatEnsemble package on PyPI you will be able to install via Conda
 

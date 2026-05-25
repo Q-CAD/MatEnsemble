@@ -29,23 +29,6 @@ An optional in-tree **dynopro** stack supports streaming dynamics and on-the-fly
   <img src="images/Cap_2_dynopro.png" alt="On-the-fly dynamics and analysis" width="620" />
 </p>
 
-## Installation
-
-### PyPI (Python layer)
-
-Requires **Python 3.12+**. Flux **C libraries** and a running Flux session come from your HPC environment; the PyPI package adds the Python side.
-
-```bash
-pip install "matensemble[flux]"
-```
-
-The `flux` extra installs the Flux Python bindings (`flux-python`). For editing workflows only (no Flux on the machine):
-
-```bash
-pip install matensemble
-```
-
-### Containers
 
 OCI images are published to GitHub Container Registry
 
