@@ -63,6 +63,9 @@ a Python chore if you need DAG edges.
     Passed to :func:`concurrent.futures.wait` as the ``timeout`` when draining Flux futures; also used as a
     :func:`time.sleep` after each individual submission. Set to ``0.0`` for minimal spacing.
 
+``log_delay`` (:class:`float`; default ``5.0``)
+    The amount of time the logging thread will wait before updating the logs. Dafaults to every ``5.0`` seconds.
+
 ``set_cpu_affinity`` / ``set_gpu_affinity`` (default ``True`` / ``False``)
     Control Flux shell options ``cpu-affinity`` and ``gpu-affinity`` (GPU option only applies when the chore
     requests GPUs).
@@ -73,8 +76,9 @@ a Python chore if you need DAG edges.
     only drains futures.
 
 ``dynopro``
-    Reserved flag threaded through to :meth:`~matensemble.manager.FluxManager.run`; **currently unused**
-    by the core manager loop. Prefer explicit mentions in release notes when this changes.
+    Whether or not the dynopro module will be used. Currently acts as a shim and has no use right now.
+    .. warning::
+        do not use this
 
 ``processing_strategy``
     Supply your own :class:`~matensemble.strategy.FutureProcessingStrategy` to replace adaptive / non-adaptive
@@ -121,15 +125,15 @@ Per-chore artifacts
     Standard streams from Flux. MatEnsemble appends human-readable blocks to ``stderr`` when futures raise
     Python exceptions or return non-zero shell exit codes.
 
-``chore.json``
+``metadata.json``
     Debug snapshot of id, chore_type, argv, resource struct, function import path, dependency IDs, and serialized
-    arguments (JSON-safe encoding via :func:`matensemble.utils._json_safe`).
+    arguments
 
-``chore.pkl``
+``chore.pickle``
     Pickle written at submit time; the worker reloads this file.
 
-``result.pkl`` / ``result.json``
-    Python return value. Downstream chores load ``../<dep_chore_id>/result.pkl`` via
+``result.pickle``
+    Python return value. Downstream chores load ``../<dep_chore_id>/result.pickle`` via
     :func:`matensemble.runtime_worker._load_dep_result`.
 
 Failure ``reason`` strings (internal)
@@ -143,9 +147,3 @@ Recorded in :meth:`~matensemble.manager.FluxManager._record_failure` entries:
 * ``nonzero_exit:<rc>`` — future returned a non-zero integer exit code.
 * ``dependency_failed`` — cascaded skip because an upstream chore failed.
 
-Redis helper (optional)
------------------------
-
-``matensemble.redis.service.RedisService`` can launch ``redis-server`` under ``flux run`` for streaming /
-timeseries-style workflows. It is **orthogonal** to :class:`~matensemble.pipeline.Pipeline` and is mainly
-used from dynamics/analysis integrations. There is no requirement to run Redis for basic DAG workflows.

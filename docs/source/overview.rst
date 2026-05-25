@@ -2,8 +2,8 @@
 Overview
 ========
 
-MatEnsemble is a **workflow manager** for running many similar :class:`~matensemble.chore.Chore` instances on a
-supercomputer as efficiently as possible. You build a directed acyclic graph (DAG) in Python; MatEnsemble
+MatEnsemble is a **workflow manager** for running many :class:`~matensemble.chore.Chore` instances on a
+supercomputer as efficiently as possible. You build a directed acyclic graph (DAG) of :class:`~matensemble.chore.Chore`s in Python; MatEnsemble
 submits work to **Flux**, tracks completions, records logs, and keeps hardware busy while tasks finish
 at different rates.
 
@@ -28,24 +28,24 @@ processes or MPI ranks inside that allocation. The remaining problem is **utiliz
 in static waves, fast tasks finish early and cores sit idle while slow tasks run. MatEnsemble addresses that
 with **adaptive** submission tied to live Flux resource reporting.
 
-What MatEnsemble does in one sentence
-=====================================
+What MatEnsemble does
+=====================
 
 **Inside your Flux session**, MatEnsemble repeatedly: (1) reads free CPU/GPU counts, (2) submits ready DAG
 nodes that fit, (3) processes completed Flux jobs, (4) unblocks dependents, and (5) repeats until no ready,
 running, or blocked work remains.
 
-See :doc:`architecture` for the exact loop, artifacts, and environment assumptions.
+See :doc:`design` for the exact loop, artifacts, and environment assumptions.
 
-Core concepts (with pointers)
-==============================
+Core concepts
+=============
 
 :class:`~matensemble.pipeline.Pipeline`
-    User-facing builder. Decorated Python functions turn into delayed chores; :meth:`~matensemble.pipeline.Pipeline.exec`
+    User-facing builder. Decorated Python functions turn into delayed function calls; :meth:`~matensemble.pipeline.Pipeline.exec`
     adds argv-style work.
 
 :class:`~matensemble.model.OutputReference`
-    Placeholder returned from a delayed Python call. Passing it into another chore encodes a **dependency edge**
+    Placeholder returned from a delayed funciton call. Passing it into another chore encodes a **dependency edge**
     and ensures upstream results are unpickled before the downstream function runs.
 
 :class:`~matensemble.chore.Chore`
@@ -67,15 +67,21 @@ working directory):
 
 .. code-block:: text
 
-   <base>/matensemble_workflow-YYYYMMDD_HHMMSS/
-   ├── status.json                 # compact counters for dashboards / monitoring
-   ├── matensemble_workflow.log    # verbose rolling log from the ``matensemble`` logger
-   └── out/
-       └── <chore_id>/
-           ├── stdout
-           ├── stderr
-           ├── chore.pkl / chore.json  # serialized chore specification & debug view
-           └── result.pkl / result.json   # Python return values only
+   <base>/
+   └── matensemble_workflow-YYYYMMDD_HHMMSS/
+       ├── status.json              # atomically updated for the dashboard / monitoring
+       ├── matensemble_workflow.log # detailed text log from the ``matensemble`` logger
+       └── out/
+           ├── registry/            # pickled chore callables
+           │   ├── Callable name
+           │   ├── Callable name
+           │   └── ...
+           └── <chore_id>/
+               ├── stdout
+               ├── stderr
+               ├── chore.pickle     # Pickled chore object
+               ├── metadata.json    # Metadata of the chore in JSON for debugging
+               └── result.pickle    # Python chore return value (pickle)
 
 The driver prints a short hint to stderr with absolute paths to ``status.json``, the log file, and the ``out``
 tree when logging initializes.
@@ -94,8 +100,8 @@ outer-loop scheduling opportunity—use this when you want tighter control or si
 .. image:: ../../images/Cap_1_adaptive_task_management.png
    :alt: Diagram contrasting static batching with adaptive back-filling of tasks
 
-Strategies
-==========
+User Defined Strategies
+=======================
 
 MatEnsemble uses the *strategy pattern* when processing :class:`flux.job.FluxExecutorFuture` completions:
 
@@ -106,9 +112,12 @@ MatEnsemble uses the *strategy pattern* when processing :class:`flux.job.FluxExe
        def process_futures(self, buffer_time) -> None:
            ...
 
-Concrete implementations live in :mod:`matensemble.strategy`. Supply your own subclass to
-:meth:`~matensemble.pipeline.Pipeline.submit` if you need custom batching, metrics hooks, or integration with
-external planners—ensure your strategy maintains the manager’s queue invariants or you may deadlock.
+Users can define their own strategies to be injected into the processing loop. Say for instance you wanted to
+spawn more :class:`~matensemble.chore.Chore`s dynamically (while the workflow is already running) based on the
+results of a ceratin :class:`~matensemble.chore.Chore`. You can define a funciton that takes the results of a
+:class:`~matensemble.chore.Chore` and performs your processing on it and returns a :class:`~matensemble.chore.ChoreSpec`
+which will be dynamically added to the submissions queue. Which can effectively add cycles to the workflow if
+needed.
 
 Roadmap and stability
 =====================
@@ -119,15 +128,11 @@ Roadmap and stability
    in the repository for breaking changes. The internal **dynopro** package (streaming dynamics and heavy
    analysis) ships in-tree but is not yet part of the curated Sphinx API toctree.
 
-**Checkpointing:** ``write_restart_freq`` exists on :meth:`~matensemble.pipeline.Pipeline.submit`, but
-checkpoint serialization is **not implemented** yet. Long production runs should pass ``None`` until
-restart files are supported (:doc:`reference`).
-
 Next steps
 ==========
 
-* :doc:`quickstart` — containers, PyPI install, site-specific shell snippets.
+* :doc:`installation` — containers, PyPI install, site-specific shell snippets.
 * :doc:`tutorials` — minimal Python and executable examples, dependency graphs, packaging tips.
-* :doc:`architecture` — Flux interactions, ``PYTHONPATH``, failure propagation, dashboard tunneling.
+* :doc:`design` — Flux interactions, ``PYTHONPATH``, failure propagation, dashboard tunneling.
 * :doc:`reference` — exhaustive parameter and artifact listing.
 * :ref:`api-reference` — docstring-generated module documentation.

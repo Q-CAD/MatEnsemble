@@ -1,5 +1,5 @@
 .. MatEnsemble documentation master file, created by
-   sphinx-quickstart on Thu Feb 12 16:35:41 2026.
+   sphinx-installation on Thu Feb 12 16:35:41 2026.
 
 MatEnsemble Documentation
 =========================
@@ -13,9 +13,9 @@ Python driver process.
    :caption: Guides
 
    overview
-   architecture
-   quickstart
+   installation
    tutorials
+   design
    reference
 
 .. toctree::

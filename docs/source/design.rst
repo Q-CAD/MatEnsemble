@@ -1,6 +1,6 @@
-.. _architecture:
+.. _design:
 
-Architecture and execution model
+Design and execution model
 =================================
 
 This page describes **what runs where** when you call :meth:`matensemble.pipeline.Pipeline.submit`,
@@ -20,7 +20,7 @@ where ``flux.Flux()`` can attach to a running broker). Typical patterns on HPC s
 
 The Python package on PyPI does **not** replace the need for **flux-core** / sched binaries
 provided by your center. The ``flux`` optional dependency installs the **Python bindings**
-(``flux-python``) that talk to those libraries. See :doc:`quickstart`.
+(``flux-python``) that talk to those libraries. See :doc:`installation`.
 
 Objects you interact with
 -------------------------
@@ -32,7 +32,7 @@ Objects you interact with
 
 :class:`~matensemble.chore.Chore`
     Immutable specification for a single Flux submission: command vector, resource request,
-    working directory, and (for Python chores) import metadata and serialized arguments.
+    working directory, and (for Python chores) pickels callable by value into the **registry**
 
 :class:`~matensemble.manager.FluxManager`
     Created when you call :meth:`~matensemble.pipeline.Pipeline.submit`. It owns queues of ready,
@@ -45,7 +45,7 @@ Objects you interact with
 ``matensemble.runtime_worker``
     A normal Python module launched **as the Flux job command** for PYTHON-type chores. It unpickles
     the chore, imports your function, substitutes dependency results, runs the function, and writes
-    ``result.pkl`` / ``result.json``.
+    ``result.pickle``.
 
 
 Workflow directory layout
@@ -61,28 +61,20 @@ chosen base directory (by default, the current working directory):
        ├── status.json              # atomically updated for the dashboard / monitoring
        ├── matensemble_workflow.log # detailed text log from the ``matensemble`` logger
        └── out/
+           ├── registry/            # pickled chore callables
+           │   ├── Callable name
+           │   ├── Callable name
+           │   └── ...
            └── <chore_id>/
                ├── stdout
                ├── stderr
-               ├── chore.pkl          # pickled Chore (written at submit time)
-               ├── chore.json         # same metadata in JSON for debugging
-               ├── result.pkl       # Python chore return value (pickle)
-               └── result.json      # best-effort JSON snapshot of the return value
+               ├── chore.pickle     # Pickled chore object
+               ├── metadata.json    # Metadata of the chore in JSON for debugging
+               └── result.pickle    # Python chore return value (pickle)
 
 The string ``<base>`` is :meth:`pathlib.Path.cwd` unless you pass ``basedir=`` to :class:`~matensemble.pipeline.Pipeline`.
-The workflow folder name uses a compact timestamp (no punctuation), not an ISO-8601 string.
+The workflow folder name uses a compact timestamp.
 
-Source root and ``PYTHONPATH``
-------------------------------
-
-**Python chores** need importable callables. When a decorated function is registered, MatEnsemble sets
-``PYTHONPATH`` in the chore environment to the **parent directory of the workflow folder** (the
-directory that *contains* ``matensemble_workflow-…``). That is usually the directory you ran the
-driver script from, so local packages and modules next to your workflow remain importable inside
-each Flux task.
-
-The runtime worker also inserts that same source root at the front of ``sys.path`` before calling
-``importlib.import_module``. Keep your chore modules on a normal package path under that root.
 
 DAG construction and ordering
 ------------------------------
@@ -143,7 +135,7 @@ If a chore fails submission, raises in the Flux future wrapper, or returns a non
 MatEnsemble records a failure and **cascades** to all transitive dependents so the workflow cannot deadlock.
 Downstream chores receive failure reason ``dependency_failed`` with an ``upstream`` chore ID in the internal
 failure list. Check per-chore ``stderr`` for the detailed MatEnsemble annotations written by
-:class:`~matensemble.strategy.AdaptiveStrategy`.
+:class:`~matensemble.strategy`.
 
 Dashboard (optional)
 --------------------
