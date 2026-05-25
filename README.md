@@ -30,17 +30,23 @@ An optional in-tree **dynopro** stack supports streaming dynamics and on-the-fly
 </p>
 
 
+## Installation
+
 OCI images are published to GitHub Container Registry
 
 `ghcr.io/freddude2004/matensemble:baseline-vX.Y.Z`
 
 See the [container packages](https://github.com/FredDude2004/MatEnsemble/pkgs/container/matensemble) and the [Quick start](https://matensemble.readthedocs.io/en/latest/quickstart.html) in the docs for Apptainer/Singularity and site-specific notes.
 
-### Development install
+### Anaconda
 
-<!-- TODO: Add instructions for how to install and run here -->
+You can build a Conda environment with MatEnsemble and dependencies installed using the environment.yaml file.
 
-## Quick example
+```bash
+conda env create -f environment.yaml
+```
+
+## Example
 
 ```python
 from matensemble.pipeline import Pipeline
