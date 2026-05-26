@@ -35,7 +35,7 @@ srun -v -N $NNODES --cpu-bind none --ntasks-per-node $NGPUS --gpus-per-task 1 --
 
 
 
-srun -N $NNODES --cpu-bind --mpi=pmi2 podman-hpc run --rm 
+srun -N $NNODES --cpu-bind --mpi=pmi2 podman-hpc run --rm
 
 srun -l -N2 -n2 --mpi=pmi2 \
     podman-hpc run --rm --gpu --net host \
@@ -66,12 +66,12 @@ srun -N2 -n2 --mpi=pmi2 --gpus-per-node=4                                      \
 
 
 # run the workflow
-srun -N2 -n2 --mpi=pmi2 --gpus-per-node=4                                      \		
-    podman-hpc run --rm --gpu --net host                                       \ 		
-    -v "$PWD:$PWD" -w "$PWD"                                                   \ 				
-    -e SLURM_* -e PMI_* -e PALS_*                                              \			
-    ghcr.io/freddude2004/matensemble:perlmutter-dev                            \	
-    flux start python exec_workflow.py			
+srun -N2 -n2 --mpi=pmi2 --gpus-per-node=4                                      \
+    podman-hpc run --rm --gpu --net host                                       \
+    -v "$PWD:$PWD" -w "$PWD"                                                   \
+    -e SLURM_* -e PMI_* -e PALS_*                                              \
+    ghcr.io/freddude2004/matensemble:perlmutter-dev                            \
+    flux start python exec_workflow.py
 
 srun -N2 -n2 --mpi=pmi2 --gpus-per-node=4                                      \
     podman-hpc run --rm --gpu --net host                                       \
@@ -81,11 +81,11 @@ srun -N2 -n2 --mpi=pmi2 --gpus-per-node=4                                      \
     flux start flux resource list
 
 #
-# run the container with gpu support and clean up after finished 
+# run the container with gpu support and clean up after finished
 # bind mount the CWD
-# copy slurm and mpi vars to container 
+# copy slurm and mpi vars to container
 # which container to run
-# start flux and run workflow 							
+# start flux and run workflow
 
 
 
@@ -108,17 +108,17 @@ srun -N2 -n2 --mpi=pmi2 --gpus-per-node=4                                      \
 
 
 
-# TESTS TO SHOW DR. BAGCHI 
+# TESTS TO SHOW DR. BAGCHI
 salloc -N 2 -t 60 -C gpu --qos interactive -A m5014_g -G 8
 
-# SHOW THAT FLUX IS RECOGNIZING GPUs 
+# SHOW THAT FLUX IS RECOGNIZING GPUs
 srun -N2 -n2 --mpi=pmi2 --gpus-per-node=4 \
     podman-hpc run --rm --gpu --net host \
     -e SLURM_* -e PMI_* -e PALS_* \
     ghcr.io/freddude2004/matensemble:perlmutter2 \
     flux start flux resource list
 
-# RUN THE MATENSEMBLE WORKFLOW 
+# RUN THE MATENSEMBLE WORKFLOW
 srun -N2 -n2 --mpi=pmi2 --gpus-per-node=4 \
     podman-hpc run --rm --gpu --net host \
     -v "$PWD:$PWD" -w "$PWD" \
