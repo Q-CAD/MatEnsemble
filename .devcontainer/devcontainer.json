@@ -26,7 +26,7 @@
       "onAutoForward": "notify"
     }
   },
-  "postCreateCommand": "uv pip install -e .",
+  "postCreateCommand": "uv pip install -e . && uv pip install jupyter",
   "remoteEnv": {
     "PATH": "/opt/basic/bin:${containerEnv:PATH}",
     "VIRTUAL_ENV": "/opt/basic"
