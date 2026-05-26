@@ -3,6 +3,7 @@ from matensemble.pipeline import Pipeline
 pipe = Pipeline()
 
 
+# Define a chore that calculates the factorial of a given integer and another 
 @pipe.chore()
 def factorial(n: int) -> int:
     """Caculate the factorial of a given integer"""
@@ -13,6 +14,7 @@ def factorial(n: int) -> int:
     return product
 
 
+# Define a chore that calculates the sum of the digits in a given integer. 
 @pipe.chore()
 def digit_sum(n) -> int:
     """Cacluates the sum of each of the digits in a given integer"""
@@ -23,9 +25,11 @@ def digit_sum(n) -> int:
     return sum
 
 
+# We then use these two chores together to calculate the sum of the digits in 100!
 fact = factorial(100)
 sum = digit_sum(fact)
 
-future = pipe.submit(log_delay=1)
-result = future.result()
-print(result)
+pipe.submit(log_delay=1)
+
+# Print out the results of the workflow
+print(pipe.results())

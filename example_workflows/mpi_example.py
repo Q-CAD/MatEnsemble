@@ -1,6 +1,3 @@
-# Simple MPI Hello World example using matensemble.
-
-
 from matensemble.pipeline import Pipeline
 from mpi4py import MPI
 
@@ -27,3 +24,7 @@ for _ in range(10):
 
 
 pipe.submit(log_delay=1)
+
+
+
+
