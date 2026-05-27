@@ -42,13 +42,29 @@ RUN wget https://github.com/lammps/lammps/archive/refs/tags/stable_22Jul2025_upd
     tar xzf stable_22Jul2025_update4.tar.gz && \
     cmake -S stable_22Jul2025_update4/cmake \
         -B lammps_build \
+        -D CMAKE_BUILD_TYPE=Release \
         -D CMAKE_INSTALL_PREFIX=/opt/lammps \
         -D BUILD_SHARED_LIBS=yes \
-        -D PKG_PYTHON=on \
+        -D PKG_MANYBODY=ON \
+        -D PKG_MC=ON \
+        -D PKG_MOLECULE=ON \
+        -D PKG_KSPACE=ON \
+        -D PKG_REPLICA=ON \
+        -D PKG_ASPHERE=ON \
+        -D PKG_ML-SNAP=ON \
+        -D PKG_REAXFF=ON \
+        -D PKG_RIGID=ON \
+        -D PKG_MPIIO=ON \
+        -D PKG_QEQ=ON \
+        -D PKG_PYTHON=On \
+        -D PKG_INTERLAYER=ON \
+        -D PKG_EXTRA-COMPUTE=ON \
+        -D CMAKE_POSITION_INDEPENDENT_CODE=ON \
+        -D CMAKE_EXE_FLAGS="-dynamic" \
         -D BUILD_LIB=on && \
     cmake --build lammps_build --target install -j8 && \
     make install-python && \
-    rm -r stable_22Jul2025_update4.tar.gz lammps-stable_22Jul2025_update4 lammps_build
+    rm -r stable_22Jul2025_update4.tar.gz
 
 RUN python -m pip install --no-cache-dir flux-python==0.70.0
 ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH:-}
