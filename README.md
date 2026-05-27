@@ -9,17 +9,17 @@
 
 # MatEnsemble
 
-MatEnsemble is a Python library for **high-throughput workflows** on HPC systems. You define a directed acyclic graph (DAG) of tasks—**Python callables** or **executable commands**—and MatEnsemble submits work through **[Flux](https://flux-framework.readthedocs.io/)**, tracks completions, **adapts** scheduling to free CPUs and GPUs, and writes structured logs and per-chore output directories.
+MatEnsemble is a Python library for **high-throughput workflows** on HPC systems. You define a directed acyclic graph (DAG) of chores—**Python callables** or **executable commands**—and MatEnsemble submits work through **[Flux](https://flux-framework.readthedocs.io/)**, tracks completions, **adapts** scheduling to free CPUs and GPUs, and writes structured logs and per-chore output directories.
 
 An optional in-tree **dynopro** stack supports streaming dynamics and on-the-fly analysis for advanced materials simulation workflows.
 
 ## Features
 
 - **DAG-based workflows** with dependencies via deferred return values (`OutputReference`)
-- **Adaptive scheduling** that back-fills the allocation as tasks finish (with a non-adaptive mode when you need it)
+- **Adaptive scheduling** that back-fills the allocation as chores finish (with a non-adaptive available)
 - **Two chore types**: Python chores (remotely unpickled and executed by `matensemble.runtime_worker`) and argv-style **executable** chores
 - **Resource requests**: tasks, cores per task, GPUs per task, optional MPI (`pmi2`) via Flux
-- **Observability**: `status.json`, `matensemble_workflow.log`, per-chore `stdout` / `stderr`, pickle and JSON result artifacts; optional **web dashboard** (FastAPI on port 8000)
+- **Observability**: `status.json`, `matensemble_workflow.log`, per-chore `stdout` / `stderr`, pickle and JSON result artifacts; optional **web dashboard**
 
 <p align="center">
   <img src="images/Cap_1_adaptive_task_management.png" alt="Adaptive task management" width="620" />
@@ -29,64 +29,24 @@ An optional in-tree **dynopro** stack supports streaming dynamics and on-the-fly
   <img src="images/Cap_2_dynopro.png" alt="On-the-fly dynamics and analysis" width="620" />
 </p>
 
-## Documentation
-
-Hosted documentation (overview, architecture, tutorials, API reference):
-
-**[matensemble.readthedocs.io](https://matensemble.readthedocs.io/en/latest/)**
-
-To build the docs locally:
-
-```bash
-uv sync --group dev
-uv run sphinx-build -b html docs/source docs/build
-```
-
-Then open `docs/build/index.html` in a browser.
 
 ## Installation
 
-### PyPI (Python layer)
-
-Requires **Python 3.12+**. Flux **C libraries** and a running Flux session come from your HPC environment; the PyPI package adds the Python side.
-
-```bash
-pip install "matensemble[flux]"
-```
-
-The `flux` extra installs the Flux Python bindings (`flux-python`). For editing workflows only (no Flux on the machine):
-
-```bash
-pip install matensemble
-```
-
-### Containers (recommended on many clusters)
-
-OCI images are published to GitHub Container Registry, for example:
+OCI images are published to GitHub Container Registry
 
 `ghcr.io/freddude2004/matensemble:baseline-vX.Y.Z`
 
-See the [container packages](https://github.com/FredDude2004/MatEnsemble/pkgs/container/matensemble) and the [Quick start](https://matensemble.readthedocs.io/en/latest/quickstart.html) in the docs for Apptainer/Singularity and site-specific notes.
+See the [container packages](https://github.com/FredDude2004/MatEnsemble/pkgs/container/matensemble) and the [installation guide](https://matensemble.readthedocs.io/en/latest/installation.html) in the docs for Apptainer/Singularity and site-specific notes.
 
-### Development install
+### Anaconda
 
-From a clone of this repository:
-
-```bash
-uv sync
-uv sync --group dev   # optional: docs and pytest tooling
-uv run pytest
-```
-
-Or with pip:
+You can build a Conda environment with MatEnsemble and dependencies installed using the environment.yaml file.
 
 ```bash
-pip install -e ".[flux]"
+conda env create -f environment.yaml
 ```
 
-Site-specific Conda-style environment files live under `scripts/` (for example `scripts/baseline/environment.yaml`, `scripts/frontier/`, `scripts/perlmuter/`). Align Python with **3.12+** and Flux with your center’s modules.
-
-## Quick example
+## Example
 
 ```python
 from matensemble.pipeline import Pipeline
@@ -106,7 +66,7 @@ Illustrative workflows live under [`example_workflows/`](https://github.com/Fred
 
 - A **Flux allocation** (or equivalent) on the machine where you call `Pipeline.submit()`
 - For MPI Python or executable chores: a coherent MPI/Flux setup (e.g. PMI2) as expected by your site
-- Optional: SSH port forwarding if you enable the dashboard on a compute node (see the architecture guide in the docs)
+- Optional: SSH port forwarding if you enable the dashboard on a compute node (see the design guide in the docs)
 
 ## Related links
 

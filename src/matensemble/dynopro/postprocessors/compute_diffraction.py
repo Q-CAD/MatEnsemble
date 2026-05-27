@@ -1,57 +1,55 @@
 import pickle
 from ovito.io.pymatgen import ovito_to_pymatgen
 
-def get_laue_pattern(data, fname):
-        
-        struc = ovito_to_pymatgen(data.data)
-        
-        import pymatgen.analysis.diffraction.tem as tem
-        temcalc = tem.TEMCalculator()
-        temcalc.get_plot_2d(struc).write_image(f'{fname}.png')
-        temcalc.get_pattern(struc).to_csv(f'{fname}_Laue_Pattern.csv', sep=' ')
 
-        return
+def get_laue_pattern(data, fname):
+
+    struc = ovito_to_pymatgen(data.data)
+
+    import pymatgen.analysis.diffraction.tem as tem
+
+    temcalc = tem.TEMCalculator()
+    temcalc.get_plot_2d(struc).write_image(f"{fname}.png")
+    temcalc.get_pattern(struc).to_csv(f"{fname}_Laue_Pattern.csv", sep=" ")
+
+    return
 
 
 def get_xrd_pattern(data, fname):
-  
-        struc = ovito_to_pymatgen(data.data)
 
-        from pymatgen.analysis.diffraction.xrd import XRDCalculator
-        xrd_calc = XRDCalculator()
-        pattern = xrd_calc.get_pattern(struc)
+    struc = ovito_to_pymatgen(data.data)
 
-        pattern_dict= {} #pattern.as_dict() 
-        pattern_dict['2_theta'] = pattern.x.tolist()
-        pattern_dict['Intensities'] = pattern.y.tolist()
-        pattern_dict['hkls'] = pattern.hkls
+    from pymatgen.analysis.diffraction.xrd import XRDCalculator
 
+    xrd_calc = XRDCalculator()
+    pattern = xrd_calc.get_pattern(struc)
 
-        with open(f'{fname}_XRD_Pattern.pkl','wb') as file:
-                pickle.dump(pattern_dict, file)
-        return pattern_dict
+    pattern_dict = {}  # pattern.as_dict()
+    pattern_dict["2_theta"] = pattern.x.tolist()
+    pattern_dict["Intensities"] = pattern.y.tolist()
+    pattern_dict["hkls"] = pattern.hkls
+
+    with open(f"{fname}_XRD_Pattern.pkl", "wb") as file:
+        pickle.dump(pattern_dict, file)
+    return pattern_dict
 
 
 def get_xrd_ovito(data, fname):
-  
-        from ovito.modifiers import StructureFactorModifier
-        import numpy as np
-        data.data.apply(StructureFactorModifier(k_max = 40, mode=StructureFactorModifier.Mode.Debye, atomic_form_factors=True))
 
-        q = data.data.tables['structure-factor'].xy()[:,0]/2/np.pi
-        S_q = data.data.tables['structure-factor'].xy()[:,1]
-        xrd_array = np.column_stack((q, S_q))
+    from ovito.modifiers import StructureFactorModifier
+    import numpy as np
 
-        print ("computing large-scale XRD-S(q) using Ovito . . . .")
-        np.savetxt(str(f"{fname}_xrd.dat"), xrd_array, header='q S(q)')
+    data.data.apply(
+        StructureFactorModifier(
+            k_max=40, mode=StructureFactorModifier.Mode.Debye, atomic_form_factors=True
+        )
+    )
 
-        return {"q": q.tolist(), "S_q": S_q.tolist()}
+    q = data.data.tables["structure-factor"].xy()[:, 0] / 2 / np.pi
+    S_q = data.data.tables["structure-factor"].xy()[:, 1]
+    xrd_array = np.column_stack((q, S_q))
 
+    print("computing large-scale XRD-S(q) using Ovito . . . .")
+    np.savetxt(str(f"{fname}_xrd.dat"), xrd_array, header="q S(q)")
 
-
-
-
-
-
-
-
+    return {"q": q.tolist(), "S_q": S_q.tolist()}

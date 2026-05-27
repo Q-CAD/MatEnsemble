@@ -2,60 +2,67 @@
 Overview
 ========
 
-MatEnsemble is a framework to build, orchestrate, and asynchronously manage scalable workflows, especially targeted for compute-intensive AI-driven materials modeling simulations (e.g., atomistic modeling, Phase-Field, etc.) as efficiently as possible.
-Apart from standard automated high-throughput computations, the core of MatEnsemble is designed to support "user-defined" acquisition strategies to dynamically steer workflows based on intermediate results, which is a common pattern in active learning and other autonomous workflows at scale.
-To enable extremely scalable parametric sweeps and bypass standard scheduler bottlenecks, typically encountered in leadership computing platforms, MatEnsemble uses a single large allocation and an internal scheduler to manage arbitrarily large workloads. The library is built on top of the Flux resource manager, which provides efficient job scheduling and resource management capabilities, making it well-suited for high-throughput computing scenarios.
+MatEnsemble is a **workflow manager** for running many :class:`~matensemble.chore.Chore` instances on a
+supercomputer as efficiently as possible. You build a directed acyclic graph (DAG) of :class:`~matensemble.chore.Chore`s in Python; MatEnsemble
+submits work to **Flux**, tracks completions, records logs, and keeps hardware busy while tasks finish
+at different rates.
 
+The library targets **high-throughput** and **ensemble** scenarios: thousands of small simulations,
+parameter sweeps, or analysis pipelines where classic “one Slurm job per task” workflows would overwhelm the
+scheduler or spend too much time queued.
 
-MatEnsemble benefits from the native Python executor interface of ``Flux`` [ahn2020flux]_
-and the concurrent asynchronous programming model of core Python through
-``concurrent.futures.Future`` objects [quinlan2009futures]_. Continuous throughput is maintained
-by dynamically spawning and monitoring tasks. Furthermore, to enable real-time streaming of
-post-processed data from large-scale atomistic trajectories, MatEnsemble uses an *in-memory*
-data analysis protocol that exploits the heterogeneous GPU+CPU architecture of exascale systems
-(e.g., Frontier) via a round-robin MPI communicator-splitting approach (cf. [bagchi2025matensemble]_).
-As explained in the following sections, such an online adaptive framework efficiently couples
-available computing resource chunks for ensemble evaluations guided by adaptive sampling methods.
+MatEnsemble is especially aimed at compute-intensive, AI-driven materials modeling workflows such as
+atomistic modeling and phase-field simulations. Beyond fixed high-throughput sweeps, it supports
+user-defined acquisition and completion strategies that can dynamically steer later work from intermediate
+results, a common pattern in active learning and autonomous workflows at scale.
 
+For streaming dynamics workflows, the in-tree **dynopro** components use an in-memory analysis protocol for
+post-processing large atomistic trajectories on heterogeneous GPU+CPU systems via MPI communicator splitting
+(cf. [bagchi2025matensemble]_).
 
-Scalable and adaptive scheduling
+High-throughput computing and schedulers
 =========================================
 
-In the context of high-throughput materials modeling, fully leveraging exascale resource capabilities with SLURM or similar schedulers is challenging due to:
+High Throughput Computing (HTC) maximizes completed work over long windows by running **many independent**
+tasks, often modest in size. Sites frequently call this pattern **task farming**.
+
+Farming through raw Slurm has costs:
 
 * Many short ``sbatch`` / ``srun`` invocations increase scheduler load and log volume.
 * Queue latency dominates when tasks are tiny relative to scheduler quanta.
 * Some centers cap how many job steps you may launch inside a single allocation.
 
-A common mitigation approach is **one large allocation** plus an **internal scheduler** that launches many child
-processes inside that allocation. The remaining problem is **utilization**: if one launches work
+A common mitigation is **one large allocation** plus an **internal scheduler** that launches many child
+processes or MPI ranks inside that allocation. The remaining problem is **utilization**: if you launch work
 in static waves, fast tasks finish early and cores sit idle while slow tasks run. MatEnsemble addresses that
-with its **adaptive** task orchestration capability, where pending or even new (depending on user-defined acquisition strategies) tasks are backfilled/launched as soon as resources free up, keeping the allocation saturated until all work is done.
+with **adaptive** submission tied to live Flux resource reporting.
 
+MatEnsemble builds on Flux's Python executor interface [ahn2020flux]_ and Python's asynchronous
+``concurrent.futures.Future`` programming model [quinlan2009futures]_.
 
-What MatEnsemble does in one sentence
-=====================================
+What MatEnsemble does
+=====================
 
-Inside a **Flux** session, MatEnsemble continuously: (1) tracks available computing resources, (2) submits ready DAG
-nodes in the queue, (3) processes completed flux jobs, (4) unblocks dependents, and (5) repeats until no ready,
-running, or blocked work remains and/or spawns new DAGs depending on user-defined strategies.
+**Inside your Flux session**, MatEnsemble repeatedly: (1) reads free CPU/GPU counts, (2) submits ready DAG
+nodes that fit, (3) processes completed Flux jobs, (4) unblocks dependents, (5) lets configured strategies
+add newly discovered work, and (6) repeats until no ready, running, or blocked work remains.
 
-See :doc:`architecture` for the exact loop, artifacts, and environment assumptions.
+See :doc:`design` for the exact loop, artifacts, and environment assumptions.
 
 Core concepts
-==============================
-
-:class:`~matensemble.chore.Chore`
-    A unit of work. Can be a Python function, an executable, or a containerized command. Chores are
-    decorated with :func:`~matensemble.chore.chore` to turn them into delayed tasks.
+=============
 
 :class:`~matensemble.pipeline.Pipeline`
-    User-facing builder. Decorated Python functions turn into delayed chores; :meth:`~matensemble.pipeline.Pipeline.exec`
+    User-facing builder. Decorated Python functions turn into delayed function calls; :meth:`~matensemble.pipeline.Pipeline.exec`
     adds argv-style work.
 
 :class:`~matensemble.model.OutputReference`
-    Placeholder returned from a delayed Python call. Passing it into another chore encodes a **dependency edge**
+    Placeholder returned from a delayed function call. Passing it into another chore encodes a **dependency edge**
     and ensures upstream results are unpickled before the downstream function runs.
+
+:class:`~matensemble.chore.Chore`
+    Single Flux submission record—command, resources, working directory, and (for Python chores) pointers back
+    to your source module.
 
 :class:`~matensemble.manager.FluxManager`
     Runtime coordinator created when you call :meth:`~matensemble.pipeline.Pipeline.submit`.
@@ -72,15 +79,21 @@ working directory):
 
 .. code-block:: text
 
-   <base>/matensemble_workflow-YYYYMMDD_HHMMSS/
-   ├── status.json                 # compact counters for dashboards / monitoring
-   ├── matensemble_workflow.log    # verbose rolling log from the ``matensemble`` logger
-   └── out/
-       └── <chore_id>/
-           ├── stdout
-           ├── stderr
-           ├── chore.pkl / chore.json  # serialized chore specification & debug view
-           └── result.pkl / result.json   # Python return values only
+   <base>/
+   └── matensemble_workflow-YYYYMMDD_HHMMSS/
+       ├── status.json              # atomically updated for the dashboard / monitoring
+       ├── matensemble_workflow.log # detailed text log from the ``matensemble`` logger
+       └── out/
+           ├── registry/            # pickled chore callables
+           │   ├── Callable name
+           │   ├── Callable name
+           │   └── ...
+           └── <chore_id>/
+               ├── stdout
+               ├── stderr
+               ├── chore.pickle     # Pickled chore object
+               ├── metadata.json    # Metadata of the chore in JSON for debugging
+               └── result.pickle    # Python chore return value (pickle)
 
 The driver prints a short hint to stderr with absolute paths to ``status.json``, the log file, and the ``out``
 tree when logging initializes.
@@ -94,13 +107,13 @@ allocation saturated when backlog exists.
 
 In **non-adaptive** mode, the manager only submits during the initial “fill until out of resources” phases;
 completion handling updates the DAG but **does not** proactively pull additional ready chores until the next
-outer-loop scheduling opportunity.
+outer-loop scheduling opportunity—use this when you want tighter control or simpler resource snapshots.
 
 .. image:: ../../images/Cap_1_adaptive_task_management.png
    :alt: Diagram contrasting static batching with adaptive back-filling of tasks
 
-Strategies
-==========
+User-defined strategies
+=======================
 
 MatEnsemble uses the *strategy pattern* when processing :class:`flux.job.FluxExecutorFuture` completions:
 
@@ -111,9 +124,10 @@ MatEnsemble uses the *strategy pattern* when processing :class:`flux.job.FluxExe
        def process_futures(self, buffer_time) -> None:
            ...
 
-Concrete implementations live in :mod:`matensemble.strategy`. Supply your own subclass to
-:meth:`~matensemble.pipeline.Pipeline.submit` if you need custom batching, metrics hooks, or integration with
-external planners—ensure your strategy maintains the manager’s queue invariants or you may deadlock.
+Users can define their own strategies and inject them into the processing loop. For example, a strategy can
+inspect the result of a completed :class:`~matensemble.chore.Chore`, create one or more new
+:class:`~matensemble.chore.ChoreSpec` objects, and add those chores to the submission queue while the workflow
+is still running.
 
 Roadmap and stability
 =====================
@@ -147,8 +161,8 @@ References
 Next steps
 ==========
 
-* :doc:`quickstart` — containers, PyPI install, site-specific shell snippets.
+* :doc:`installation` — containers, PyPI install, site-specific shell snippets.
 * :doc:`tutorials` — minimal Python and executable examples, dependency graphs, packaging tips.
-* :doc:`architecture` — Flux interactions, ``PYTHONPATH``, failure propagation, dashboard tunneling.
+* :doc:`design` — Flux interactions, ``PYTHONPATH``, failure propagation, dashboard tunneling.
 * :doc:`reference` — exhaustive parameter and artifact listing.
 * :ref:`api-reference` — docstring-generated module documentation.

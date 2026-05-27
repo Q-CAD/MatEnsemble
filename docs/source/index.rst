@@ -1,20 +1,22 @@
 .. MatEnsemble documentation master file, created by
-   sphinx-quickstart on Thu Feb 12 16:35:41 2026.
+   sphinx-installation on Thu Feb 12 16:35:41 2026.
 
 MatEnsemble Documentation
 =========================
-An adaptive and highly asynchronous ensemble simulation workflow manager with in-memory dynamics (GPU) and on-the-fly analysis (CPU) capabilties.
+
+MatEnsemble orchestrates large batches of **Flux**-scheduled tasks on HPC systems: Python callables,
+shell commands, explicit resource requests, and **dependency-aware** execution graphs from a single
+Python driver process.
 
 .. toctree::
    :maxdepth: 2
    :caption: Guides
 
    overview
-   architecture
-   quickstart
+   installation
    tutorials
-   api_reference
-   team
+   design
+   reference
 
 .. toctree::
    :maxdepth: 3

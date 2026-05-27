@@ -11,6 +11,23 @@ from matensemble.model import ChoreType, Resources
 from matensemble.utils import _json_safe
 
 
+class ChoreSpec:
+    """
+    The specification of a :obj:`Chore`
+
+    Holds the arguments, key-word
+    arguments and the name of the chore that you want those arguments to be
+    passed to. This is class is used by the user when creating a UserStrategy
+    that does processing on completed chores and can spawn new chores.
+    """
+
+    def __init__(self, args, kwargs, qualname, resources: Resources) -> None:
+        self.args = args
+        self.kwargs = kwargs
+        self.qualname = qualname
+        self.resources = resources
+
+
 class Chore:
     """
     A :obj:`Chore` is what MatEnsemble is built around. :obj:`Job`'s can have two
@@ -28,13 +45,11 @@ class Chore:
     def __init__(
         self,
         id: str,
-        command: str | list[str],
-        chore_type: ChoreType,
-        resources: Resources,
         workdir: Path,
-        func_module: str | None = None,
-        func_qualname: str | None = None,
-        serialized_callable: bytes | None = None,
+        command: str | list[str],
+        chore_type: ChoreType | int,
+        resources: Resources,
+        chore_qualname: str | None = None,
         deps: tuple[str, ...] = (),
         args: tuple = (),
         kwargs: dict | None = None,
@@ -76,21 +91,12 @@ class Chore:
             shlex.split(command) if isinstance(command, str) else list(command)
         )
 
-        if chore_type == ChoreType.PYTHON:
-            if serialized_callable is None and not (func_module and func_qualname):
-                raise ValueError(
-                    "Python chores require either serialized_callable or func_module+func_qualname"
-                )
-
         self.chore_type = chore_type
         self.resources = resources
         self.workdir = workdir.resolve()
-        self.spec_path = self.workdir / "chore.pkl"
+        self.spec_path = self.workdir / "chore.pickle"
 
-        self.func_module = func_module
-        self.func_qualname = func_qualname
-        self.serialized_callable = serialized_callable
-        
+        self.chore_qualname = chore_qualname
         self.deps = deps
         self.args = args
         self.kwargs = {} if kwargs is None else kwargs
@@ -111,22 +117,19 @@ class Chore:
                 "env": _json_safe(self.resources.env),
                 "inherit_env": self.resources.inherit_env,
             },
-            "spec_file": str(self.spec_path),
-            "func_module": self.func_module,
-            "func_qualname": self.func_qualname,
-            "has_serialized_callable": self.serialized_callable is not None,
+            "chore_qualname": self.chore_qualname,
             "deps": list(self.deps),
             "args": _json_safe(self.args),
             "kwargs": _json_safe(self.kwargs),
         }
 
-    def _write_debug_json(self) -> None:
+    def _write_metadata(self) -> None:
         """
         The :obj:`Chore` is pickled at runtime to be used later on, but it is also
         written as json for debugging.
         """
 
-        debug_file = self.spec_path.parent / "chore.json"
+        debug_file = self.spec_path.parent / "metadata.json"
         debug_file.parent.mkdir(parents=True, exist_ok=True)
         with debug_file.open("w") as f:
             json.dump(self._to_debug_dict(), f, indent=2)
