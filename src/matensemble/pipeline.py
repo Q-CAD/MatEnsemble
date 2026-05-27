@@ -133,7 +133,7 @@ class Pipeline:
         the module will use to find the *pickled* python object containing all
         of the data on the chore, and it will use it to import the function and
         call it with its respective arguments. The result will then be stored
-        in the flux KVS
+        in the chores respective directory.
 
         Parameters
         ----------
@@ -228,7 +228,78 @@ class Pipeline:
 
         return decorator
 
-    # def strategy_callback(self, ) -> Chore | None:
+    # WARNING: This is deprecated and only here for compatibility
+    def add_user_strat(self, chore_name: str, bolo_list: list[str]):
+        self._strategy_spec = {"name": chore_name, "bolo_list": bolo_list}
+
+    def strategy(
+        self,
+        bolo_list: list[str],
+        name: str | None = None,
+        num_tasks: int = 1,
+        cores_per_task: int = 1,
+        gpus_per_task: int = 0,
+        mpi: bool = False,
+        env: dict[str, str] | None = None,
+        inherit_env: bool = True,
+    ):
+        """
+        The strategy function creates a strategy, which is essentially a
+        callback function to another chore. But the callback function is itself
+        a chore. This function is expected to return an :obj:`ChoreSpec` which
+        will then dynamically spawn a new chore into the queue based on the
+        specification that is returned.
+
+        Parameters
+        ----------
+        bolo_list : list[str]
+            The names of the chores that you want this to callback on
+        name : str, optional
+            The name  that will be assigned to the chore_id, defaults to the
+            name of the function.
+        num_tasks : int, optional
+            The number of tasks that will be launched with flux, defaults to 1
+        cores_per_task : int, optional
+            The number of CPU cores that are required to submit the chore,
+            defaults to 1
+        gpus_per_task : int, optional
+            The number of GPUs that are required to submit the chore, defaults
+            to 0
+        mpi : bool, optional
+            When True, sets Flux shell option ``mpi=pmi2`` on the chorespec
+            (default False).
+        env : dict[str, str], optional
+            Extra environment variables for the task. For Python chores,
+            ``PYTHONPATH`` is merged to include the workflow parent directory.
+        inherit_env : bool
+            If True (default), the Flux jobspec starts from the submitting
+            process environment and applies ``env`` overrides.
+
+        Returns
+        -------
+        Callable
+            A dummy function that just prints a warning to the stdout
+        """
+
+        def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+            for chore in bolo_list:
+                if chore not in self._registry:
+                    raise Exception(
+                        f"Error: The chore '{chore}' was not found in the registry"
+                    )
+
+            registry_key = name or str(func.__qualname__)
+            self._registry[registry_key] = func
+
+            def disabled_wrapper(*args: Any, **kwargs: Any) -> None:
+                raise RuntimeError(
+                    f"Do not call '{registry_key}' directly. "
+                    "This strategy is managed internally by the workflow engine."
+                )
+
+            return disabled_wrapper
+
+        return decorator
 
     def exec(
         self,
