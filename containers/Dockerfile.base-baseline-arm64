@@ -1,7 +1,12 @@
-FROM docker.io/ubuntu:24.04
+FROM docker.io/ubuntu:24.04 AS builder
 
 ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /opt
+
+# Inject ORNL corporate CA — BUILD ONLY, stripped in final stage
+COPY ornl-ca.pem /usr/local/share/ca-certificates/ornl-ca.crt
+RUN apt-get update && apt-get install --yes ca-certificates && \
+    update-ca-certificates
 
 RUN apt-get update && apt-get install --yes \
     build-essential git wget cmake mpich libmpich-dev \
@@ -12,14 +17,18 @@ RUN apt-get update && apt-get install --yes \
     && apt-get clean
 
 COPY --from=ghcr.io/astral-sh/uv:0.11.8 /uv /uvx /bin/
-RUN UV_NATIVE_TLS=1 uv venv /opt/basic --seed --python 3.12
+
+ENV SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+ENV REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+
+RUN uv venv /opt/basic --seed --python 3.12
 ENV PATH="/opt/basic/bin:$PATH"
 
-RUN uv pip install setuptools wheel cffi ply PyYAML sphinx
+RUN uv pip install setuptools wheel cffi ply PyYAML sphinx jsonschema
 
 RUN python -m pip install --no-cache-dir mpi4py
 
-# Flux & Fluxion Build
+# Flux-core
 WORKDIR /opt
 RUN git clone -b v0.70.0 https://github.com/flux-framework/flux-core.git && \
     cd flux-core && \
@@ -29,18 +38,19 @@ RUN git clone -b v0.70.0 https://github.com/flux-framework/flux-core.git && \
     make install && \
     ldconfig
 
+# Flux-sched
 RUN git clone -b v0.41.0 https://github.com/flux-framework/flux-sched.git && \
-    cd flux-sched                                                         && \
-    cmake -B build                                                        && \
-    cmake --build build -j1                                               && \
-    cmake --build build -t install                                        && \
+    cd flux-sched                                                          && \
+    cmake -B build                                                         && \
+    cmake --build build -j1                                                && \
+    cmake --build build -t install                                         && \
     ldconfig
 
-# LAMMPS Build
+# LAMMPS
 WORKDIR /opt
 RUN wget https://github.com/lammps/lammps/archive/refs/tags/stable_22Jul2025_update4.tar.gz && \
     tar xzf stable_22Jul2025_update4.tar.gz && \
-    cmake -S stable_22Jul2025_update4/cmake \
+    cmake -S lammps-stable_22Jul2025_update4/cmake \
         -B lammps_build \
         -D CMAKE_BUILD_TYPE=Release \
         -D CMAKE_INSTALL_PREFIX=/opt/lammps \
@@ -63,9 +73,28 @@ RUN wget https://github.com/lammps/lammps/archive/refs/tags/stable_22Jul2025_upd
         -D CMAKE_EXE_FLAGS="-dynamic" \
         -D BUILD_LIB=on && \
     cmake --build lammps_build --target install -j8 && \
-    make install-python && \
-    rm -r stable_22Jul2025_update4.tar.gz
+    make -C lammps_build install-python && \
+    rm -f stable_22Jul2025_update4.tar.gz
 
 RUN python -m pip install --no-cache-dir flux-python==0.70.0
-ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH:-}
 
+# Final stage
+FROM docker.io/ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Runtime deps only (no build tools, no ORNL cert)
+RUN apt-get update && apt-get install --yes \
+    mpich lua5.1 lua-posix liblz4-1 libarchive13 libhwloc15 \
+    libzmq5 libjansson4 libsqlite3-0 libyaml-cpp0.8 \
+    libedit2 libboost-graph1.83.0 \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Copy compiled artifacts from builder
+COPY --from=builder /opt/basic        /opt/basic
+COPY --from=builder /opt/lammps       /opt/lammps
+COPY --from=builder /usr/local        /usr/local
+
+ENV PATH="/opt/basic/bin:/opt/lammps/bin:$PATH"
+ENV LD_LIBRARY_PATH=/usr/local/lib:/opt/lammps/lib:${LD_LIBRARY_PATH:-}
+ENV PYTHONPATH=/opt/lammps/lib/python3.12/site-packages:${PYTHONPATH:-}
