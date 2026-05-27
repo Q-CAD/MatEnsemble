@@ -1,0 +1,281 @@
+> docker buildx build --platform linux/amd64,linux/arm64 -t ghcr.io/freddude2004/matensemble-base:baseline -f Dockerfile.base-baseline-arm64 --push .
+[+] Building 342.4s (49/55)                                                                                                                                                                                                                      docker:desktop-linux
+ => [internal] load build definition from Dockerfile.base-baseline-arm64                                                                                                                                                                                         0.0s
+ => => transferring dockerfile: 4.07kB                                                                                                                                                                                                                           0.0s
+ => [linux/arm64 internal] load metadata for ghcr.io/astral-sh/uv:0.11.8                                                                                                                                                                                         0.9s
+ => [linux/amd64 internal] load metadata for ghcr.io/astral-sh/uv:0.11.8                                                                                                                                                                                         0.9s
+ => [linux/arm64 internal] load metadata for docker.io/library/ubuntu:24.04                                                                                                                                                                                      0.7s
+ => [linux/amd64 internal] load metadata for docker.io/library/ubuntu:24.04                                                                                                                                                                                      0.7s
+ => [auth] astral-sh/uv:pull token for ghcr.io                                                                                                                                                                                                                   0.0s
+ => [auth] library/ubuntu:pull token for registry-1.docker.io                                                                                                                                                                                                    0.0s
+ => [internal] load .dockerignore                                                                                                                                                                                                                                0.0s
+ => => transferring context: 2B                                                                                                                                                                                                                                  0.0s
+ => [linux/amd64 builder  1/16] FROM docker.io/library/ubuntu:24.04@sha256:c4a8d5503dfb2a3eb8ab5f807da5bc69a85730fb49b5cfca2330194ebcc41c7b                                                                                                                      0.0s
+ => => resolve docker.io/library/ubuntu:24.04@sha256:c4a8d5503dfb2a3eb8ab5f807da5bc69a85730fb49b5cfca2330194ebcc41c7b                                                                                                                                            0.0s
+ => [linux/arm64 builder  1/16] FROM docker.io/library/ubuntu:24.04@sha256:c4a8d5503dfb2a3eb8ab5f807da5bc69a85730fb49b5cfca2330194ebcc41c7b                                                                                                                      0.0s
+ => => resolve docker.io/library/ubuntu:24.04@sha256:c4a8d5503dfb2a3eb8ab5f807da5bc69a85730fb49b5cfca2330194ebcc41c7b                                                                                                                                            0.0s
+ => [internal] load build context                                                                                                                                                                                                                                0.0s
+ => => transferring context: 34B                                                                                                                                                                                                                                 0.0s
+ => FROM ghcr.io/astral-sh/uv:0.11.8@sha256:3b7b60a81d3c57ef471703e5c83fd4aaa33abcd403596fb22ab07db85ae91347                                                                                                                                                     0.0s
+ => => resolve ghcr.io/astral-sh/uv:0.11.8@sha256:3b7b60a81d3c57ef471703e5c83fd4aaa33abcd403596fb22ab07db85ae91347                                                                                                                                               0.0s
+ => FROM ghcr.io/astral-sh/uv:0.11.8@sha256:3b7b60a81d3c57ef471703e5c83fd4aaa33abcd403596fb22ab07db85ae91347                                                                                                                                                     0.0s
+ => => resolve ghcr.io/astral-sh/uv:0.11.8@sha256:3b7b60a81d3c57ef471703e5c83fd4aaa33abcd403596fb22ab07db85ae91347                                                                                                                                             341.4s
+ => CACHED [linux/amd64 stage-1 2/7] RUN apt-get update && apt-get install --yes     mpich lua5.1 lua-posix liblz4-1 libarchive13 libhwloc15     libzmq5 libjansson4 libsqlite3-0 libyaml-cpp0.8     libedit2 libboost-graph1.83.0     && apt-get clean && rm -  0.0s
+ => CACHED [linux/amd64 builder  2/16] WORKDIR /opt                                                                                                                                                                                                              0.0s
+ => CACHED [linux/amd64 builder  3/16] COPY ornl-ca.pem /usr/local/share/ca-certificates/ornl-ca.crt                                                                                                                                                             0.0s
+ => CACHED [linux/amd64 builder  4/16] RUN apt-get update && apt-get install --yes ca-certificates &&     update-ca-certificates                                                                                                                                 0.0s
+ => CACHED [linux/amd64 builder  5/16] RUN apt-get update && apt-get install --yes     build-essential git wget cmake mpich libmpich-dev     autoconf automake libtool make pkg-config libc6-dev libzmq3-dev uuid-dev     libjansson-dev liblz4-dev libarchive-  0.0s
+ => CACHED [linux/amd64 builder  6/16] COPY --from=ghcr.io/astral-sh/uv:0.11.8 /uv /uvx /bin/                                                                                                                                                                    0.0s
+ => CACHED [linux/amd64 builder  7/16] RUN uv python install 3.12                                                                                                                                                                                                0.0s
+ => CACHED [linux/amd64 builder  8/16] RUN uv venv /opt/basic --seed --python 3.12                                                                                                                                                                               0.0s
+ => CACHED [linux/amd64 builder  9/16] RUN uv pip install setuptools wheel cffi ply PyYAML sphinx jsonschema                                                                                                                                                     0.0s
+ => CACHED [linux/amd64 builder 10/16] RUN python -m pip install --no-cache-dir mpi4py                                                                                                                                                                           0.0s
+ => CACHED [linux/amd64 builder 11/16] WORKDIR /opt                                                                                                                                                                                                              0.0s
+ => CACHED [linux/amd64 builder 12/16] RUN git clone -b v0.70.0 https://github.com/flux-framework/flux-core.git &&     cd flux-core &&     PYTHON=/opt/basic/bin/python ./autogen.sh &&     ./configure &&     make -j8 &&     make install &&     ldconfig      0.0s
+ => CACHED [linux/amd64 builder 13/16] RUN git clone -b v0.41.0 https://github.com/flux-framework/flux-sched.git &&     cd flux-sched                                                          &&     cmake -B build                                             0.0s
+ => CACHED [linux/amd64 builder 14/16] WORKDIR /opt                                                                                                                                                                                                              0.0s
+ => ERROR [linux/amd64 builder 15/16] RUN wget https://github.com/lammps/lammps/archive/refs/tags/stable_22Jul2025_update4.tar.gz &&     tar xzf stable_22Jul2025_update4.tar.gz &&     cmake -S lammps-stable_22Jul2025_update4/cmake     -B lammps_build     341.4s
+ => CACHED [linux/arm64 stage-1 2/7] RUN apt-get update && apt-get install --yes     mpich lua5.1 lua-posix liblz4-1 libarchive13 libhwloc15     libzmq5 libjansson4 libsqlite3-0 libyaml-cpp0.8     libedit2 libboost-graph1.83.0     && apt-get clean && rm -  0.0s
+ => CACHED [linux/arm64 builder  2/16] WORKDIR /opt                                                                                                                                                                                                              0.0s
+ => CACHED [linux/arm64 builder  3/16] COPY ornl-ca.pem /usr/local/share/ca-certificates/ornl-ca.crt                                                                                                                                                             0.0s
+ => CACHED [linux/arm64 builder  4/16] RUN apt-get update && apt-get install --yes ca-certificates &&     update-ca-certificates                                                                                                                                 0.0s
+ => CACHED [linux/arm64 builder  5/16] RUN apt-get update && apt-get install --yes     build-essential git wget cmake mpich libmpich-dev     autoconf automake libtool make pkg-config libc6-dev libzmq3-dev uuid-dev     libjansson-dev liblz4-dev libarchive-  0.0s
+ => CACHED [linux/arm64 builder  6/16] COPY --from=ghcr.io/astral-sh/uv:0.11.8 /uv /uvx /bin/                                                                                                                                                                    0.0s
+ => CACHED [linux/arm64 builder  7/16] RUN uv python install 3.12                                                                                                                                                                                                0.0s
+ => CACHED [linux/arm64 builder  8/16] RUN uv venv /opt/basic --seed --python 3.12                                                                                                                                                                               0.0s
+ => CACHED [linux/arm64 builder  9/16] RUN uv pip install setuptools wheel cffi ply PyYAML sphinx jsonschema                                                                                                                                                     0.0s
+ => CACHED [linux/arm64 builder 10/16] RUN python -m pip install --no-cache-dir mpi4py                                                                                                                                                                           0.0s
+ => CACHED [linux/arm64 builder 11/16] WORKDIR /opt                                                                                                                                                                                                              0.0s
+ => CACHED [linux/arm64 builder 12/16] RUN git clone -b v0.70.0 https://github.com/flux-framework/flux-core.git &&     cd flux-core &&     PYTHON=/opt/basic/bin/python ./autogen.sh &&     ./configure &&     make -j8 &&     make install &&     ldconfig      0.0s
+ => CACHED [linux/arm64 builder 13/16] RUN git clone -b v0.41.0 https://github.com/flux-framework/flux-sched.git &&     cd flux-sched                                                          &&     cmake -B build                                             0.0s
+ => CACHED [linux/arm64 builder 14/16] WORKDIR /opt                                                                                                                                                                                                              0.0s
+ => CACHED [linux/arm64 builder 15/16] RUN wget https://github.com/lammps/lammps/archive/refs/tags/stable_22Jul2025_update4.tar.gz &&     tar xzf stable_22Jul2025_update4.tar.gz &&     cmake -S lammps-stable_22Jul2025_update4/cmake     -B lammps_build      0.0s
+ => CACHED [linux/arm64 builder 16/16] RUN python -m pip install --no-cache-dir flux-python==0.70.0                                                                                                                                                              0.0s
+ => CACHED [linux/arm64 stage-1 3/7] COPY --from=builder /bin/uv /bin/uvx /bin/                                                                                                                                                                                  0.0s
+ => CACHED [linux/arm64 stage-1 4/7] COPY --from=builder /root/.local/share/uv /root/.local/share/uv                                                                                                                                                             0.0s
+ => CACHED [linux/arm64 stage-1 5/7] COPY --from=builder /opt/basic /opt/basic                                                                                                                                                                                   0.0s
+ => CACHED [linux/arm64 stage-1 6/7] COPY --from=builder /opt/lammps /opt/lammps                                                                                                                                                                                 0.0s
+ => CACHED [linux/arm64 stage-1 7/7] COPY --from=builder /usr/local /usr/local                                                                                                                                                                                   0.0s
+------
+ > [linux/amd64 builder 15/16] RUN wget https://github.com/lammps/lammps/archive/refs/tags/stable_22Jul2025_update4.tar.gz &&     tar xzf stable_22Jul2025_update4.tar.gz &&     cmake -S lammps-stable_22Jul2025_update4/cmake     -B lammps_build     -D CMAKE_BUILD_TYPE=Release     -D CMAKE_INSTALL_PREFIX=/opt/lammps     -D BUILD_SHARED_LIBS=yes     -D ENABLE_LTO=no     -D PKG_MANYBODY=ON     -D PKG_MC=ON     -D PKG_MOLECULE=ON     -D PKG_KSPACE=ON     -D PKG_REPLICA=ON     -D PKG_ASPHERE=ON     -D PKG_ML-SNAP=ON     -D PKG_REAXFF=ON     -D PKG_RIGID=ON     -D PKG_MPIIO=ON     -D PKG_QEQ=ON     -D PKG_PYTHON=On     -D PKG_INTERLAYER=ON     -D PKG_EXTRA-COMPUTE=ON     -D CMAKE_POSITION_INDEPENDENT_CODE=ON     -D CMAKE_EXE_FLAGS="-dynamic"     -D BUILD_LIB=on &&     cmake --build lammps_build --target install -j4 &&     make -C lammps_build install-python &&     rm -f stable_22Jul2025_update4.tar.gz:
+0.188 --2026-05-27 20:08:01--  https://github.com/lammps/lammps/archive/refs/tags/stable_22Jul2025_update4.tar.gz
+0.259 Resolving github.com (github.com)... 140.82.112.4
+0.282 Connecting to github.com (github.com)|140.82.112.4|:443... connected.
+0.387 HTTP request sent, awaiting response... 302 Found
+0.623 Location: https://codeload.github.com/lammps/lammps/tar.gz/refs/tags/stable_22Jul2025_update4 [following]
+0.624 --2026-05-27 20:08:01--  https://codeload.github.com/lammps/lammps/tar.gz/refs/tags/stable_22Jul2025_update4
+0.624 Resolving codeload.github.com (codeload.github.com)... 140.82.113.9
+0.685 Connecting to codeload.github.com (codeload.github.com)|140.82.113.9|:443... connected.
+0.765 HTTP request sent, awaiting response... 200 OK
+4.280 Length: unspecified [application/x-gzip]
+4.282 Saving to: 'stable_22Jul2025_update4.tar.gz'
+4.341
+4.341      0K .......... .......... .......... .......... ..........  545K
+4.379     50K .......... .......... .......... .......... .......... 1.62M
+4.405    100K .......... .......... .......... .......... .......... 1.65M
+4.434    150K .......... .......... .......... .......... .......... 1.95M
+4.474    200K .......... .......... .......... .......... .......... 1.84M
+
+      . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+28.28 148700K .......... .......... .......... .......... .......... 6.71M
+28.28 148750K .......... .......... .......... .......... .......... 4.62M
+28.30 148800K .......... .......... .......... .......... .......... 7.61M
+28.30 148850K .......... .......... .......... .......... .......... 6.93M
+28.31 148900K .......... .......... .......... .......... .......... 4.33M
+28.32 148950K .......... .......... .......... .......... .......... 7.11M
+28.33 149000K .......... .......... ....                             18.2M=24s
+28.33
+28.33 2026-05-27 20:08:29 (6.05 MB/s) - 'stable_22Jul2025_update4.tar.gz' saved [152601552]
+28.33
+31.28 CMake Deprecation Warning at CMakeLists.txt:22 (cmake_policy):
+31.28   The OLD behavior for policy CMP0109 will be removed from a future version
+31.28   of CMake.
+31.28
+31.28   The cmake-policies(7) manual explains that the OLD behaviors of all
+31.28   policies are deprecated and that a policy should be set to OLD only under
+31.28   specific short-term circumstances.  Projects should be ported to the NEW
+31.28   behavior and not rely on setting a policy to OLD.
+31.28
+31.28
+31.73 -- The CXX compiler identification is GNU 13.3.0
+32.07 -- The C compiler identification is GNU 13.3.0
+32.18 -- Detecting CXX compiler ABI info
+32.92 -- Detecting CXX compiler ABI info - done
+32.94 -- Check for working CXX compiler: /usr/bin/c++ - skipped
+32.94 -- Detecting CXX compile features
+32.94 -- Detecting CXX compile features - done
+32.99 -- Detecting C compiler ABI info
+33.63 -- Detecting C compiler ABI info - done
+33.64 -- Check for working C compiler: /usr/bin/cc - skipped
+33.64 -- Detecting C compile features
+33.64 -- Detecting C compile features - done
+33.68 -- Found Git: /usr/bin/git (found version "2.43.0")
+33.68 -- Running check for auto-generated files from make-based build system
+36.23 -- Found MPI_CXX: /usr/lib/x86_64-linux-gnu/mpich/lib/libmpichcxx.so (found version "4.1")
+36.23 -- Found MPI: TRUE (found version "4.1") found components: CXX
+38.04 -- Looking for C++ include omp.h
+38.63 -- Looking for C++ include omp.h - found
+38.63 -- Found OpenMP_CXX: -fopenmp (found version "4.5")
+38.63 -- Found OpenMP: TRUE (found version "4.5") found components: CXX
+38.66 -- Found GZIP: /usr/bin/gzip
+38.66 -- Could NOT find FFMPEG (missing: FFMPEG_EXECUTABLE)
+38.68 -- Found PkgConfig: /usr/bin/pkg-config (found version "1.8.1")
+38.68 -- Checking for module 'fftw3'
+38.71 --   Package 'fftw3', required by 'virtual:world', not found
+39.35 -- Found Python: /opt/basic/bin/python3 (found version "3.12.13") found components: Interpreter
+40.42 -- Found Python: /opt/basic/bin/python3 (found version "3.12.13") found components: Interpreter Development Development.Module Development.Embed
+41.24 -- Generating style headers...
+42.24 -- Generating package headers...
+43.19 -- Generating lmpinstalledpkgs.h...
+43.36 -- Found Python: /opt/basic/bin/python3 (found version "3.12.13") found components: Interpreter
+44.06 -- Found Python3: /opt/basic/bin/python3 (found version "3.12.13") found components: Interpreter
+44.09 -- The following tools and libraries have been found and configured:
+44.09  * Git
+44.09  * MPI
+44.09  * OpenMP
+44.09  * PkgConfig
+44.09  * Python
+44.09  * Python3
+44.09
+44.09 -- <<< Build configuration >>>
+44.09    LAMMPS Version:   2025.7.22.4
+44.09    Operating System: Linux Ubuntu" 24.04
+44.09    CMake Version:    3.28.3
+44.09    Build type:       Release
+44.09    Install path:     /opt/lammps
+44.09    Generator:        Unix Makefiles using /usr/bin/gmake
+44.09 -- Enabled packages: ASPHERE;EXTRA-COMPUTE;INTERLAYER;KSPACE;MANYBODY;MC;ML-SNAP;MOLECULE;PYTHON;QEQ;REAXFF;REPLICA;RIGID
+44.09 -- <<< Compilers and Flags: >>>
+44.09 -- C++ Compiler:     /usr/bin/c++
+44.09       Type:          GNU
+44.09       Version:       13.3.0
+44.09       C++ Standard:  17
+44.09       C++ Flags:     -O3 -DNDEBUG
+44.09       Defines:       LAMMPS_SMALLBIG;LAMMPS_MEMALIGN=64;LAMMPS_OMP_COMPAT=4;LAMMPS_GZIP;FFT_KISS;LMP_PYTHON
+44.09 -- C compiler:       /usr/bin/cc
+44.09       Type:          GNU
+44.09       Version:       13.3.0
+44.09       C Flags:       -O3 -DNDEBUG
+44.09 -- <<< Linker flags: >>>
+44.09 -- Executable name:  lmp
+44.09 -- Shared library flags:
+44.09 -- <<< MPI flags >>>
+44.09 -- MPI_defines:      MPICH_SKIP_MPICXX;OMPI_SKIP_MPICXX;_MPICC_H
+44.09 -- MPI includes:     /usr/lib/x86_64-linux-gnu/mpich/include
+44.09 -- MPI libraries:    /usr/lib/x86_64-linux-gnu/mpich/lib/libmpichcxx.so;/usr/lib/x86_64-linux-gnu/mpich/lib/libmpich.so;
+44.09 -- <<< FFT settings >>>
+44.09 -- Primary FFT lib:  KISS
+44.09 -- Using double precision FFTs
+44.09 -- Using non-threaded FFTs
+44.09 -- Using builtin distributed FFT algorithms
+44.09 -- Configuring done (12.8s)
+44.19 -- Generating done (0.1s)
+44.20 -- Build files have been written to: /opt/lammps_build
+44.86 [  0%] Generating includes/lammps/timer.h
+44.87 [  0%] Generating includes/lammps/lattice.h
+44.87 [  0%] Generating includes/lammps/universe.h
+44.88 [  0%] Generating includes/lammps/update.h
+44.99 [  0%] Built target lattice.h
+
+      . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+209.3 [ 61%] Building CXX object CMakeFiles/lammps.dir/opt/lammps-stable_22Jul2025_update4/src/velocity.cpp.o
+211.1 [ 61%] Building CXX object CMakeFiles/lammps.dir/opt/lammps-stable_22Jul2025_update4/src/verlet.cpp.o
+211.4 [ 61%] Building CXX object CMakeFiles/lammps.dir/opt/lammps-stable_22Jul2025_update4/src/write_coeff.cpp.o
+212.7 [ 61%] Building CXX object CMakeFiles/lammps.dir/opt/lammps-stable_22Jul2025_update4/src/write_data.cpp.o
+212.8 [ 61%] Building CXX object CMakeFiles/lammps.dir/opt/lammps-stable_22Jul2025_update4/src/write_dump.cpp.o
+213.0 In file included from /usr/include/stdio.h:980,
+213.0                  from /usr/include/c++/13/cstdio:42,
+213.0                  from /opt/lammps-stable_22Jul2025_update4/src/pointers.h:29,
+213.0                  from /opt/lammps-stable_22Jul2025_update4/src/variable.h:17,
+213.0                  from /opt/lammps-stable_22Jul2025_update4/src/variable.cpp:15:
+213.0 In function 'fgets',
+213.0     inlined from 'LAMMPS_NS::VarReader::read_scalar(char*)' at /opt/lammps-stable_22Jul2025_update4/src/variable.cpp:5766:18:
+213.0 /usr/include/x86_64-linux-gnu/bits/stdio2.h:200:26: warning: argument 1 is null but the corresponding size argument 2 value is 256 [-Wnonnull]
+213.0   200 |     return __fgets_alias (__s, __n, __stream);
+213.0       |            ~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~
+213.0 In file included from /usr/include/features.h:502,
+213.0                  from /usr/include/x86_64-linux-gnu/c++/13/bits/os_defines.h:39,
+213.0                  from /usr/include/x86_64-linux-gnu/c++/13/bits/c++config.h:679,
+213.0                  from /usr/include/c++/13/cstdint:38,
+213.0                  from /usr/include/c++/13/cinttypes:38,
+213.0                  from /opt/lammps-stable_22Jul2025_update4/src/lmptype.h:45,
+213.0                  from /opt/lammps-stable_22Jul2025_update4/src/pointers.h:25:
+213.0 /usr/include/x86_64-linux-gnu/bits/stdio2-decl.h: In member function 'LAMMPS_NS::VarReader::read_scalar(char*)':
+213.0 /usr/include/x86_64-linux-gnu/bits/stdio2-decl.h:96:14: note: in a call to function '*fgets' declared with attribute 'access (write_only, 1, 2)'
+213.0    96 | extern char *__REDIRECT (__fgets_alias,
+213.0       |              ^~~~~~~~~~
+213.4 [ 61%] Building CXX object CMakeFiles/lammps.dir/opt/lammps-stable_22Jul2025_update4/src/write_restart.cpp.o
+214.3 [ 62%] Building CXX object CMakeFiles/lammps.dir/opt/lammps-stable_22Jul2025_update4/src/ASPHERE/compute_erotate_asphere.cpp.o
+214.7 [ 62%] Building CXX object CMakeFiles/lammps.dir/opt/lammps-stable_22Jul2025_update4/src/ASPHERE/compute_temp_asphere.cpp.o
+215.3 [ 62%] Building CXX object CMakeFiles/lammps.dir/opt/lammps-stable_22Jul2025_update4/src/ASPHERE/fix_nh_asphere.cpp.o
+215.7 [ 62%] Building CXX object CMakeFiles/lammps.dir/opt/lammps-stable_22Jul2025_update4/src/ASPHERE/fix_nph_asphere.cpp.o
+
+      . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+330.9 [100%] Building CXX object CMakeFiles/lammps.dir/opt/lammps-stable_22Jul2025_update4/src/RIGID/fix_rigid_nvt.cpp.o
+331.2 [100%] Building CXX object CMakeFiles/lammps.dir/opt/lammps-stable_22Jul2025_update4/src/RIGID/fix_rigid_nvt_small.cpp.o
+331.3 [100%] Building CXX object CMakeFiles/lammps.dir/opt/lammps-stable_22Jul2025_update4/src/RIGID/fix_rigid_small.cpp.o
+331.7 [100%] Building CXX object CMakeFiles/lammps.dir/opt/lammps-stable_22Jul2025_update4/src/RIGID/fix_shake.cpp.o
+334.9 [100%] Linking CXX shared library liblammps.so
+341.0 during IPA pass: static-var
+341.0 lto1: internal compiler error: in return_token, at opts-common.cc:2137
+341.2 0x7ffffb9d51c9 __libc_start_call_main
+341.2 	../sysdeps/nptl/libc_start_call_main.h:58
+341.2 0x7ffffb9d528a __libc_start_main_impl
+341.2 	../csu/libc-start.c:360
+341.2 Please submit a full bug report, with preprocessed source (by using -freport-bug).
+341.2 Please include the complete backtrace with any bug report.
+341.2 See <file:///usr/share/doc/gcc-13/README.Bugs> for instructions.
+341.2 lto-wrapper: fatal error: /usr/bin/c++ returned 1 exit status
+341.2 compilation terminated.
+341.2 /usr/bin/ld: error: lto-wrapper failed
+341.2 collect2: error: ld returned 1 exit status
+341.2 gmake[2]: *** [CMakeFiles/lammps.dir/build.make:10103: liblammps.so.0] Error 1
+341.2 gmake[1]: *** [CMakeFiles/Makefile2:179: CMakeFiles/lammps.dir/all] Error 2
+341.2 gmake: *** [Makefile:136: all] Error 2
+------
+
+ 2 warnings found (use docker --debug to expand):
+ - UndefinedVar: Usage of undefined variable '$LD_LIBRARY_PATH' (line 110)
+ - UndefinedVar: Usage of undefined variable '$PYTHONPATH' (line 111)
+Dockerfile.base-baseline-arm64:55
+--------------------
+  54 |     WORKDIR /opt
+  55 | >>> RUN wget https://github.com/lammps/lammps/archive/refs/tags/stable_22Jul2025_update4.tar.gz && \
+  56 | >>>     tar xzf stable_22Jul2025_update4.tar.gz && \
+  57 | >>>     cmake -S lammps-stable_22Jul2025_update4/cmake \
+  58 | >>>     -B lammps_build \
+  59 | >>>     -D CMAKE_BUILD_TYPE=Release \
+  60 | >>>     -D CMAKE_INSTALL_PREFIX=/opt/lammps \
+  61 | >>>     -D BUILD_SHARED_LIBS=yes \
+  62 | >>>     -D ENABLE_LTO=no \
+  63 | >>>     -D PKG_MANYBODY=ON \
+  64 | >>>     -D PKG_MC=ON \
+  65 | >>>     -D PKG_MOLECULE=ON \
+  66 | >>>     -D PKG_KSPACE=ON \
+  67 | >>>     -D PKG_REPLICA=ON \
+  68 | >>>     -D PKG_ASPHERE=ON \
+  69 | >>>     -D PKG_ML-SNAP=ON \
+  70 | >>>     -D PKG_REAXFF=ON \
+  71 | >>>     -D PKG_RIGID=ON \
+  72 | >>>     -D PKG_MPIIO=ON \
+  73 | >>>     -D PKG_QEQ=ON \
+  74 | >>>     -D PKG_PYTHON=On \
+  75 | >>>     -D PKG_INTERLAYER=ON \
+  76 | >>>     -D PKG_EXTRA-COMPUTE=ON \
+  77 | >>>     -D CMAKE_POSITION_INDEPENDENT_CODE=ON \
+  78 | >>>     -D CMAKE_EXE_FLAGS="-dynamic" \
+  79 | >>>     -D BUILD_LIB=on && \
+  80 | >>>     cmake --build lammps_build --target install -j4 && \
+  81 | >>>     make -C lammps_build install-python && \
+  82 | >>>     rm -f stable_22Jul2025_update4.tar.gz
+  83 |
+--------------------
+ERROR: failed to build: failed to solve: process "/bin/sh -c wget https://github.com/lammps/lammps/archive/refs/tags/stable_22Jul2025_update4.tar.gz &&     tar xzf stable_22Jul2025_update4.tar.gz &&     cmake -S lammps-stable_22Jul2025_update4/cmake     -B lammps_build     -D CMAKE_BUILD_TYPE=Release     -D CMAKE_INSTALL_PREFIX=/opt/lammps     -D BUILD_SHARED_LIBS=yes     -D ENABLE_LTO=no     -D PKG_MANYBODY=ON     -D PKG_MC=ON     -D PKG_MOLECULE=ON     -D PKG_KSPACE=ON     -D PKG_REPLICA=ON     -D PKG_ASPHERE=ON     -D PKG_ML-SNAP=ON     -D PKG_REAXFF=ON     -D PKG_RIGID=ON     -D PKG_MPIIO=ON     -D PKG_QEQ=ON     -D PKG_PYTHON=On     -D PKG_INTERLAYER=ON     -D PKG_EXTRA-COMPUTE=ON     -D CMAKE_POSITION_INDEPENDENT_CODE=ON     -D CMAKE_EXE_FLAGS=\"-dynamic\"     -D BUILD_LIB=on &&     cmake --build lammps_build --target install -j4 &&     make -C lammps_build install-python &&     rm -f stable_22Jul2025_update4.tar.gz" did not complete successfully: exit code: 2
+
+View build details: docker-desktop://dashboard/build/desktop-linux/desktop-linux/kbe0gwnscfyxm1og82djux1ur
+
+What's next:
+    Debug this build failure with Gordon → docker ai "help me fix this build failure"
