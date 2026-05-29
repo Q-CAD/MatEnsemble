@@ -1,56 +1,39 @@
 ========
 Overview
 ========
-MatEnsemble is a framework to build, orchestrate and asynchronously manage scalable workflows, especially targeted for compute-intensive AI-driven materials modeling simulations (e.g., atomistic modeling, Phase-Field etc.) as efficiently as possible. 
+MatEnsemble is a framework to build, orchestrate and asynchronously manage scalable **active-learning** workflows, especially targeted for compute-intensive AI-driven materials modeling simulations (e.g., atomistic modeling, Phase-Field etc.) as efficiently as possible. 
 Apart from standard automated high-throughput computations, the core of MatEsnemble is designed to support "user-defined" aquistion strategie to dynamically steer workflows based on intermediate results, which is a common pattern in active learning and other autonomous workflows at scale.
 To enable extremely scalable paramettric sweeps and bypass standard scheduler bottlenecks, typically encountered in leadership computing platforms, MatEnsemble uses a single large allocation and an internal scheduler to manage arbitrarily larger workloads. The library is built on top of the Flux resource manager, which provides efficient job scheduling and resource management capabilities, making it well-suited for high-throughput computing scenarios
-MatEnsemble benefits from the native python executor-interface of \texttt{Flux} \cite{ahn2020flux}, \
-and the concurrent asynchronous programming model of core python through \texttt{Future} objects \cite{quinlan2009futures}. \
+MatEnsemble [bagchi2025matensemble]_ benefits from the native python executor-interface of **Flux**[ahn2020flux]_, \
+and the concurrent asynchronous programming model of core python through **Future**[quinlan2009futures]_ \
 
-At the core, MatEnsemble is a **workflow manager** for running many :class:`~matensemble.chore.Chore` instances on a
-supercomputer as efficiently as possible. You build a directed acyclic graph (DAG) of :class:`~matensemble.chore.Chore`s in Python; MatEnsemble
-submits work to Flux, tracks completions, records logs, and keeps hardware busy while tasks finish
-at different rates.
+.. For streaming dynamics workflows, the in-tree **dynopro** components use an in-memory analysis protocol for
+.. post-processing large atomistic trajectories on heterogeneous GPU+CPU systems via MPI communicator splitting
+.. (cf. [bagchi2025matensemble]_).
+
+High-throughput orchestration and schedulers
+============================================
 
 The library targets **high-throughput** and **ensemble** scenarios: thousands of small simulations,
 parameter sweeps, or analysis pipelines where classic “one Slurm job per task” workflows would overwhelm the
-scheduler or spend too much time queued.
-
-MatEnsemble is especially aimed at compute-intensive, AI-driven materials modeling workflows such as
-atomistic modeling and phase-field simulations. Beyond fixed high-throughput sweeps, it supports
-user-defined acquisition and completion strategies that can dynamically steer later work from intermediate
-results, a common pattern in active learning and autonomous workflows at scale.
-
-For streaming dynamics workflows, the in-tree **dynopro** components use an in-memory analysis protocol for
-post-processing large atomistic trajectories on heterogeneous GPU+CPU systems via MPI communicator splitting
-(cf. [bagchi2025matensemble]_).
-
-High-throughput computing and schedulers
-=========================================
-
-High Throughput Computing (HTC) maximizes completed work over long windows by running **many independent**
-tasks, often modest in size. Sites frequently call this pattern **task farming**.
-
-Farming through raw Slurm has costs:
+scheduler or spend too much time queued. In the context of high-throughput materials modeling, fully leveraging exascale resource capabilities with SLURM or similar schedulers is challenging due to:
 
 * Many short ``sbatch`` / ``srun`` invocations increase scheduler load and log volume.
 * Queue latency dominates when tasks are tiny relative to scheduler quanta.
 * Some centers cap how many job steps you may launch inside a single allocation.
+* Loss of significant throughput due to idle resources and lack of fine-grained task-management. 
 
 A common mitigation is **one large allocation** plus an **internal scheduler** that launches many child
 processes or MPI ranks inside that allocation. The remaining problem is **utilization**: if you launch work
 in static waves, fast tasks finish early and cores sit idle while slow tasks run. MatEnsemble addresses that
-with **adaptive** submission tied to live Flux resource reporting.
-
-MatEnsemble builds on Flux's Python executor interface [ahn2020flux]_ and Python's asynchronous
-``concurrent.futures.Future`` programming model [quinlan2009futures]_.
+with its **adaptive** task orchestration capability, new/pending tasks are launched as soon as resources free up, keeping the allocation saturated until all work is done.
 
 What MatEnsemble does
 =====================
 
-**Inside your Flux session**, MatEnsemble repeatedly: (1) reads free CPU/GPU counts, (2) submits ready DAG
-nodes that fit, (3) processes completed Flux jobs, (4) unblocks dependents, (5) lets configured strategies
-add newly discovered work, and (6) repeats until no ready, running, or blocked work remains.
+MatEnsemble continuously: (1) tracks available computing resources, (2) submits ready DAG
+nodes in the queue, (3) processes completed flux jobs, (4) unblocks dependents, and (5) repeats until no ready,
+running, or blocked work remains and/or spawns new DAGs depending on user-defined strategies.
 
 See :doc:`design` for the exact loop, artifacts, and environment assumptions.
 
