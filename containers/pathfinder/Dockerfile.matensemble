@@ -1,7 +1,7 @@
 FROM ghcr.io/freddude2004/matensemble-base:pathfinder
 
 RUN apt-get update && apt-get install -y \
-    libgl1-mesa-dev libglu1-mesa-dev mesa-utils
+    git libgl1-mesa-dev libglu1-mesa-dev mesa-utils
 
 # clone MatEnsemble
 WORKDIR /opt
