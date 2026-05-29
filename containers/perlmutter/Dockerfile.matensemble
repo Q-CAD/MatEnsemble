@@ -1,4 +1,5 @@
-FROM docker.io/nersc/flux:26.05
+FROM docker.io/nersc/lammps:26.05
+
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 ENV PATH=/opt/basic/bin:$PATH

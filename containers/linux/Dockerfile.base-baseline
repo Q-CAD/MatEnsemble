@@ -1,4 +1,4 @@
-FROM docker.io/ubuntu:24.04 AS builder
+FROM ubuntu:24.04 AS builder
 ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /opt
 
@@ -85,7 +85,7 @@ RUN wget https://github.com/lammps/lammps/archive/refs/tags/stable_22Jul2025_upd
 RUN python -m pip install --no-cache-dir flux-python==0.70.0
 
 # Final stage
-FROM docker.io/ubuntu:24.04
+FROM ubuntu:24.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Runtime deps only

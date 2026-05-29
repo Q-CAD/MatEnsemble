@@ -1,0 +1,14 @@
+FROM ghcr.io/freddude2004/matensemble-base:pathfinder
+
+RUN apt-get update && apt-get install -y \
+    libgl1-mesa-dev libglu1-mesa-dev mesa-utils
+
+# clone MatEnsemble
+WORKDIR /opt
+RUN git clone --depth 1 https://github.com/FredDude2004/MatEnsemble.git matensemble && \
+    cd matensemble && \
+    uv export --format requirements.txt --no-hashes --no-emit-project --output-file requirements.txt && \
+    /opt/basic/bin/python -m pip install -r requirements.txt && \
+    /opt/basic/bin/python -m pip install --no-deps .
+
+
