@@ -171,6 +171,16 @@
 - [x] Convert Scaffold into PowerPoint Presentation
 - [x] Email coordinator about length of presentation and audience
 
+# === May 29, 2026 ===
+- [ ] Make sure all containers are working and stable
+    * Frontier
+    * Perlmutter
+    * Pathfinder
+    * Linux
+- [ ] Make all figures for JOSS paper and explain all of them
+- [ ] Make sure conda env is working
+- [ ] Update tutorials for all systems
+
 ## === AFTER EVERYTHING ABOVE IS DONE AND STABLE ===
 
 ## --- Model Context Protocol ---
@@ -197,12 +207,12 @@
 
 ## --- Create first draft for JOSS ---
 - [ ] Read some example papers
-- [ ] Create draft and show Dr. Bagchi
-- [ ] Polish the repository to be ready for review
+- [x] Create draft and show Dr. Bagchi
+- [x] Polish the repository to be ready for review
 - [ ] Make sure that the tests work
 - [ ] Make sure that the example workflows work correctly
-- [ ] Make sure that they can easily test the code and
-- [ ] Create a conda package that they can easily test the code without having
+- [ ] Make sure that they can easily test the code
+- [x] Create a conda package that they can easily test the code without having
       to compile flux and flux-sched themselves
 
 ## --- Reading List ---

@@ -51,6 +51,16 @@ MatEnsemble's distinct contribution is its deliberately narrow, Flux-native desi
 
 # Software design
 
+MatEnsemble’s architecture is centered on a separation between workflow definition, scheduling, execution. The user process constructs a graph of delayed chores through the Pipeline API, while FluxManager owns runtime state such as blocked, ready, running, completed, and failed chore sets. Individual chores are submitted through Flux as independent jobs. For Python chores, this separation creates a reconstruction problem. Callables defined in the user’s Python process are not available by memory reference inside a fresh worker process launched by Flux. MatEnsemble solves this by writing callable registry entries and per-chore specifications into the workflow directory, allowing runtime_worker to reload the chore, resolve dependency outputs, execute the callable, and write a result artifact for downstream chores.
+
+technical contributions:
+
+* Flux-native adaptive back-filling rather than static waves of jobs.
+* Pythonic DAG construction using delayed functions and OutputReference.
+* Remote Python chore reconstruction through registry + per-chore artifacts.
+* Strategy-pattern completion handling that makes adaptive, non-adaptive, and user-defined behavior interchangeable.
+* Dynamic workflow expansion through UserStrategy and ChoreSpec, which is the most novel architecture idea.
+
 MatEnsemble separates workflow construction from execution. During construction, `Pipeline.chore` records delayed Python calls and `Pipeline.exec` records command-line chores. Dependency discovery is data-driven: `OutputReference` objects embedded in positional arguments, keyword arguments, nested containers, or dataclasses are collected into graph edges. Before execution, MatEnsemble builds a `networkx` DAG, rejects missing dependencies and cycles, and orders chores topologically. Each python chore will have its original callable stored in a *registry* and during runtime each chore will have a dedicated directory for all of its outputs.
 
 ```
