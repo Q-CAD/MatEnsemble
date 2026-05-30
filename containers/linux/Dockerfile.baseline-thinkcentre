@@ -1,0 +1,73 @@
+FROM docker.io/ubuntu:24.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+WORKDIR /opt
+
+RUN apt-get update && apt-get install --yes \
+    build-essential git wget cmake mpich libmpich-dev \
+    autoconf automake libtool make pkg-config libc6-dev libzmq3-dev uuid-dev \
+    libjansson-dev liblz4-dev libarchive-dev libhwloc-dev libsqlite3-dev lua5.1 \
+    liblua5.1-dev lua-posix aspell aspell-en time valgrind libmpich-dev jq \
+    libboost-dev libboost-graph-dev libedit-dev libyaml-cpp-dev \
+    && apt-get clean
+
+COPY --from=ghcr.io/astral-sh/uv:0.11.8 /uv /uvx /bin/
+RUN UV_NATIVE_TLS=1 uv venv /opt/basic --seed --python 3.12
+ENV PATH="/opt/basic/bin:$PATH"
+
+RUN uv pip install setuptools wheel cffi ply PyYAML sphinx jsonschema
+
+RUN python -m pip install --no-cache-dir mpi4py
+
+# Flux & Fluxion Build
+WORKDIR /opt
+RUN git clone -b v0.70.0 https://github.com/flux-framework/flux-core.git && \
+    cd flux-core && \
+    PYTHON=/opt/basic/bin/python ./autogen.sh && \
+    ./configure && \
+    make -j8 && \
+    make install && \
+    ldconfig
+
+RUN git clone -b v0.41.0 https://github.com/flux-framework/flux-sched.git && \
+    cd flux-sched                                                         && \
+    cmake -B build                                                        && \
+    cmake --build build -j1                                               && \
+    cmake --build build -t install                                        && \
+    ldconfig
+
+# LAMMPS Build
+WORKDIR /opt
+RUN wget https://github.com/lammps/lammps/archive/refs/tags/stable_22Jul2025_update4.tar.gz && \
+    tar xzf stable_22Jul2025_update4.tar.gz && \
+    cmake -S lammps-stable_22Jul2025_update4/cmake \
+        -B lammps_build \
+        -D CMAKE_BUILD_TYPE=Release \
+        -D CMAKE_INSTALL_PREFIX=/opt/lammps \
+        -D BUILD_SHARED_LIBS=yes \
+        -D PKG_MANYBODY=ON \
+        -D PKG_MC=ON \
+        -D PKG_MOLECULE=ON \
+        -D PKG_KSPACE=ON \
+        -D PKG_REPLICA=ON \
+        -D PKG_ASPHERE=ON \
+        -D PKG_ML-SNAP=ON \
+        -D PKG_REAXFF=ON \
+        -D PKG_RIGID=ON \
+        -D PKG_MPIIO=ON \
+        -D PKG_QEQ=ON \
+        -D PKG_PYTHON=On \
+        -D PKG_INTERLAYER=ON \
+        -D PKG_EXTRA-COMPUTE=ON \
+        -D CMAKE_POSITION_INDEPENDENT_CODE=ON \
+        -D CMAKE_EXE_FLAGS="-dynamic" \
+        -D BUILD_LIB=on && \
+    cmake --build lammps_build --target install -j8 && \
+    make -C lammps_build install-python && \
+    rm -r stable_22Jul2025_update4.tar.gz
+
+RUN python -m pip install --no-cache-dir flux-python==0.70.0
+ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH:-}
+
+
+
