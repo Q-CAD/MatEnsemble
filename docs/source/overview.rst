@@ -3,7 +3,8 @@ Overview
 ========
 MatEnsemble is a framework to build, orchestrate and asynchronously manage scalable **active-learning** workflows, especially targeted for compute-intensive AI-driven materials modeling simulations (e.g., atomistic modeling, Phase-Field etc.) as efficiently as possible. 
 Apart from standard automated high-throughput computations, the core of MatEsnemble is designed to support "user-defined" aquistion strategie to dynamically steer workflows based on intermediate results, which is a common pattern in active learning and other autonomous workflows at scale.
-To enable extremely scalable paramettric sweeps and bypass standard scheduler bottlenecks, typically encountered in leadership computing platforms, MatEnsemble uses a single large allocation and an internal scheduler to manage arbitrarily larger workloads. The library is built on top of the Flux resource manager, which provides efficient job scheduling and resource management capabilities, making it well-suited for high-throughput computing scenarios
+To enable extremely scalable paramettric sweeps and bypass standard scheduler bottlenecks, typically encountered in leadership computing platforms, MatEnsemble uses a single large allocation and an internal scheduler to manage arbitrarily larger workloads. The library is built on top of the Flux resource manager, which provides efficient job scheduling and resource management capabilities, making it well-suited for high-throughput computing scenarios.
+
 MatEnsemble [bagchi2025matensemble]_ benefits from the native python executor-interface of **Flux** [ahn2020flux]_, \
 and the concurrent asynchronous programming model of core python through ``concurrent.futures`` objects [quinlan2009futures]_. \
 
