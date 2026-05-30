@@ -317,9 +317,7 @@ class UserStrategy(FutureProcessingStrategy):
                     new_chore, new_out = self.pipeline._spawn_chore_from_spec(
                         chore_spec
                     )
-                    self.pipeline._admit_spawned_chore(
-                        new_chore, new_out, self.manager
-                    )
+                    self.pipeline._admit_spawned_chore(new_chore, new_out, self.manager)
                 except Exception as e:
                     self.manager._logger.exception(
                         f"FAILED TO SPAWN CHORE: chore={self.proc_chore} | due the following Exception ->\n{e}"
