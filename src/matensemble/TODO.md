@@ -172,14 +172,15 @@
 - [x] Email coordinator about length of presentation and audience
 
 # === May 29, 2026 ===
+- [x] Fix the strategy error
+- [x] Make sure conda env is working
 - [ ] Make sure all containers are working and stable
     * Frontier
     * Perlmutter
     * Pathfinder
     * Linux
-- [ ] Make all figures for JOSS paper and explain all of them
-- [ ] Make sure conda env is working
 - [ ] Update tutorials for all systems
+- [ ] Make all figures for JOSS paper and explain all of them
 
 ## === AFTER EVERYTHING ABOVE IS DONE AND STABLE ===
 
