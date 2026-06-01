@@ -175,7 +175,7 @@
 - [x] Fix the strategy error
 - [x] Make sure conda env is working
 - [ ] Make sure all containers are working and stable
-    o Frontier
+    x Frontier
     o Perlmutter
     x Pathfinder
     o Linux

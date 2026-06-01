@@ -1,6 +1,6 @@
 {
   "name": "MatEnsemble",
-  "image": "ghcr.io/freddude2004/matensemble-base:baseline",
+  "image": "ghcr.io/freddude2004/matensemble-base:linux",
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
   "customizations": {
     "vscode": {

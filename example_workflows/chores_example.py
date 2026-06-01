@@ -3,7 +3,7 @@ from matensemble.pipeline import Pipeline
 pipe = Pipeline()
 
 
-# Define a chore that calculates the factorial of a given integer and another 
+# Define a chore that calculates the factorial of a given integer and another
 @pipe.chore()
 def factorial(n: int) -> int:
     """Caculate the factorial of a given integer"""
@@ -14,7 +14,7 @@ def factorial(n: int) -> int:
     return product
 
 
-# Define a chore that calculates the sum of the digits in a given integer. 
+# Define a chore that calculates the sum of the digits in a given integer.
 @pipe.chore()
 def digit_sum(n) -> int:
     """Cacluates the sum of each of the digits in a given integer"""

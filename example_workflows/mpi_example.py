@@ -24,7 +24,3 @@ for _ in range(10):
 
 
 pipe.submit(log_delay=1)
-
-
-
-

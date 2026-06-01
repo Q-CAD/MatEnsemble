@@ -53,5 +53,5 @@ pipe.add_user_strat("higher_or_lower", ["guess"])
 
 
 guess(a, b)
-future = pipe.submit()
+future = pipe.submit(log_delay=1)
 print(future.result())
