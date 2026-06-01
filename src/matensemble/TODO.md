@@ -177,10 +177,11 @@
 - [ ] Make sure all containers are working and stable
     o Frontier
     o Perlmutter
-    o Pathfinder
+    x Pathfinder
     o Linux
 - [ ] Update tutorials for all systems
-- [ ] Make all figures for JOSS paper and explain all of them
+- [x] Make all figures for JOSS paper and explain all of them
+- [ ] Make the figure for the user defined strategies flow chart
 
 ## === AFTER EVERYTHING ABOVE IS DONE AND STABLE ===
 
