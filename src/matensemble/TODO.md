@@ -175,10 +175,10 @@
 - [x] Fix the strategy error
 - [x] Make sure conda env is working
 - [ ] Make sure all containers are working and stable
-    * Frontier
-    * Perlmutter
-    * Pathfinder
-    * Linux
+    o Frontier
+    o Perlmutter
+    o Pathfinder
+    o Linux
 - [ ] Update tutorials for all systems
 - [ ] Make all figures for JOSS paper and explain all of them
 

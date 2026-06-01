@@ -41,3 +41,4 @@ docs/source/api/
 core
 core.*
 *.core
+*.pem
