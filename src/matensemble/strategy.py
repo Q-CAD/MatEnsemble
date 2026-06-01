@@ -224,9 +224,6 @@ class NonAdaptiveStrategy(FutureProcessingStrategy):
             return
 
 
-# TODO: Make the strategy look through the bolo list and spawn a new chore with the output of another
-#       and then make sure that the chore that is acting as a processing strat is a on the bolo list
-#       and if that is done then you need to get the results and spawn a new chore from the ChoreSpec
 class UserStrategy(FutureProcessingStrategy):
     def __init__(self, manager, pipeline, processing_chore, bolo_list) -> None:
         super().__init__(manager)

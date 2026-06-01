@@ -5,23 +5,24 @@ import random
 
 pipe = Pipeline()
 
-# I'm thinking of a number between _ and _.
+# I'm thinking of a number between {a} and {b}.
 a, b = 1, 100
 answer = random.randint(a, b)
 
 
 @pipe.chore()
-def guess(bottom: int, top: int, guess_num: int) -> dict:
+def guess(lower: int, upper: int, guess_num: int = 1) -> dict:
     """Guesses a number between the bottom and top of the range"""
 
     return {
-        "guess": ((bottom + top - 1) // 2),
-        "low": bottom,
-        "high": top,
+        "guess": ((lower + upper) // 2),
+        "low": lower,
+        "high": upper,
         "num_guesses": guess_num,
     }
 
 
+@pipe.chore()
 def higher_or_lower(guess, ans=answer):
     """
     Takes the results of a 'guess' chore and spawns a new guess chore based on
@@ -51,7 +52,6 @@ def higher_or_lower(guess, ans=answer):
 pipe.add_user_strat("higher_or_lower", ["guess"])
 
 
-guess(a, b, 50)
-pipe.submit()
-results = pipe.results
-print(results)
+guess(a, b)
+future = pipe.submit()
+print(future.result())

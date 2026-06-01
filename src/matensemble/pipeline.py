@@ -278,7 +278,8 @@ class Pipeline:
         Returns
         -------
         Callable
-            A dummy function that just prints a warning to the stdout
+            A dummy function that just prints a warning to the stdout. The
+            actual function is stored in the registry
         """
 
         def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -602,9 +603,6 @@ class Pipeline:
             with self._submission_state_lock:
                 self._finished = True
             return self._collect_results()
-
-    def add_user_strat(self, chore_name: str, bolo_list: list[str]):
-        self._strategy_spec = {"name": chore_name, "bolo_list": bolo_list}
 
     def graph(self) -> nx.DiGraph:
         return self._create_graph()
