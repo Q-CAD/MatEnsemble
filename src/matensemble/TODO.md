@@ -178,7 +178,7 @@
     x Frontier
     o Perlmutter
     x Pathfinder
-    o Linux
+    x Linux
 - [ ] Update tutorials for all systems
 - [x] Make all figures for JOSS paper and explain all of them
 - [ ] Make the figure for the user defined strategies flow chart

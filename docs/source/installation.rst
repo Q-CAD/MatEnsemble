@@ -31,12 +31,14 @@ compatible with, the ``version`` field in ``pyproject.toml`` in the same commit)
 
    * - Tag
      - Intended platform / notes
-   * - ``baseline-vX.Y.Z``
-     - Most portable; use when you do not need a site-tuned image.
+   * - ``pathfinder-vX.Y.Z``
+     - Optimized for OLCF Pathfinder; pair with center module instructions.
    * - ``frontier-vX.Y.Z``
      - Optimized for OLCF Frontier; pair with center module instructions.
    * - ``perlmutter-vX.Y.Z``
      - Optimized for NERSC Perlmutter; pair with Shifter/Podman-HPC guidance from NERSC docs.
+   * - ``linux-vX.Y.Z``
+     - General install, not optimized for any specific system.
 
 Apptainer
 ---------
@@ -50,7 +52,7 @@ Docker images from the GitHub Container Registry to build a \*.sif file.
 
 .. code-block:: bash
 
-    apptainer build <name>.sif docker://<image>:<tag>
+    apptainer build <name>.sif docker://ghcr.io/freddude2004/<image>:<tag>
 
 The <name> is whatever you want the portable squashed image to be named and the image tag will be
 the version of MatEnsemble that you want to use. Here is an example of building a \*.sif file for
@@ -59,6 +61,25 @@ Frontier
 .. code-block:: bash
 
     apptainer build matensemble.sif docker://ghcr.io/freddude2004/matensemble:frontier-dev
+
+.. note::
+   The Frontier image is quite large and squashing the image into the singularity image format
+   may take a lot of time. It may be necesary to allocate yourself a compute node to build the
+   container.
+
+.. code-block:: bash
+
+   salloc -A <project_id> -t 1:00:00 -N 1
+
+   # setup proxy to connect to the internet
+   export all_proxy=socks://proxy.ccs.ornl.gov:3128/
+   export ftp_proxy=ftp://proxy.ccs.ornl.gov:3128/
+   export http_proxy=http://proxy.ccs.ornl.gov:3128/
+   export https_proxy=http://proxy.ccs.ornl.gov:3128/
+   export no_proxy='localhost,127.0.0.0/8,*.ccs.ornl.gov'
+
+   # build the container
+   apptainer build matensemble.sif docker://ghcr.io/freddude2004/matensemble:frontier-v0.3.5
 
 The frontier-dev tag will be the most up to date version of MatEnsemble which is updated with each
 push to main, but may be unstable.
@@ -74,7 +95,7 @@ that is immutable
     apptainer build --sandbox <sandbox_name> docker://<image>:<tag>
 
     # Example of building a sandbox for Frontier
-    apptainer build --sanbox matensemble_sandbox docker://ghcr.io/freddude2004/matensemble:frontier-dev
+    apptainer build --sandbox matensemble_sandbox docker://ghcr.io/freddude2004/matensemble:frontier-dev
 
 Once you have built the image you can install packages or compile software into it as if it were a Ubuntu
 system. You just need to open it in an editable mode.
