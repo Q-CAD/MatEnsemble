@@ -174,14 +174,15 @@
 # === May 29, 2026 ===
 - [x] Fix the strategy error
 - [x] Make sure conda env is working
-- [ ] Make sure all containers are working and stable
+- [x] Make sure all containers are working and stable
     x Frontier
-    o Perlmutter
+    x Perlmutter
     x Pathfinder
     x Linux
 - [ ] Update tutorials for all systems
 - [x] Make all figures for JOSS paper and explain all of them
 - [ ] Make the figure for the user defined strategies flow chart
+- [ ] Fix dynopro resources updating
 
 ## === AFTER EVERYTHING ABOVE IS DONE AND STABLE ===
 

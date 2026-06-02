@@ -9,24 +9,29 @@ tags:
   - ensemble simulation
   - materials science
 authors:
-  - name: Soumendu Bagchi
+  - name:
+      given-names: Soumendu
+      surname: Bagchi
     affiliation: 1
-    # orcid: TODO
-  - name: Kaleb Duchesneau
-    affiliation: 1
-    # orcid: TODO
+    orcid: 0000-0002-0391-9835
+  - name:
+      given-names: Kaleb
+      surname: Duchesneau
+    affiliation: 2
+    orcid: 0009-0004-4387-686X
 affiliations:
-  - name: TODO: Add institutional affiliation(s)
+  - name: Theory and Computation Section, Center for Nanophase Materials Sciences, Oak Ridge National Laboratory, Oak Ridge, TN 37831, USA
     index: 1
+  - name: Department of Computer Science, College of Engineering and Sciences, Purdue University Northwest, Hammond, IN 46323, USA
+    index: 2
 date: 25 May 2026
 bibliography: paper.bib
-# repository: TODO: Add repository URL
-# archive_doi: TODO: Add Zenodo/software archive DOI after release
+repository: https://github.com/FredDude2004/MatEnsemble
 ---
 
 ### Summary
 
-MatEnsemble is a Python package for defining and running high-throughput workflows inside high-performance computing (HPC) allocations. Users construct a directed acyclic graph (DAG) of *chores*, where each chore is either a delayed Python callable or an executable command with explicit resource requirements. MatEnsemble submits these chores through the Flux resource manager, tracks completion, resolves dependencies through serialized Python results, and records workflow state in a structured layout. The package is designed for <insert science cases here> where launching one batch job per task would create excessive scheduler overhead or leave resources idle.
+MatEnsemble is a Python package for defining and running high-throughput workflows inside high-performance computing (HPC) allocations. Users construct a directed acyclic graph (DAG) of *chores*, where each chore is either a delayed python function call or an executable command, each with explicit resource requirements. MatEnsemble submits these chores through the Flux resource manager, tracks completion, resolves dependencies through serialized results, and records workflow state in a structured layout. The package is designed for <insert science cases here> where launching one batch job per task would create excessive scheduler overhead or leave resources idle.
 
 The main user interface is the `Pipeline` object. Decorated Python functions become delayed calls that return `OutputReference` placeholders, passing those placeholders into later chores creates dependency edges. Executable chores can also be added for external programs. At submission time, MatEnsemble validates the dependency graph, submits ready chores that fit the available resources, and continues scheduling until the workflow has no ready, running, or blocked chores. Each run writes logs, standard output and error files for each chore, chore metadata, Python return values, and a status file that can optionally drive a lightweight dashboard.
 

@@ -129,6 +129,11 @@ Chained dependencies (any acyclic DAG)
    Cycles are rejected during DAG validation. Fan-in (many tasks → one consumer) and fan-out are supported
    so long as the graph remains acyclic.
 
+User Defined Strategies
+=======================
+
+Coming soon
+
 Nested arguments
 ================
 
