@@ -292,6 +292,8 @@ class Pipeline:
             registry_key = name or str(func.__qualname__)
             self._registry[registry_key] = func
 
+            self._strategy_spec = {"name": registry_key, "bolo_list": bolo_list}
+
             def disabled_wrapper(*args: Any, **kwargs: Any) -> None:
                 raise RuntimeError(
                     f"Do not call '{registry_key}' directly. "
