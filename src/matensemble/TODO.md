@@ -179,8 +179,9 @@
     x Perlmutter
     x Pathfinder
     x Linux
-- [ ] Update tutorials for all systems
+- [x] Update tutorials for all systems
 - [x] Make all figures for JOSS paper and explain all of them
+- [x] Fix the new strategy decorator
 - [ ] Make the figure for the user defined strategies flow chart
 - [ ] Fix dynopro resources updating
 
