@@ -53,6 +53,7 @@ class Chore:
         deps: tuple[str, ...] = (),
         args: tuple = (),
         kwargs: dict | None = None,
+        nnodes: int | None = None,
     ) -> None:
         """
         The constructor for a :obj:`Chore`
@@ -84,6 +85,12 @@ class Chore:
             The arguments to give the function if type is PYTHON
         kwargs : dict
             The key-word arguments to give the function if flaovr is PYTHON
+        nnodes : int, optional
+            When set, this chore will be scheduled via ``per_resource`` and will
+            occupy *nnodes* whole nodes (all cores and all GPUs on each node).
+            The manager uses this to compute the true resource footprint instead
+            of ``num_tasks * cores_per_task`` / ``num_tasks * gpus_per_task``.
+            Leave as ``None`` for normal ``from_command`` chores.
         """
 
         self.id = id
@@ -100,6 +107,7 @@ class Chore:
         self.deps = deps
         self.args = args
         self.kwargs = {} if kwargs is None else kwargs
+        self.nnodes = nnodes
 
     def graph(self) -> nx.DiGraph:
         return nx.DiGraph()
@@ -121,6 +129,7 @@ class Chore:
             "deps": list(self.deps),
             "args": _json_safe(self.args),
             "kwargs": _json_safe(self.kwargs),
+            "nnodes": self.nnodes,
         }
 
     def _write_metadata(self) -> None:

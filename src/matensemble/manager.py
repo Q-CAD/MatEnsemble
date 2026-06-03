@@ -272,6 +272,26 @@ class FluxManager:
         gpus_per_node = total_gpus // nnodes
         return nnodes, cores_per_node, gpus_per_node
 
+    def _chore_resource_footprint(self, chore: Chore) -> tuple[int, int]:
+        """
+        Return ``(needed_cores, needed_gpus)`` for a chore.
+
+        For whole-node (dynopro) chores — those with ``chore.nnodes`` set — the
+        footprint is ``nnodes * cores_per_node`` and ``nnodes * gpus_per_node``
+        because ``per_resource`` allocates entire nodes and every core and GPU on
+        them becomes unavailable.  For ordinary chores the footprint is the
+        familiar ``num_tasks * cores_per_task`` / ``num_tasks * gpus_per_task``.
+        """
+
+        if getattr(chore, "nnodes", None) is not None:
+            needed_cores = chore.nnodes * self._cores_per_node
+            needed_gpus = chore.nnodes * self._gpus_per_node
+        else:
+            needed_cores = chore.resources.num_tasks * chore.resources.cores_per_task
+            needed_gpus = chore.resources.num_tasks * chore.resources.gpus_per_task
+
+        return needed_cores, needed_gpus
+
     def _chore_fits_allocation(self, chore: Chore) -> bool:
         """
         Checks whether the given chore is too big to be submitted
@@ -282,8 +302,7 @@ class FluxManager:
             The :obj:`Chore` to check if it will fit in the allocation
         """
 
-        needed_cores = chore.resources.num_tasks * chore.resources.cores_per_task
-        needed_gpus = chore.resources.num_tasks * chore.resources.gpus_per_task
+        needed_cores, needed_gpus = self._chore_resource_footprint(chore)
 
         total_cores = self._nnodes_on_allocation * self._cores_per_node
         total_gpus = self._nnodes_on_allocation * self._gpus_per_node
@@ -334,8 +353,7 @@ class FluxManager:
         Checks to see if there are enough resources to submit the given :obj:`Chore`
         """
 
-        needed_cores = chore.resources.num_tasks * chore.resources.cores_per_task
-        needed_gpus = chore.resources.num_tasks * chore.resources.gpus_per_task
+        needed_cores, needed_gpus = self._chore_resource_footprint(chore)
         return self._free_cores >= needed_cores and self._free_gpus >= needed_gpus
 
     def _has_failed(self, chore_id: str) -> bool:
@@ -399,7 +417,9 @@ class FluxManager:
 
             self._fail_dependents(dep_id)
 
-    def _submit_one(self, chore_id: str, buffer_time: float) -> None:
+    def _submit_one(
+        self, chore_id: str, buffer_time: float, dynopro: bool = False
+    ) -> None:
         """
         Submits a :obj:`Chore` and does book-keeping all the queues and resources
         count
@@ -419,6 +439,7 @@ class FluxManager:
                 set_cpu_affinity=self._set_cpu_affinity,
                 set_gpu_affinity=self._set_gpu_affinity,
                 nnodes=None,
+                dynopro=dynopro,
             )
         except Exception as e:
             self._logger.exception("CHORE SUBMIT FAILED: chore=%s", chore_id)
@@ -441,7 +462,9 @@ class FluxManager:
         self._free_gpus -= chore.resources.num_tasks * chore.resources.gpus_per_task
         time.sleep(buffer_time)
 
-    def _submit_until_ooresources(self, buffer_time: float) -> bool:
+    def _submit_until_ooresources(
+        self, buffer_time: float, dynopro: bool = False
+    ) -> bool:
         """
         Submit as many chores as possible until out-of-resources
 
@@ -459,7 +482,7 @@ class FluxManager:
             chore = self._chores_by_id[chore_id]
 
             if self._can_submit_now(chore):
-                self._submit_one(chore_id, buffer_time)
+                self._submit_one(chore_id, buffer_time, dynopro=dynopro)
                 submitted_any = True
             else:
                 deferred.append(chore_id)
@@ -636,7 +659,7 @@ class FluxManager:
             )
             while not done:
                 self._check_resources()
-                self._submit_until_ooresources(buffer_time=buffer_time)
+                self._submit_until_ooresources(buffer_time=buffer_time, dynopro=dynopro)
                 proc_strat.process_futures(buffer_time=buffer_time)
 
                 done = (

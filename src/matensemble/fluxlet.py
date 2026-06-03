@@ -26,7 +26,7 @@ class Fluxlet:
         handle: flux.Flux,
     ) -> None:
         self.handle = handle
-        self.gpus_per_node = self.get_gpus_per_node()
+        self.num_nodes, self.gpus_per_node = self.get_gpus_per_node()
 
     def get_gpus_per_node(self) -> tuple[int, int]:
         """
@@ -81,11 +81,11 @@ class Fluxlet:
         if dynopro:
             jobspec = flux.job.JobspecV1.per_resource(
                 chore.command,
-                ncores=chore.resources.num_tasks,
                 nnodes=nnodes,
                 gpus_per_node=self.gpus_per_node,
-                per_resource_type="core",
+                per_resource_type="node",
                 per_resource_count=1,
+                exclusive=True,  # dynopro needs whole nodes
             )
 
             chore.workdir.mkdir(parents=True, exist_ok=True)
@@ -105,8 +105,6 @@ class Fluxlet:
             base_env.update(chore.resources.env or {})
             base_env["SLURM_GPUS_PER_NODE"] = str(self.gpus_per_node)
             jobspec.environment = base_env
-
-            fut = executor.submit(jobspec)
 
             fut = executor.submit(jobspec)
             fut.chore_id = chore.id

@@ -11,6 +11,7 @@ from pathlib import Path
 
 from abc import ABC, abstractmethod
 
+from matensemble import dynopro
 from matensemble.model import OutputReference
 
 
@@ -127,7 +128,10 @@ class AdaptiveStrategy(FutureProcessingStrategy):
                     self.manager._blocked.discard(dep_id)
 
             # adaptively submit another chore
-            self.manager._submit_until_ooresources(buffer_time=buffer_time)
+            self.manager._submit_until_ooresources(
+                buffer_time=buffer_time,
+                dynopro=getattr(self.manager, "_dynopro", False),
+            )
 
             if self.manager._write_restart_freq and (
                 len(self.manager._completed_chores) % self.manager._write_restart_freq
@@ -338,6 +342,12 @@ class UserStrategy(FutureProcessingStrategy):
                                 f"FAILED TO SPAWN CHORE: proc_chore={self.proc_chore} "
                                 f"bolo_match={chore_name} | due the following Exception ->\n{e}"
                             )
+
+            # adaptively submit another chore
+            self.manager._submit_until_ooresources(
+                buffer_time=buffer_time,
+                dynopro=getattr(self.manager, "_dynopro", False),
+            )
 
             if self.manager._write_restart_freq and (
                 len(self.manager._completed_chores) % self.manager._write_restart_freq
