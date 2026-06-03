@@ -44,7 +44,7 @@ Submitting large numbers of short-lived jobs directly to a system scheduler such
 
 MatEnsemble addresses these challenges by combining a Python-native workflow interface with the Flux resource manager. Rather than submitting thousands of independent scheduler jobs, users acquire a single allocation and allow MatEnsemble to manage task execution within a user-space Flux instance. This hierarchical scheduling model dramatically reduces scheduler overhead while enabling fine-grained control over task placement and execution. MatEnsemble continuously monitors available resources and adaptively backfills newly eligible tasks as running work completes, maintaining high utilization even when task runtimes vary significantly.
 
-![Adaptive Workflow Management](./images/adaptive_vs_non_adaptive.png)
+![Adaptive Workflow Management](../images/adaptive_vs_non_adaptive.png)
 
 Unlike many existing scientific workflow systems that rely on external databases, centralized services, or privileged scheduler interactions, MatEnsemble is designed as a lightweight Python library that operates entirely within the user's allocation. Workflows are expressed as directed acyclic graphs of Python callables or executable tasks, with declarative resource requirements attached to each task. The framework leverages Flux's scalable user-space scheduling architecture while exposing a familiar Python programming model for workflow construction and execution.
 
@@ -61,7 +61,7 @@ Several mature Python workflow systems already support scientific task graphs. P
 
 MatEnsemble’s architecture is centered on a separation between workflow definition, scheduling, execution. The user process constructs a graph of delayed chores through the Pipeline API, while FluxManager owns runtime state such as blocked, ready, running, completed, and failed chore sets. Individual chores are submitted through Flux as independent jobs. For Python chores, this separation creates a reconstruction problem. Callables defined in the user’s Python process are not available by memory reference inside a fresh worker process launched by Flux.
 
-![Problem with Python Callables and Flux](./images/matensemble_flux_problem_chart.png)
+![Problem with Python Callables and Flux](../images/matensemble_flux_problem_chart.png)
 
 MatEnsemble solves this by writing callable registry entries and per-chore specifications into the workflow directory, allowing runtime_worker to reload the chore, resolve dependency outputs, execute the callable, and write a result artifact for downstream chores.
 
@@ -100,15 +100,15 @@ For Python chores, the original function definitions are serialized into a centr
 
 At runtime, `FluxManager` owns the ready, blocked, running, completed, and failed chore sets. It obtains a Flux handle, measures currently free cores and GPUs, and repeatedly executes a scheduling loop: refresh resources, write status, submit every ready chore that fits, process completed Flux futures, unblock downstream chores, and repeat. Python chores are launched through `matensemble.runtime_worker`, which reloads a serialized chore specification, loads the registered function, and loads upstream results, substitutes them for `OutputReference` placeholders, executes the function, and writes the return value to `result.pickle`. This architecture trades some serialization overhead for a clear boundary between the driver and worker processes, making each chore's command, metadata, stdout, stderr, and result inspectable on disk.
 
-![Manager Loop](./images/manager_flow_chart.png)
+![Manager Loop](../images/manager_flow_chart.png)
 
 The scheduler uses the *strategy pattern* for future processing. The Strategy Pattern is a behavioral software design pattern that defines a family of algorithms, encapsulates each one in a separate class, and makes them interchangeable at runtime.
 
-![Strategy Pattern](./images/strategy_pattern_chart.png)
+![Strategy Pattern](../images/strategy_pattern_chart.png)
 
 The default adaptive strategy attempts to submit newly unblocked tasks immediately as resources become available, while the non-adaptive strategy follows a simpler wave-based execution model. Users may also inject custom scheduling strategies into the FluxManager at runtime. A user-defined strategy looks at completed chores and if they are on in a list of chores to Be On the Look-Out (BOLO) for it will spawn the callback chore and can inspect the results of a completed Python chore and return a ChoreSpec describing additional work to be performed. MatEnsemble then dynamically adds the new chore to the workflow and schedules it when its dependencies are satisfied. This allows workflows to expand during execution based on intermediate results, enabling adaptive and data-driven computational campaigns.
 
-![User Defined Strategies Flow Chart](./images/Cap_1_adaptive_task_management.png)
+![User Defined Strategies Flow Chart](../images/Cap_1_adaptive_task_management.png)
 
 <!-- # Research impact -->
 
