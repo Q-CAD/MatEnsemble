@@ -149,8 +149,20 @@ sure you are in your $SCRATCH space to make sure you have enough room for the sa
     # Example of building a sandbox for Frontier
     apptainer build --sandbox matensemble_sandbox docker://ghcr.io/freddude2004/matensemble:frontier-vX.Y.Z
 
+.. note::
+   If building a sandbox is taking too long you can split it into multiple stages to speed things up.
 
-You can run your workflows interactively in flux quite simply:
+.. code-block:: bash
+
+   # first clean the cache to start fresh
+   apptainer cache clean
+
+   apptainer pull image.sif docker://ghcr.io/freddude2004/matensemble:frontier-vX.Y.Z
+
+   apptainer build ./matensemble_sand image.sif
+
+
+After building your container you can run your workflows interactively in flux quite simply:
 
 .. code-block:: bash
 
