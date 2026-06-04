@@ -112,11 +112,11 @@ Internally, MatEnsemble transforms workflows such as this into a DAG of chores, 
 
 MatEnsemble separates workflow definition, scheduling, and execution into distinct components. Users construct workflows through the Pipeline API, which records delayed chores and dependency relationships. During submission, the workflow is validated, serialized, and handed to a FluxManager instance that coordinates execution through Flux.
 
-![Workflow Lifecycle](./figures/workflow_lifecycle.drawio.png)
+![Workflow Lifecycle](./figures/workflow_life_cycle.drawio.png)
 
 MatEnsemble’s architecture is centered on a separation between workflow definition, scheduling, execution. The user process constructs a graph of delayed chores through the Pipeline API, while FluxManager owns runtime state such as blocked, ready, running, completed, and failed chore sets. Individual chores are submitted through Flux as independent jobs. For Python chores, this separation creates a reconstruction problem. Callables defined in the user’s Python process are not available by memory reference inside a fresh worker process launched by Flux.
 
-![Problem with Python Callables and Flux](./figures/matensemble_flux_problem_chart.png)
+![Problem with Python Callables and Flux](./figures/flux_problem_chart.drawio.png)
 
 MatEnsemble solves this by writing callable registry entries and per-chore specifications into the workflow directory, allowing runtime_worker to reload the chore, resolve dependency outputs, execute the callable, and write a result artifact for downstream chores.
 
