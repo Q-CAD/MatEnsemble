@@ -308,7 +308,7 @@ class UserStrategy(FutureProcessingStrategy):
                     self.manager._blocked.discard(dep_id)
 
             # --- Processing the chore and spawning the new one ---
-            if self.proc_chore == chore_name:
+            if chore_name == self.proc_chore:
                 try:
                     # Trust boundary: result.pickle is written by matensemble.runtime_worker
                     # in this workflow's chore workdir only—do not load pickles from
