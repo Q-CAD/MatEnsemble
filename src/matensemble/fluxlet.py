@@ -147,10 +147,6 @@ class Fluxlet:
             # helpful for debugging
             chore._write_metadata()
 
-            # only set this if you truly want every chore to span a fixed node count
-            if nnodes is not None:
-                jobspec.num_nodes = nnodes
-
             fut = executor.submit(jobspec)
             fut.chore_id = chore.id
             fut.chore_obj = chore
