@@ -438,7 +438,6 @@ class FluxManager:
                 chore,
                 set_cpu_affinity=self._set_cpu_affinity,
                 set_gpu_affinity=self._set_gpu_affinity,
-                nnodes=None,
                 dynopro=dynopro,
             )
         except Exception as e:

@@ -50,7 +50,6 @@ class Fluxlet:
         chore: Chore,
         set_cpu_affinity: bool | None = None,
         set_gpu_affinity: bool | None = None,
-        nnodes: int | None = None,
         dynopro: bool | None = None,
     ) -> flux.job.FluxExecutorFuture:
         """
@@ -81,7 +80,7 @@ class Fluxlet:
         if dynopro:
             jobspec = flux.job.JobspecV1.per_resource(
                 chore.command,
-                nnodes=nnodes,
+                nnodes=chore.nnodes,
                 gpus_per_node=self.gpus_per_node,
                 per_resource_type="node",
                 per_resource_count=1,
