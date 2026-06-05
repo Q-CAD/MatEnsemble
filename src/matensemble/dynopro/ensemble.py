@@ -7,6 +7,7 @@ from networkx import write_network_text
 from matensemble.manager import FluxManager
 from matensemble.chore import Chore, ChoreType
 from matensemble.model import Resources
+
 # from matensemble.dynopro.driver import online_dynamics
 
 
@@ -73,6 +74,7 @@ class EnsembleDynamicsRunner:
                     num_tasks=self.tasks_per_job,
                     cores_per_task=self.cores_per_task,
                     gpus_per_task=self.gpus_per_task,
+                    mpi=True,
                 )
                 workdir = outdir / chore_id
 
@@ -85,6 +87,7 @@ class EnsembleDynamicsRunner:
                         chore_type=ChoreType.EXECUTABLE,
                         resources=resources,
                         workdir=workdir,
+                        nnodes=self.nnodes,
                     )
                 )
 
