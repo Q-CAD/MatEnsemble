@@ -187,6 +187,16 @@
 - [ ] Add a util function to turn the DAG into a photo
 - [ ] Update the CLI tool to be more user friendly
 
+## --- Create first draft for JOSS ---
+- [x] Read some example papers
+- [x] Create draft and show Dr. Bagchi
+- [x] Polish the repository to be ready for review
+- [x] Make sure that the tests work
+- [x] Make sure that the example workflows work correctly
+- [x] Make sure that they can easily test the code
+- [x] Create a conda package that they can easily test the code without having
+      to compile flux and flux-sched themselves
+
 ## === AFTER EVERYTHING ABOVE IS DONE AND STABLE ===
 
 ## --- Model Context Protocol ---
@@ -210,16 +220,6 @@
 - [ ] Test the server locally
 - [ ] Test the server on an HPC cluster
 - [ ] Create documentation for setting it up
-
-## --- Create first draft for JOSS ---
-- [ ] Read some example papers
-- [x] Create draft and show Dr. Bagchi
-- [x] Polish the repository to be ready for review
-- [ ] Make sure that the tests work
-- [ ] Make sure that the example workflows work correctly
-- [ ] Make sure that they can easily test the code
-- [x] Create a conda package that they can easily test the code without having
-      to compile flux and flux-sched themselves
 
 ## --- Reading List ---
 - [ ] [Agentic Orchestration of HPC Applications](https://vsoch.github.io/assets/posts/agentic-orchestration-hpc-workloads-cloud-sochat-milroy.pdf)

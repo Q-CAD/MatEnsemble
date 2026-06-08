@@ -17,7 +17,8 @@ printf '  1) Frontier \n'
 printf '  2) Perlmutter \n'
 printf '  3) Pathfinder \n'
 printf 'Choice [1-3]: '
-read -r choice
+
+read -r choice </dev/tty
 
 case "$choice" in
 1 | frontier | Frontier)
