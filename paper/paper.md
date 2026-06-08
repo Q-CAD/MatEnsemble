@@ -33,7 +33,7 @@ repository: https://github.com/FredDude2004/MatEnsemble
 
 MatEnsemble is a Python package for defining and running high-throughput workflows on High-Performance Computing (HPC) systems. Users construct a Directed Acyclic Graph (DAG) of *chores*, where each chore is either a delayed python function call or an executable command, each with explicit resource requirements. MatEnsemble submits these chores through the Flux resource manager, tracks completion, resolves dependencies through serialized results, and records workflow state in a structured layout. The package is designed for...
 
-# <INSERT SCIENCE CASES HERE>
+<!-- # <INSERT SCIENCE CASES HERE> -->
 
 where launching one batch job per task would create excessive scheduler overhead or leave resources idle.
 
@@ -42,7 +42,7 @@ where launching one batch job per task would create excessive scheduler overhead
 <!-- ==================================================================================================================================================================================== -->
 Modern materials science workloads increasingly consist of large ensembles of related simulations rather than a single monolithic calculation. Examples include
 
-# <INSERT YOUR USE CASES HERE>
+<!-- # <INSERT YOUR USE CASES HERE> -->
 
 These workloads may require thousands or even millions of relatively small tasks whose execution patterns are difficult to express efficiently using traditional batch schedulers.
 
@@ -85,7 +85,7 @@ The target users are computational scientists and HPC developers who need to com
 
 ## State of the field
 
-Several mature Python workflow systems already support scientific task graphs. Parsl provides a broad parallel scripting model for Python functions and external applications across local, cluster, cloud, and grid resources [@babuji2019parsl; @parsl_docs]. Jobflow provides a Pythonic decorator-based workflow model aimed at high-throughput computational workflows, with strong adoption in materials science [@rosen2024jobflow]. libEnsemble focuses on dynamic ensembles using a generator-simulator-allocator model, particularly for adaptive sampling and optimization campaigns [@hudson2025libensemble]. These systems demonstrate the value of Python-native workflows for computational science, and MatEnsemble is complementary rather than a replacement.
+Several mature Python workflow systems already support scientific task graphs. Parsl provides a broad parallel scripting model for Python functions and external applications across local, cluster, cloud, and grid resources<!-- [@babuji2019parsl; @parsl_docs]-->. Jobflow provides a Pythonic decorator-based workflow model aimed at high-throughput computational workflows, with strong adoption in materials science<!--[@rosen2024jobflow]-->. libEnsemble focuses on dynamic ensembles using a generator-simulator-allocator model, particularly for adaptive sampling and optimization campaigns<!--[@hudson2025libensemble]-->. These systems demonstrate the value of Python-native workflows for computational science, and MatEnsemble is complementary rather than a replacement.
 
 ## Example workflow
 
@@ -224,7 +224,7 @@ This mechanism allows MatEnsemble workflows to adapt their execution path based 
 
 ## Research impact
 
-# <PUT RESEARCH IMPACT HERE>
+<!-- # <PUT RESEARCH IMPACT HERE> -->
 
 ## AI usage disclosure
 

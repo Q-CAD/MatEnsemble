@@ -77,7 +77,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 	new_version=$(uv version --short)
 
 	# commit changes
-	git add ../pyproject.toml ../uv.lock
+	git add pyproject.toml uv.lock
 	git commit -m "bump version to $new_version"
 	git tag -a "v$new_version" -m "v$new_version"
 
