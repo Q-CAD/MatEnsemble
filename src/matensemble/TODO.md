@@ -183,7 +183,8 @@
 - [x] Make all figures for JOSS paper and explain all of them
 - [x] Fix the new strategy decorator
 - [ ] Make the figure for the user defined strategies flow chart
-- [ ] Fix dynopro resources updating
+- [x] Fix dynopro resources updating
+- [ ] Add a util function to turn the DAG into a photo
 
 ## === AFTER EVERYTHING ABOVE IS DONE AND STABLE ===
 
