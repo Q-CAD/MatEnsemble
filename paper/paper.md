@@ -50,7 +50,7 @@ Submitting large numbers of short-lived jobs directly to a system scheduler such
 
 MatEnsemble addresses these challenges by combining a Python-native workflow interface with the Flux resource manager. Rather than submitting thousands of independent scheduler jobs, users acquire a single allocation and allow MatEnsemble to manage task execution within a user-space Flux instance. This hierarchical scheduling model dramatically reduces scheduler overhead while enabling fine-grained control over task placement and execution. MatEnsemble continuously monitors available resources and adaptively backfills newly eligible tasks as running work completes, maintaining high utilization even when task runtimes vary significantly.
 
-![Adaptive Workflow Management](./figures/chain_vs_adaptive_scheduling.svg)
+![Adaptive Workflow Management](./figures/chain_vs_adaptive_scheduling.png)
 
 Workflows may consist of Python functions, MPI applications, shell commands, or combinations thereof. For example, a user may define an MPI-enabled chore that launches multiple ranks through Flux while still participating in the same dependency-aware workflow:
 
