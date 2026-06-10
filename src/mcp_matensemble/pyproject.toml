@@ -1,0 +1,32 @@
+[project]
+name = "mcp-matensemble"
+version = "0.3.11"
+description = "Model Context Protocol server for generating MatEnsemble workflow campaigns."
+readme = "README.md"
+license = "BSD-3-Clause"
+authors = [
+    { name = "Soumendu Bagchi", email = "soumendubagchi@gmail.com" },
+    { name = "Kaleb Duchesneau", email = "kalebduchesneau@gmail.com" },
+]
+requires-python = ">=3.12"
+dependencies = [
+    "mcp[cli]>=1.27.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/FredDude2004/MatEnsemble"
+Documentation = "https://matensemble.readthedocs.io/"
+Repository = "https://github.com/FredDude2004/MatEnsemble"
+Issues = "https://github.com/FredDude2004/MatEnsemble/issues"
+
+[project.scripts]
+mcp-matensemble = "mcp_matensemble.server:main"
+matensemble-agent-install = "mcp_matensemble.installers.cli:main"
+matensemble-agent-doctor = "mcp_matensemble.installers.doctor:main"
+
+[build-system]
+requires = ["uv_build>=0.10.0,<0.11.0"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

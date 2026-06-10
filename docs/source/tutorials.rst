@@ -17,12 +17,12 @@ Reference implementations live under ``example_workflows/`` in the `MatEnsemble 
 
    * - Example
      - What it demonstrates
-   * - ``mpi_example.py``
-     - Demonstrates how to construct a :class:`~matensemble.pipeline.Pipeline` and create a PYTHON Chore
-   * - ``dependency_example.py``
-     - Demonstrates how to create a dependency chain and submit it.
-   * - ``strategy_injection_example.py``
-     - An example of how to create a User Defined Strategy and attatch it to another chore.
+   * - ``generic_flux/mpi/workflow.py``
+     - Demonstrates how to construct a portable :class:`~matensemble.pipeline.Pipeline` and create an MPI-enabled Python chore.
+   * - ``generic_flux/chores/workflow.py``
+     - Demonstrates how to create a portable dependency chain and submit it.
+   * - ``generic_flux/strategy/workflow.py``
+     - Demonstrates how to create a portable user-defined strategy and attach it to another chore.
 
 Minimal executable (“exec”) workflow
 ====================================

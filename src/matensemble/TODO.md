@@ -184,8 +184,8 @@
 - [x] Fix the new strategy decorator
 - [x] Make the figure for the user defined strategies flow chart
 - [x] Fix dynopro resources updating
+- [x] Update the CLI tool to be more user friendly
 - [ ] Add a util function to turn the DAG into a photo
-- [ ] Update the CLI tool to be more user friendly
 
 ## --- Create first draft for JOSS ---
 - [x] Read some example papers

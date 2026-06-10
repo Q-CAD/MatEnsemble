@@ -881,18 +881,14 @@ cli = [
 
 [[package]]
 name = "mcp-matensemble"
-version = "0.1.0"
-source = { virtual = "src/mcp_matensemble" }
+version = "0.3.11"
+source = { editable = "src/mcp_matensemble" }
 dependencies = [
-    { name = "httpx" },
     { name = "mcp", extra = ["cli"] },
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "mcp", extras = ["cli"], specifier = ">=1.27.0" },
-]
+requires-dist = [{ name = "mcp", extras = ["cli"], specifier = ">=1.27.0" }]
 
 [[package]]
 name = "mdit-py-plugins"

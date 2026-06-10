@@ -1,0 +1,55 @@
+{
+  "model": "../model.model-mliap_lammps.pt",
+  "output_dir": "recryst_runs_dependency_dag_smoke",
+  "tasks_per_chore": 1,
+  "cores_per_task": 32,
+  "gpus_per_task": 1,
+  "lammps_gpus_per_node": 1,
+  "defaults": {
+    "campaign_label": "dependency_dag_smoke",
+    "replicate": [1, 1, 1],
+    "timestep_ps": 0.001,
+    "thermo_every": 25,
+    "dump_every": 100,
+    "melt_temperature_K": 2500.0,
+    "equil_temperature_K": 300.0,
+    "melt_steps": 50,
+    "equil_steps": 50,
+    "msd_steps": 100,
+    "msd_sample_every": 10,
+    "fl_switch_steps": 50,
+    "fl_equil_steps": 10,
+    "fl_function": 2,
+    "rs_output_dirname": "reversible_scaling",
+    "rs_scale_method": "force_scale",
+    "rs_use_kokkos": true,
+    "rs_fix_adapt_pair_style": "mliap",
+    "rs_fix_adapt_parameter": "scale",
+    "rs_high_temperature_K": 600.0,
+    "rs_equil_steps": 10,
+    "rs_high_equil_steps": 10,
+    "rs_switch_steps": 50,
+    "rs_sample_every": 5,
+    "rs_temperature_grid_K": [300.0, 450.0, 600.0],
+    "langevin_damp_ps": 0.1,
+    "melt_surface_wall_enabled": true,
+    "melt_surface_wall_side": "auto",
+    "melt_surface_wall_buffer_A": 3.0
+  },
+  "cases": [
+    {
+      "name": "Bi2Se3-Al2O3",
+      "structure": "../structures_from_vasp/Al2O3_Bi2Se3_unit.lmp",
+      "species": ["Al", "Bi", "Se", "O"],
+      "film_types": [2, 3],
+      "substrate_types": [1, 4],
+      "film_z_min": 11.5,
+      "settings": {
+        "replicate": [1, 1, 1]
+      },
+      "production_target_atoms": 195
+    }
+  ],
+  "seeds": [777],
+  "crystal_reference_seeds": [777]
+}
