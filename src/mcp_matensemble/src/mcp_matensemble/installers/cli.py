@@ -17,12 +17,22 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--system",
         required=True,
-        help="frontier, perlmutter, pathfinder, linux, or conda",
+        help="frontier, perlmutter, pathfinder, or linux",
     )
     parser.add_argument(
         "--workspace", default=None, help="Campaign workspace to create"
     )
     parser.add_argument("--install-dir", default=str(Path.home() / ".local" / "bin"))
+    parser.add_argument(
+        "--install-site-cli",
+        action="store_true",
+        help="Install the MatEnsemble site CLI wrapper for HPC systems.",
+    )
+    parser.add_argument(
+        "--confirm-cli-install",
+        action="store_true",
+        help="Confirm writing the site CLI wrapper outside the scratch workspace.",
+    )
     parser.add_argument(
         "--config-dir",
         default=str(
@@ -34,6 +44,13 @@ def main(argv: list[str] | None = None) -> None:
 
     system = normalize_system(ns.system)
     workspace = Path(ns.workspace or _default_workspace()).expanduser().resolve()
+    scratch_workspace = Path(_default_workspace()).expanduser().resolve()
+    try:
+        workspace.relative_to(scratch_workspace)
+    except ValueError as exc:
+        raise SystemExit(
+            f"workspace must be inside $SCRATCH/matensemble_campaigns: {scratch_workspace}"
+        ) from exc
     install_dir = Path(ns.install_dir).expanduser().resolve()
     config_dir = Path(ns.config_dir).expanduser().resolve()
 
@@ -52,7 +69,11 @@ exec "{install_dir / "mcp-matensemble"}"
 """,
     )
 
-    if system in {"frontier", "perlmutter", "pathfinder"}:
+    if system in {"frontier", "perlmutter", "pathfinder"} and ns.install_site_cli:
+        if not ns.confirm_cli_install:
+            raise SystemExit(
+                "installing the MatEnsemble site CLI writes outside $SCRATCH; rerun with --confirm-cli-install"
+            )
         _write_executable(install_dir / "matensemble", site_cli_script(system))
 
     mcp_config = {
@@ -83,9 +104,9 @@ exec "{install_dir / "mcp-matensemble"}"
 
 def _default_workspace() -> str:
     scratch = os.environ.get("SCRATCH")
-    if scratch:
-        return str(Path(scratch) / "matensemble_campaigns")
-    return str(Path.home() / "matensemble_campaigns")
+    if not scratch:
+        raise SystemExit("$SCRATCH is not set. MatEnsemble MCP requires an HPC scratch directory.")
+    return str(Path(scratch) / "matensemble_campaigns")
 
 
 def _write_executable(path: Path, text: str) -> None:
@@ -109,8 +130,8 @@ Try:
 I want to run a LAMMPS GPU smoke test with MatEnsemble on {system}. Use the MatEnsemble MCP server to inspect examples, plan setup, and create workflow and launch scripts. Do not execute setup commands or submit jobs yet.
 ```
 
-Scheduler and setup tools are dry-run by default. Use `execute=true` only after
-reviewing the planned command.
+Use prepare/confirm tools for launch, build, pull, cancel, and delete actions.
+The server will not execute those actions without a matching plan id.
 """,
         encoding="utf-8",
     )

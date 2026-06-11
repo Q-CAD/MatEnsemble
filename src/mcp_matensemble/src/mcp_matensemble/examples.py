@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from pathlib import Path
 import tomllib
 
+from .systems import SUPPORTED_SYSTEMS, normalize_system
+
 PORTABLE_SYSTEM_GUIDANCE = (
     "These workflows are site-independent MatEnsemble examples. They show the "
     "Python workflow shape; use system-specific examples for launch scripts, "
@@ -812,6 +814,19 @@ def list_examples() -> list[dict[str, object]]:
     return [example.__dict__ for example in EXAMPLES]
 
 
+def list_examples_for_system(system: str | None = None) -> list[dict[str, object]]:
+    examples = list_examples()
+    if system is None:
+        return examples
+    normalized = normalize_system(system)
+    return [
+        example
+        for example in examples
+        if example.get("system") == normalized
+        or normalized in tuple(example.get("compatible_systems") or ())
+    ]
+
+
 def get_example_source(name: str) -> str:
     entries = _load_example_manifest()
     manifest = _manifest_lookup(entries)
@@ -841,6 +856,28 @@ def get_example_source(name: str) -> str:
         expected = sorted(set(EXAMPLE_SOURCE) | set(manifest) | set(EXAMPLE_ALIASES))
         raise ValueError(f"unknown example {name!r}; expected one of {expected}")
     return EXAMPLE_SOURCE[fallback_key]
+
+
+def get_system_example(system: str, name: str) -> str:
+    normalized = normalize_system(system)
+    entries = _load_example_manifest()
+    manifest = _manifest_lookup(entries)
+    aliases = {
+        key: value
+        for key, value in EXAMPLE_ALIASES.items()
+        if value in manifest or value in EXAMPLE_SOURCE
+    }
+    key = aliases.get(name, name)
+    entry = manifest.get(key)
+    if entry is None:
+        by_name = {item.name: item for item in entries}
+        entry = by_name.get(key)
+    if entry is None:
+        return get_example_source(name)
+    compatible = set(entry.compatible_systems)
+    if entry.system != normalized and normalized not in compatible:
+        raise ValueError(f"example {name!r} is not available for system {normalized!r}")
+    return get_example_source(entry.id)
 
 
 def _example_header(entry: ExampleManifestEntry) -> list[str]:
@@ -873,6 +910,7 @@ def _example_header(entry: ExampleManifestEntry) -> list[str]:
                 "#",
                 "# This is a system-specific example. Use portable generic_flux examples for",
                 "# core MatEnsemble workflow structure, and use this example for launch/runtime context.",
+                "# Use get_system_context(<system>) for launch, container, and system details.",
             ]
         )
     parts.append("")
@@ -904,7 +942,9 @@ def _load_example_manifest() -> tuple[ExampleManifestEntry, ...]:
         compatible_systems = tuple(
             str(item) for item in raw.get("compatible_systems", ())
         )
-        if system == "generic_flux" and not compatible_systems:
+        if system not in SUPPORTED_SYSTEMS:
+            continue
+        if system == "linux" and raw.get("id", "").startswith("generic_flux.") and not compatible_systems:
             compatible_systems = GENERIC_FLUX_COMPATIBLE_SYSTEMS
         system_title = str(raw.get("system_title") or _default_system_title(system))
         description = str(raw["description"])
@@ -939,9 +979,50 @@ def _manifest_lookup(
 
 
 def _default_system_title(system: str) -> str:
-    if system == "generic_flux":
-        return "Portable Flux Workflows"
+    if system == "linux":
+        return "Generic Linux Container"
     return system.replace("_", " ").title()
+
+
+def list_container_templates(system: str | None = None) -> list[dict[str, object]]:
+    root = _repo_root()
+    if root is None:
+        return []
+    systems = (normalize_system(system),) if system else SUPPORTED_SYSTEMS
+    templates: list[dict[str, object]] = []
+    for name in systems:
+        system_dir = root / "containers" / name
+        if not system_dir.is_dir():
+            continue
+        for path in sorted(system_dir.iterdir()):
+            if path.is_file():
+                templates.append(
+                    {
+                        "system": name,
+                        "filename": path.name,
+                        "path": str(path.relative_to(root)),
+                        "size_bytes": path.stat().st_size,
+                    }
+                )
+    return templates
+
+
+def get_container_template(system: str, filename: str) -> str:
+    normalized = normalize_system(system)
+    root = _repo_root()
+    if root is None:
+        raise ValueError("repository containers are unavailable in this installation")
+    if "/" in filename or "\\" in filename or filename in {"", ".", ".."}:
+        raise ValueError("filename must be a single container template filename")
+    path = (root / "containers" / normalized / filename).resolve()
+    container_root = (root / "containers" / normalized).resolve()
+    try:
+        path.relative_to(container_root)
+    except ValueError as exc:
+        raise ValueError("filename must stay inside the system container directory") from exc
+    if not path.is_file():
+        raise ValueError(f"container template not found: containers/{normalized}/{filename}")
+    return path.read_text(encoding="utf-8", errors="replace")
 
 
 def _discover_repo_examples() -> tuple[ExampleSummary, ...]:
@@ -1023,15 +1104,17 @@ def get_container_contents(name: str) -> str:
     certain system
     """
 
-    key = name.strip().lower().replace("-", "_")
-    if key in ("generic", "generic_flux", "conda", "local", "local_conda"):
-        return (
-            "No MatEnsemble container Dockerfile is required for this environment. "
-            "Use the conda/environment.yaml path or an existing Flux-capable Python environment."
-        )
+    key = normalize_system(name)
+    templates = list_container_templates(key)
+    preferred = next(
+        (template for template in templates if template["filename"] in {"Dockerfile.matensemble", "Containerfile"}),
+        None,
+    )
+    if preferred is not None:
+        return get_container_template(key, str(preferred["filename"]))
     if key not in CONTAINER_CONTENTS:
         raise ValueError(
-            f"unknown container {name!r}; expected one of {sorted(CONTAINER_CONTENTS)}"
+            f"unknown container {name!r}; expected one of {list(SUPPORTED_SYSTEMS)}"
         )
     return CONTAINER_CONTENTS[key]
 

@@ -6,12 +6,14 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
+from mcp_matensemble import v1 as v1_tools
+from mcp_matensemble.contracts import wrap
 from mcp_matensemble.environment import (
     get_version_info,
     plan_container_setup,
     run_container_setup,
 )
-from mcp_matensemble.examples import list_examples
+from mcp_matensemble.examples import list_examples as legacy_list_examples
 from mcp_matensemble.resources import api_overview, read_repo_example
 from mcp_matensemble.resources import (
     container_build_instructions,
@@ -22,7 +24,7 @@ from mcp_matensemble.resources import (
 )
 from mcp_matensemble.scheduler import (
     cancel_job,
-    get_job_status,
+    get_job_status as scheduler_get_job_status,
     inspect_outputs,
     plan_job_submission,
     submit_job,
@@ -48,7 +50,7 @@ def matensemble_api_overview() -> str:
 def matensemble_examples() -> str:
     """Return known in-repository MatEnsemble examples."""
 
-    return json.dumps(list_examples(), indent=2)
+    return json.dumps(legacy_list_examples(), indent=2)
 
 
 @mcp.resource("matensemble://systems")
@@ -56,6 +58,343 @@ def matensemble_systems() -> str:
     """Return supported MatEnsemble runtime systems."""
 
     return json.dumps(systems_overview(), indent=2)
+
+
+@mcp.resource("matensemble://systems/{system}/context")
+def matensemble_system_context(system: str) -> str:
+    """Return bundled system context for a supported system."""
+
+    return json.dumps(wrap(v1_tools.get_system_context, system), indent=2)
+
+
+@mcp.resource("matensemble://docs/{name}")
+def matensemble_docs(name: str) -> str:
+    """Return discovered MatEnsemble documentation by stem name."""
+
+    root = v1_tools.repo_root()
+    path = (root / "docs" / "source" / f"{name}.rst").resolve()
+    docs_root = (root / "docs" / "source").resolve()
+    try:
+        path.relative_to(docs_root)
+    except ValueError as exc:
+        raise ValueError("documentation path must stay inside docs/source") from exc
+    if not path.is_file():
+        raise ValueError(f"documentation resource not found: {name}")
+    return path.read_text(encoding="utf-8", errors="replace")
+
+
+@mcp.resource("matensemble://examples/{system}/{name}")
+def matensemble_example(system: str, name: str) -> str:
+    """Return a repository example for a supported system."""
+
+    return json.dumps(wrap(v1_tools.get_example, system, name), indent=2)
+
+
+@mcp.resource("matensemble://containers/{system}/{filename}")
+def matensemble_container(system: str, filename: str) -> str:
+    """Return a repository container template for a supported system."""
+
+    return json.dumps(wrap(v1_tools.get_container_template, system, filename), indent=2)
+
+
+@mcp.resource("matensemble://source/{symbol}")
+def matensemble_source(symbol: str) -> str:
+    """Return source context for a MatEnsemble API symbol or module."""
+
+    return json.dumps(wrap(v1_tools.explain_matensemble_api, symbol), indent=2)
+
+
+@mcp.tool()
+def list_supported_systems() -> dict[str, Any]:
+    """List the strict V1 MatEnsemble MCP supported system enum."""
+
+    return wrap(v1_tools.list_supported_systems)
+
+
+@mcp.tool()
+def get_system_context(system: str) -> dict[str, Any]:
+    """Get bundled docs, examples, containers, and launch context for a system."""
+
+    return wrap(v1_tools.get_system_context, system)
+
+
+@mcp.tool()
+def list_examples(system: str | None = None) -> dict[str, Any]:
+    """List dynamically discovered examples, optionally filtered by system."""
+
+    return wrap(v1_tools.list_examples, system)
+
+
+@mcp.tool()
+def get_example(system: str, name: str) -> dict[str, Any]:
+    """Read a dynamically discovered example by system and name/id."""
+
+    return wrap(v1_tools.get_example, system, name)
+
+
+@mcp.tool()
+def list_container_templates(system: str | None = None) -> dict[str, Any]:
+    """List dynamically discovered container templates."""
+
+    return wrap(v1_tools.list_container_templates, system)
+
+
+@mcp.tool()
+def get_container_template(system: str, filename: str) -> dict[str, Any]:
+    """Read a container template from containers/<system>/."""
+
+    return wrap(v1_tools.get_container_template, system, filename)
+
+
+@mcp.tool()
+def explain_matensemble_api(symbol: str) -> dict[str, Any]:
+    """Explain a MatEnsemble source symbol with snippets and related context."""
+
+    return wrap(v1_tools.explain_matensemble_api, symbol)
+
+
+@mcp.tool()
+def create_campaign(
+    campaign_name: str,
+    system: str,
+    auto_suffix: bool = False,
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    """Create a scratch-rooted campaign directory."""
+
+    return wrap(
+        v1_tools.create_campaign,
+        campaign_name,
+        system,
+        auto_suffix=auto_suffix,
+        overwrite=overwrite,
+    )
+
+
+@mcp.tool()
+def list_campaigns() -> dict[str, Any]:
+    """List campaigns under $SCRATCH/matensemble_campaigns."""
+
+    return wrap(v1_tools.list_campaigns)
+
+
+@mcp.tool()
+def get_campaign_status(campaign: str) -> dict[str, Any]:
+    """Inspect campaign files and MCP metadata."""
+
+    return wrap(v1_tools.get_campaign_status, campaign)
+
+
+@mcp.tool()
+def write_workflow(
+    campaign: str,
+    science_goal: str,
+    workflow_kind: str = "python_dag",
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    """Write workflow.py inside a campaign."""
+
+    return wrap(
+        v1_tools.write_workflow,
+        campaign,
+        science_goal,
+        workflow_kind=workflow_kind,
+        overwrite=overwrite,
+    )
+
+
+@mcp.tool()
+def write_batch_script(
+    campaign: str,
+    system: str,
+    account: str | None = None,
+    nodes: int = 1,
+    walltime: str = "00:30:00",
+    queue: str = "batch",
+    gpus: int = 0,
+    tasks: int = 1,
+    container_backend: str = "apptainer",
+    container_path: str | None = None,
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    """Write submit.slurm inside a campaign. Account is required."""
+
+    return wrap(
+        v1_tools.write_batch_script,
+        campaign,
+        system,
+        account=account,
+        nodes=nodes,
+        walltime=walltime,
+        queue=queue,
+        gpus=gpus,
+        tasks=tasks,
+        container_backend=container_backend,
+        container_path=container_path,
+        overwrite=overwrite,
+    )
+
+
+@mcp.tool()
+def validate_campaign(campaign: str) -> dict[str, Any]:
+    """Validate generated campaign workflow and launch scripts."""
+
+    return wrap(v1_tools.validate_campaign, campaign)
+
+
+@mcp.tool()
+def prepare_launch_plan(
+    campaign: str,
+    system: str,
+    mode: str = "batch",
+    account: str | None = None,
+    nodes: int = 1,
+    walltime: str = "00:30:00",
+    queue: str = "batch",
+    gpus: int = 0,
+    tasks: int = 1,
+) -> dict[str, Any]:
+    """Prepare a launch plan without executing it."""
+
+    return wrap(
+        v1_tools.prepare_launch_plan,
+        campaign,
+        system,
+        mode=mode,
+        account=account,
+        nodes=nodes,
+        walltime=walltime,
+        queue=queue,
+        gpus=gpus,
+        tasks=tasks,
+    )
+
+
+@mcp.tool()
+def confirm_launch(launch_plan_id: str, timeout_seconds: int = 60) -> dict[str, Any]:
+    """Execute a previously prepared launch plan by id."""
+
+    return wrap(v1_tools.confirm_launch, launch_plan_id, timeout_seconds=timeout_seconds)
+
+
+@mcp.tool()
+def get_job_status(job_id: str, timeout_seconds: int = 30) -> dict[str, Any]:
+    """Get Slurm job status through the V1 structured response contract."""
+
+    return wrap(v1_tools.get_job_status, job_id, timeout_seconds=timeout_seconds)
+
+
+@mcp.tool()
+def prepare_container_pull_plan(system: str, force: bool = False) -> dict[str, Any]:
+    """Prepare a reusable GHCR container pull plan."""
+
+    return wrap(v1_tools.prepare_container_pull_plan, system, force=force)
+
+
+@mcp.tool()
+def confirm_container_pull(plan_id: str, timeout_seconds: int = 1800) -> dict[str, Any]:
+    """Execute a prepared container pull plan by id."""
+
+    return wrap(v1_tools.confirm_container_pull, plan_id, timeout_seconds=timeout_seconds)
+
+
+@mcp.tool()
+def write_container_file(
+    campaign: str,
+    system: str,
+    apt_packages: list[str] | None = None,
+    python_packages: list[str] | None = None,
+    backend: str = "apptainer",
+    overwrite: bool = False,
+) -> dict[str, Any]:
+    """Write a custom container definition inside a campaign."""
+
+    return wrap(
+        v1_tools.write_container_file,
+        campaign,
+        system,
+        apt_packages=apt_packages,
+        python_packages=python_packages,
+        backend=backend,
+        overwrite=overwrite,
+    )
+
+
+@mcp.tool()
+def create_container_build_plan(
+    campaign: str,
+    system: str,
+    backend: str = "apptainer",
+) -> dict[str, Any]:
+    """Prepare a custom container build plan without executing it."""
+
+    return wrap(v1_tools.prepare_container_build_plan, campaign, system, backend=backend)
+
+
+@mcp.tool()
+def prepare_container_build_plan(
+    campaign: str,
+    system: str,
+    backend: str = "apptainer",
+) -> dict[str, Any]:
+    """Prepare a custom container build plan without executing it."""
+
+    return wrap(v1_tools.prepare_container_build_plan, campaign, system, backend=backend)
+
+
+@mcp.tool()
+def confirm_container_build(plan_id: str, timeout_seconds: int = 3600) -> dict[str, Any]:
+    """Execute a prepared container build plan by id."""
+
+    return wrap(v1_tools.confirm_container_build, plan_id, timeout_seconds=timeout_seconds)
+
+
+@mcp.tool()
+def prepare_cancel_job(job_id: str) -> dict[str, Any]:
+    """Prepare a Slurm job cancellation plan without executing it."""
+
+    return wrap(v1_tools.prepare_cancel_job, job_id)
+
+
+@mcp.tool()
+def confirm_cancel_job(plan_id: str, timeout_seconds: int = 30) -> dict[str, Any]:
+    """Execute a prepared Slurm cancellation plan by id."""
+
+    return wrap(v1_tools.confirm_cancel_job, plan_id, timeout_seconds=timeout_seconds)
+
+
+@mcp.tool()
+def delete_campaign_plan(campaign: str) -> dict[str, Any]:
+    """Prepare a campaign deletion plan without deleting files."""
+
+    return wrap(v1_tools.delete_campaign_plan, campaign)
+
+
+@mcp.tool()
+def confirm_delete_campaign(plan_id: str) -> dict[str, Any]:
+    """Delete a campaign after plan-id confirmation."""
+
+    return wrap(v1_tools.confirm_delete_campaign, plan_id)
+
+
+@mcp.tool()
+def create_matensemble_workflow_from_prompt(
+    prompt: str,
+    system: str,
+    campaign_name: str,
+    account: str | None = None,
+    workflow_kind: str = "python_dag",
+) -> dict[str, Any]:
+    """Create and validate a campaign from a prompt without launching anything."""
+
+    return wrap(
+        v1_tools.create_matensemble_workflow_from_prompt,
+        prompt,
+        system,
+        campaign_name,
+        account=account,
+        workflow_kind=workflow_kind,
+    )
 
 
 @mcp.tool()
@@ -69,7 +408,7 @@ def get_api_overview() -> str:
 def list_matensemble_examples() -> list[dict[str, object]]:
     """List curated MatEnsemble examples and what each one demonstrates."""
 
-    return list_examples()
+    return legacy_list_examples()
 
 
 @mcp.tool()
@@ -211,7 +550,7 @@ def get_matensemble_job_status(
 ) -> dict[str, Any]:
     """Get Slurm job status through squeue."""
 
-    return get_job_status(job_id, timeout_seconds=timeout_seconds)
+    return scheduler_get_job_status(job_id, timeout_seconds=timeout_seconds)
 
 
 @mcp.tool()

@@ -2,6 +2,22 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+SUPPORTED_SYSTEMS = ("frontier", "perlmutter", "pathfinder", "linux")
+
+
+class UnsupportedSystemError(ValueError):
+    def __init__(self, system: str | None):
+        self.system = system
+        super().__init__(f"Unsupported system: {system}")
+
+    def to_error(self) -> dict[str, object]:
+        return {
+            "ok": False,
+            "error_code": "UNSUPPORTED_SYSTEM",
+            "message": f"Unsupported system: {self.system}",
+            "details": {"supported_systems": list(SUPPORTED_SYSTEMS)},
+        }
+
 
 @dataclass(frozen=True)
 class SystemProfile:
@@ -9,12 +25,15 @@ class SystemProfile:
     title: str
     recommended_image: str
     container_runtime: str
+    container_backends: tuple[str, ...]
     install_summary: str
     container_summary: tuple[str, ...]
     cli_install: str
     interactive_setup: str
     launch_command: str
     batch_notes: str
+    external_docs: tuple[str, ...] = ()
+    limitations: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -22,58 +41,25 @@ class SystemProfile:
             "title": self.title,
             "recommended_image": self.recommended_image,
             "container_runtime": self.container_runtime,
+            "container_backends": list(self.container_backends),
             "install_summary": self.install_summary,
             "container_summary": list(self.container_summary),
             "cli_install": self.cli_install,
             "interactive_setup": self.interactive_setup,
             "launch_command": self.launch_command,
             "batch_notes": self.batch_notes,
+            "external_docs": list(self.external_docs),
+            "limitations": list(self.limitations),
         }
 
 
 PROFILES: dict[str, SystemProfile] = {
-    "generic_flux": SystemProfile(
-        name="generic_flux",
-        title="Portable Flux Workflows",
-        recommended_image="none",
-        container_runtime="none",
-        install_summary=(
-            "Use these site-independent workflow patterns in an environment where "
-            "MatEnsemble, flux-core, flux-python, and the workflow's science "
-            "dependencies are already importable."
-        ),
-        container_summary=(
-            "No site-specific container is assumed for the workflow pattern.",
-            "The same Python workflow structure can be launched on Frontier, Perlmutter, Pathfinder, Linux containers, or another Flux-capable runtime.",
-        ),
-        cli_install="No MatEnsemble site CLI is required for generic Flux.",
-        interactive_setup="Start or enter a Flux allocation, then run `flux resource list`.",
-        launch_command="python workflow.py",
-        batch_notes="If using Slurm, start Flux inside the allocation before running Python.",
-    ),
-    "conda": SystemProfile(
-        name="conda",
-        title="Local Conda Environment",
-        recommended_image="none",
-        container_runtime="conda",
-        install_summary=(
-            "Use the repository environment.yaml for CPU/local development. This "
-            "path is not intended to provide GPU-enabled LAMMPS container support."
-        ),
-        container_summary=(
-            "No container is used.",
-            "The environment.yaml installs MatEnsemble's Python dependencies without GPU support.",
-        ),
-        cli_install="No MatEnsemble site CLI is required for the conda path.",
-        interactive_setup="conda env create -f environment.yaml\nconda activate matensemble",
-        launch_command="python workflow.py",
-        batch_notes="Use this for local script development, not production HPC GPU campaigns.",
-    ),
     "linux": SystemProfile(
         name="linux",
         title="Generic Linux Container",
         recommended_image="ghcr.io/freddude2004/matensemble:linux-vX.Y.Z",
-        container_runtime="Docker, Podman, or Apptainer",
+        container_runtime="Docker",
+        container_backends=("docker",),
         install_summary=(
             "Use the generic Linux MatEnsemble image for local/containerized development "
             "where site-specific GPU launch wrappers are not needed."
@@ -92,12 +78,17 @@ PROFILES: dict[str, SystemProfile] = {
         batch_notes=(
             "For local container tests, start a small Flux instance with `flux start --test-size=<n>`."
         ),
+        external_docs=("https://flux-framework.readthedocs.io/",),
+        limitations=(
+            "Local multi-node simulation uses flux start --test-size and may not mirror site MPI bindings.",
+        ),
     ),
     "frontier": SystemProfile(
         name="frontier",
         title="Frontier (OLCF)",
         recommended_image="ghcr.io/freddude2004/matensemble:frontier-vX.Y.Z",
-        container_runtime="Apptainer",
+        container_runtime="Apptainer or Podman-HPC",
+        container_backends=("apptainer", "podman-hpc"),
         install_summary=(
             "Build or pull a Frontier MatEnsemble Apptainer image, allocate nodes "
             "with Slurm, then use the MatEnsemble CLI to run scripts through Flux."
@@ -122,12 +113,17 @@ PROFILES: dict[str, SystemProfile] = {
             "Run inside an existing Slurm allocation. The Frontier CLI expands to "
             "`srun --external-launcher --mpi=pmi2 apptainer exec <image> flux start python workflow.py`."
         ),
+        external_docs=(
+            "https://docs.olcf.ornl.gov/systems/frontier_user_guide.html",
+            "https://docs.olcf.ornl.gov/software/containers_on_frontier.html",
+        ),
     ),
     "pathfinder": SystemProfile(
         name="pathfinder",
         title="Pathfinder (OLCF)",
         recommended_image="ghcr.io/freddude2004/matensemble:pathfinder-vX.Y.Z",
-        container_runtime="Apptainer",
+        container_runtime="Apptainer or Podman-HPC",
+        container_backends=("apptainer", "podman-hpc"),
         install_summary=(
             "Build or pull a Pathfinder MatEnsemble Apptainer image, allocate nodes "
             "with Slurm, then run the workflow inside Flux."
@@ -149,12 +145,14 @@ PROFILES: dict[str, SystemProfile] = {
         batch_notes=(
             "Use the same high-level pattern as Frontier: Slurm allocation, Apptainer, Flux, then Python."
         ),
+        external_docs=("https://docs.olcf.ornl.gov/",),
     ),
     "perlmutter": SystemProfile(
         name="perlmutter",
         title="Perlmutter (NERSC)",
         recommended_image="ghcr.io/freddude2004/matensemble:perlmutter-vX.Y.Z",
-        container_runtime="Podman-HPC",
+        container_runtime="Podman-HPC or Apptainer",
+        container_backends=("podman-hpc", "apptainer"),
         install_summary=(
             "Use Podman-HPC with the MatEnsemble Perlmutter CLI. The CLI hides "
             "the Flux resource config, Slurm/NVIDIA/PMI bind mounts, and container launch details."
@@ -179,36 +177,45 @@ PROFILES: dict[str, SystemProfile] = {
             "Flux resource config to SCRATCH and launches Podman-HPC with the required PMI, Slurm, "
             "NVIDIA, CXI, and library bind settings."
         ),
+        external_docs=(
+            "https://docs.nersc.gov/systems/perlmutter/",
+            "https://docs.nersc.gov/development/containers/podman-hpc/",
+        ),
+        limitations=(
+            "Perlmutter launch details are best handled through the site CLI until direct Flux resource config support is expanded.",
+        ),
     ),
 }
 
 
 def normalize_system(name: str | None) -> str:
     if not name:
-        return "generic_flux"
+        raise UnsupportedSystemError(name)
     key = name.strip().lower().replace("-", "_")
     aliases = {
-        "generic": "generic_flux",
-        "flux": "generic_flux",
-        "local": "conda",
-        "local_conda": "conda",
+        "generic": "linux",
+        "generic_flux": "linux",
+        "flux": "linux",
+        "local": "linux",
+        "local_conda": "linux",
         "devcontainer": "linux",
         "docker": "linux",
         "nersc": "perlmutter",
         "olcf_frontier": "frontier",
         "olcf_pathfinder": "pathfinder",
     }
-    return aliases.get(key, key)
+    normalized = aliases.get(key, key)
+    if normalized not in SUPPORTED_SYSTEMS:
+        raise UnsupportedSystemError(name)
+    return normalized
 
 
 def list_systems() -> list[dict[str, object]]:
-    return [profile.to_dict() for profile in PROFILES.values()]
+    return [PROFILES[name].to_dict() for name in SUPPORTED_SYSTEMS]
 
 
 def get_system_profile(name: str | None) -> SystemProfile:
     key = normalize_system(name)
-    if key not in PROFILES:
-        raise ValueError(f"unknown system {name!r}; expected one of {sorted(PROFILES)}")
     return PROFILES[key]
 
 
