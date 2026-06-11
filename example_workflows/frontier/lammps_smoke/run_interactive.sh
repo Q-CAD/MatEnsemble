@@ -2,7 +2,7 @@
 
 if ! command -v matensemble &>/dev/null; then
 	echo "Install the MatEnsemble CLI for Frontier"
-	echo "curl -fsSL https://raw.githubusercontent.com/FredDude2004/MatEnsemble/refs/heads/main/src/cli/install.sh | bash"
+	echo "curl -fsSL https://raw.githubusercontent.com/FredDude2004/MatEnsemble/main/src/cli/install.sh | bash"
 	exit 1
 fi
 
@@ -11,4 +11,4 @@ module load olcf-container-tools
 module load apptainer-enable-mpi apptainer-enable-gpu
 
 matensemble set-image ./matensemble.sif
-matensemble run lammps_hello_world.py
+matensemble run workflow.py

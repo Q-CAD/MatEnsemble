@@ -36,7 +36,7 @@ OCI images are published to GitHub Container Registry
 
 `ghcr.io/freddude2004/matensemble:baseline-vX.Y.Z`
 
-See the [container packages](https://github.com/FredDude2004/MatEnsemble/pkgs/container/matensemble) and the [Quick start](https://matensemble.readthedocs.io/en/latest/quickstart.html) in the docs for Apptainer/Singularity and site-specific notes.
+See the [container packages](https://github.com/FredDude2004/MatEnsemble/pkgs/container/matensemble) and the [installation guide](https://matensemble.readthedocs.io/en/latest/installation.html) in the docs for Apptainer/Singularity and site-specific notes.
 
 ### Anaconda
 
@@ -66,7 +66,7 @@ Illustrative workflows live under [`example_workflows/`](https://github.com/Fred
 
 - A **Flux allocation** (or equivalent) on the machine where you call `Pipeline.submit()`
 - For MPI Python or executable chores: a coherent MPI/Flux setup (e.g. PMI2) as expected by your site
-- Optional: SSH port forwarding if you enable the dashboard on a compute node (see the architecture guide in the docs)
+- Optional: SSH port forwarding if you enable the dashboard on a compute node (see the design guide in the docs)
 
 ## Related links
 

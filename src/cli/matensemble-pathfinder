@@ -1,0 +1,122 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/matensemble"
+CONFIG_FILE="$CONFIG_DIR/cli.env"
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  matensemble set-image <sif-file or sandbox>
+  matensemble run <script.py> [args...]
+  matensemble shell
+
+Pathfinder behavior:
+  run   -> srun ... apptainer exec $MATENSEMBLE_IMAGE flux start python <script.py>
+  shell -> srun ... --pty apptainer exec $MATENSEMBLE_IMAGE flux start
+
+Notes:
+  Run inside an existing SLURM allocation.
+  set-image stores the image in ~/.config/matensemble/cli.env.
+USAGE
+}
+
+err() { echo "matensemble: error: $*" >&2; exit 1; }
+
+require_cmd() {
+  command -v "$1" >/dev/null 2>&1 || err "required command not found: $1"
+}
+
+load_config() {
+  if [[ -f "$CONFIG_FILE" ]]; then
+    # shellcheck disable=SC1090
+    source "$CONFIG_FILE"
+  fi
+  : "${MATENSEMBLE_IMAGE:=}"
+}
+
+save_image() {
+  local image="$1"
+  mkdir -p "$CONFIG_DIR"
+
+  if [[ "$image" != *"://" ]]; then
+    [[ -f "$image" ]] || err "SIF/image file does not exist: $image"
+    image="$(cd "$(dirname "$image")" && pwd)/$(basename "$image")"
+  fi
+
+  cat > "$CONFIG_FILE" <<EOF_CONFIG
+export MATENSEMBLE_SYSTEM=pathfinder
+export MATENSEMBLE_IMAGE=$(printf '%q' "$image")
+EOF_CONFIG
+  echo "Set Pathfinder MatEnsemble image: $image"
+}
+
+check_slurm_allocation() {
+  [[ -n "${SLURM_JOB_ID:-}" ]] || err "not inside a SLURM allocation; use salloc/sbatch first"
+  [[ -n "${SLURM_NNODES:-}" || -n "${SLURM_JOB_NUM_NODES:-}" ]] || err "SLURM node count is unavailable"
+}
+
+pathfinder_srun_base() {
+  local nnodes="${SLURM_NNODES:-${SLURM_JOB_NUM_NODES:-}}"
+  printf '%s\0' \
+    srun \
+    -N "$nnodes" \
+    -n "$nnodes" \
+    --external-launcher \
+    --mpi=pmi2
+}
+
+run_workflow() {
+  local script="$1"; shift || true
+  [[ -f "$script" ]] || err "script does not exist: $script"
+  load_config
+  [[ -n "$MATENSEMBLE_IMAGE" ]] || err "no image configured; run: matensemble set-image <image-or-sif-file>"
+  require_cmd srun
+  require_cmd apptainer
+  check_slurm_allocation
+
+  local -a cmd=()
+  while IFS= read -r -d '' part; do cmd+=("$part"); done < <(pathfinder_srun_base)
+
+  exec "${cmd[@]}" apptainer exec "$MATENSEMBLE_IMAGE" flux start python "$script" "$@"
+}
+
+shell_workflow() {
+  load_config
+  [[ -n "$MATENSEMBLE_IMAGE" ]] || err "no image configured; run: matensemble set-image <image-or-sif-file>"
+  require_cmd srun
+  require_cmd apptainer
+  check_slurm_allocation
+
+  local -a cmd=()
+  while IFS= read -r -d '' part; do cmd+=("$part"); done < <(pathfinder_srun_base)
+
+  exec "${cmd[@]}" --pty apptainer exec "$MATENSEMBLE_IMAGE" flux start
+}
+
+main() {
+  local subcmd="${1:-}"
+  case "$subcmd" in
+    set-image)
+      [[ $# -eq 2 ]] || { usage; exit 2; }
+      save_image "$2"
+      ;;
+    run)
+      [[ $# -ge 2 ]] || { usage; exit 2; }
+      shift
+      run_workflow "$@"
+      ;;
+    shell|interactive)
+      shell_workflow
+      ;;
+    -h|--help|help|"")
+      usage
+      ;;
+    *)
+      usage >&2
+      exit 2
+      ;;
+  esac
+}
+
+main "$@"

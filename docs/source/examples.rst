@@ -14,6 +14,7 @@ Examples included in MCP context
 * ``generic_flux/strategy`` — portable, site-independent adaptive strategy and ``ChoreSpec``.
 * ``generic_flux/executable`` — portable, site-independent executable chores using ``Pipeline.exec``.
 * ``frontier/lammps_smoke`` — Frontier LAMMPS GPU smoke workflow and CLI batch scripts.
+* ``pathfinder/lammps_smoke`` — Pathfinder LAMMPS CPU smoke workflow and CLI batch scripts.
 * ``perlmutter/lammps_smoke`` — Perlmutter LAMMPS GPU smoke workflow and CLI batch scripts.
 * ``perlmutter/lammps_mace`` — Perlmutter LAMMPS/MACE workflow and launch pattern.
 * ``perlmutter/dependency_campaign`` — dependency-aware recrystallization campaign and smoke config.

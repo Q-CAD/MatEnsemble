@@ -41,6 +41,9 @@ class Fluxlet:
         nnodes = len(resources.free.ranks)
         total_gpus = resources.free.ngpus
 
+        if nnodes == 0:
+            return 0, 0
+
         gpus_per_node = total_gpus // nnodes
         return nnodes, gpus_per_node
 
@@ -53,7 +56,7 @@ class Fluxlet:
         dynopro: bool | None = None,
     ) -> flux.job.FluxExecutorFuture:
         """
-        Creates a :obj:`Jobspec` useing the a :obj:`Job`. Submits the :obj:`Jobspec`
+        Creates a :obj:`Jobspec` using a :obj:`Job`. Submits the :obj:`Jobspec`
         to flux and adds some metadata to the future object that is returned.
 
         Parameters

@@ -1,8 +1,8 @@
 #!/usr/bin/bash
 
-# The NERSC system uses Podman-hpc as their container runtime, it is quite new
-# and is still under development so in order to get things to work with flux
-# inside of a container we have to do some very hacky things as you will see
+# Perlmutter uses podman-hpc as its container runtime. MatEnsemble needs a
+# generated Flux resource description so Flux can see the GPU resources inside
+# the container.
 
 #SBATCH -A nstaff
 #SBATCH -C gpu              # Specifically request the 40gb GPUs; this is purely for throughput reasons
@@ -18,7 +18,7 @@
 
 # ============================INPUT IMAGE AND SCRIPT==============================
 # Change IMAGE and the FLUX_CMD to what you need for your run
-IMAGE="ghcr.io/freddude2004/matensemble:perlmutter-dev"
+IMAGE="ghcr.io/freddude2004/matensemble:perlmutter-v0.3.11"
 FLUX_CMD="python lammps_mace_calculator.py"
 # ================================================================================
 

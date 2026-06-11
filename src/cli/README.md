@@ -4,6 +4,7 @@ Files:
 
 - `install.sh`: remote bootstrap installer.
 - `matensemble-frontier`: Frontier/OLCF CLI using Apptainer.
+- `matensemble-pathfinder`: Pathfinder/OLCF CLI using Apptainer.
 - `matensemble-perlmutter`: Perlmutter/NERSC CLI using podman-hpc and the generated Flux resource config pattern.
 
 Expected GitHub layout:
@@ -12,6 +13,7 @@ Expected GitHub layout:
 cli/
   install.sh
   matensemble-frontier
+  matensemble-pathfinder
   matensemble-perlmutter
 ```
 

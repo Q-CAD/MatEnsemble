@@ -10,4 +10,4 @@
 #SBATCH --gpu-bind=closest
 
 matensemble set-image ghcr.io/freddude2004/matensemble:perlmutter-v0.3.11
-matensemble run lammps_hello_world.py
+matensemble run workflow.py

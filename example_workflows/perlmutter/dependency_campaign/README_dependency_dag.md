@@ -67,7 +67,7 @@ reports/dependency_dag_smoke/production_deltaF_300_600.{png,svg,pdf}
 Submit the dependency-DAG production campaign with:
 
 ```bash
-cd /pscratch/sd/s/sbagchi/ORNL_Work/Hetero_interfaces_MACE/FreeEnergy_/matensemble_dependency_campaign
+cd example_workflows/perlmutter/dependency_campaign
 sbatch submit_dependency_dag_production_1500_2000_300_600.slurm
 ```
 

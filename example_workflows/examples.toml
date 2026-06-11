@@ -77,6 +77,25 @@ agent_guidance = "Use this system-specific example for Frontier launch scripts, 
 include_in_mcp = true
 
 [[example]]
+id = "pathfinder.lammps_smoke"
+name = "pathfinder_lammps_smoke"
+title = "Pathfinder LAMMPS Smoke Campaign"
+system = "pathfinder"
+system_title = "Pathfinder (OLCF)"
+kind = "campaign"
+directory = "pathfinder/lammps_smoke"
+entrypoint = "workflow.py"
+files = [
+  "README.md",
+  "workflow.py",
+  "run_interactive.sh",
+  "run_batch.slurm",
+]
+description = "Pathfinder CPU LAMMPS smoke test using the MatEnsemble CLI and Apptainer."
+agent_guidance = "Use this system-specific example for Pathfinder launch scripts, Apptainer runtime details, Slurm flags, and CPU LAMMPS setup."
+include_in_mcp = true
+
+[[example]]
 id = "perlmutter.lammps_smoke"
 name = "perlmutter_lammps_smoke"
 title = "Perlmutter LAMMPS Smoke Campaign"

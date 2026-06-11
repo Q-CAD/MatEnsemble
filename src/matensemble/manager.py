@@ -1,7 +1,4 @@
-import os
-import copy
 import time
-import pickle
 import threading
 
 import flux
@@ -43,7 +40,7 @@ class FluxManager:
     _running_chores : set
         A set of :obj:`Chore`'s that are currently running
     _completed_chores : list
-        A list of :obj:`Chore`'s that have completed succesfully
+        A list of :obj:`Chore`'s that have completed successfully
     _failed_chores : list
         A list of :obj:`Chore`'s that failed
     _futures : set
@@ -74,7 +71,7 @@ class FluxManager:
         self,
         chore_list: list[Chore] | None = None,
         base_dir: Path | None = None,
-        write_restart_freq: int | None = 100,
+        write_restart_freq: int | None = None,
         set_cpu_affinity: bool = True,
         set_gpu_affinity: bool = True,
         restart_file: str | None = None,
@@ -91,7 +88,7 @@ class FluxManager:
         set_cpu_affinity : bool, optional
             Whther affinity to the CPU should be set, defaults to True
         set_gpu_affinity : bool, optional
-            Whether affinity to the GPU should be set, defulat to True
+            Whether affinity to the GPU should be set, default to True
         restart_file : str
             The path to a restart file which will be loaded and restart the work-
             flow from the save point, default to None.
@@ -104,6 +101,11 @@ class FluxManager:
         if restart_file:
             self._load_restart(restart_file)
             return None
+        if write_restart_freq is not None:
+            raise NotImplementedError(
+                "MatEnsemble restart/checkpoint files are not supported yet. "
+                "Leave write_restart_freq=None."
+            )
         if not chore_list:
             raise Exception(
                 f"Error: expected chore_list to be a `list[Chore]` instead got {chore_list}"
@@ -116,7 +118,7 @@ class FluxManager:
         self._base_dir = Path(base_dir)
         self._base_dir.mkdir(parents=True, exist_ok=True)
 
-        # dictionary to referenece chore objects by their chore-id
+        # dictionary to reference chore objects by their chore-id
         self._chores_by_id = {chore.id: chore for chore in chore_list}
         self._dependents = {chore.id: [] for chore in chore_list}
         self._remaining_deps = {chore.id: len(chore.deps) for chore in chore_list}
@@ -144,7 +146,7 @@ class FluxManager:
         self._failed_chores = []
         self._futures = set()
 
-        # aquiring a flux handle
+        # acquiring a flux handle
         self._flux_handle = flux.Flux()
         self._fluxlet = Fluxlet(self._flux_handle)
 
@@ -169,14 +171,9 @@ class FluxManager:
         """
         Pickle the current state of the manager and dump it to a file
         """
-
-        fm = copy.deepcopy(self)
-        fm._ready.extendleft(fm._running_chores)
-        fm._running_chores = set()
-        fm._futures = set()
-
-        pickle.dump(fm, open(f"restart_{len(self._completed_chores)}.dat", "wb"))
-        self._logger.info("=== CREATING RESTART FILE ===")
+        raise NotImplementedError(
+            "MatEnsemble restart/checkpoint files are not supported yet."
+        )
 
     def _load_restart(self, path: str) -> None:
         """
@@ -188,44 +185,9 @@ class FluxManager:
             The path to the restart file.
         """
 
-        if path and os.path.exists(path):
-            try:
-                fm = pickle.load(open(path, "rb"))
-                self._base_dir = fm._base_dir
-                self._chores_by_id = fm._chores_by_id
-
-                self._dependents = fm._dependents
-                self._remaining_deps = fm._remaining_deps
-
-                self._ready = fm._ready
-                self._blocked = fm._blocked
-                self._running_chores = fm._running_chores
-                self._completed_chores = fm._completed_chores
-                self._failed_chores = fm._failed_chores
-                self._futures = fm._futures
-
-                self._flux_handle = flux.Flux()
-                self._fluxlet = Fluxlet(self._flux_handle)
-
-                self._write_restart_freq = fm._write_restart_freq
-                self._nnodes_on_allocation = fm._nnodes_on_allocation
-                self._cores_per_node = fm.cores_per_node
-                self._gpus_per_node = fm.gpus_per_node
-                self._set_cpu_affinity = fm.set_cpu_affinity
-                self._set_gpu_affinity = fm.set_gpu_affinity
-
-                self._logger = fm._logger
-                self._status_writer = fm._status_writer
-
-                self._start_time = fm._start_time
-            except Exception as e:
-                self._logger.error(e)
-                raise e
-
-        # TODO: Create a way to call the run method with all the previous
-        #       arguments or expose a function that users can call that
-        #       can restart a workflow with all of the args that they want
-        # self.run(buffer_time)
+        raise NotImplementedError(
+            "MatEnsemble restart/checkpoint files are not supported yet."
+        )
 
     def _log_progress(self) -> None:
         """
@@ -311,7 +273,7 @@ class FluxManager:
 
     def _validate_chores(self) -> None:
         """
-        Calls :method:`_chore_fits_allocation()` on each chore given to the manager to make sure
+        Calls :meth:`_chore_fits_allocation()` on each chore given to the manager to make sure
         that they all fit. If a given chore does not fit it will be discarded.
         """
 
@@ -457,8 +419,9 @@ class FluxManager:
         self._running_chores.add(chore_id)
         self._futures.add(fut)
 
-        self._free_cores -= chore.resources.num_tasks * chore.resources.cores_per_task
-        self._free_gpus -= chore.resources.num_tasks * chore.resources.gpus_per_task
+        needed_cores, needed_gpus = self._chore_resource_footprint(chore)
+        self._free_cores -= needed_cores
+        self._free_gpus -= needed_gpus
         time.sleep(buffer_time)
 
     def _submit_until_ooresources(
@@ -599,7 +562,7 @@ class FluxManager:
         dashboard : bool
             Whether or not the dashboard should be started
         restarting : bool
-            Whether :method:`run` is being invoked for the first time or after a
+            Whether :meth:`run` is being invoked for the first time or after a
             restart file has been loaded
 
 

@@ -57,3 +57,31 @@ def test_fluxlet_submit_sets_workdir_and_streams(monkeypatch, tmp_path: Path):
     fut = fluxlet.submit(_Executor(), chore)
     assert fut.chore_id == "chore-fx-1"
     assert fake_jobspec.cwd == str(chore.workdir)
+
+
+def test_fluxlet_handles_empty_allocation(monkeypatch):
+    class _Resources:
+        class free:
+            ranks = []
+            ngpus = 0
+
+    class _ResourceList:
+        def get(self):
+            return _Resources()
+
+    class _Handle:
+        def rpc(self, *_args, **_kwargs):
+            class _Done:
+                def get(self):
+                    return None
+
+            return _Done()
+
+    monkeypatch.setattr(
+        "flux.resource.list.resource_list",
+        lambda _handle: _ResourceList(),
+        raising=False,
+    )
+
+    fluxlet = Fluxlet(_Handle())
+    assert (fluxlet.num_nodes, fluxlet.gpus_per_node) == (0, 0)

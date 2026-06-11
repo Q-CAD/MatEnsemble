@@ -15,7 +15,7 @@ def mpi_hello_world():
     print(f"Hello World! I am process {rank} of {size} on {name}.")
 
 
-# Then we add the chore to the workflow 10 seperate times
+# Then we add the chore to the workflow 10 separate times
 for _ in range(10):
     mpi_hello_world()
 

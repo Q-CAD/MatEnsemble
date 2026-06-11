@@ -29,6 +29,10 @@ case "$choice" in
 	SYSTEM="perlmutter"
 	SCRIPT_URL="$REPO_RAW_BASE/matensemble-perlmutter"
 	;;
+3 | pathfinder | Pathfinder)
+	SYSTEM="pathfinder"
+	SCRIPT_URL="$REPO_RAW_BASE/matensemble-pathfinder"
+	;;
 *)
 	echo "error: expected 1/frontier, 2/perlmutter or 3/pathfinder" >&2
 	exit 2
@@ -54,8 +58,8 @@ case ":$PATH:" in
 esac
 
 echo
-if [ "$SYSTEM" = "frontier" ]; then
-	echo "Next: matensemble set-image /path/to/matensemble.sif"
+if [ "$SYSTEM" = "perlmutter" ]; then
+	echo "Next: matensemble set-image ghcr.io/freddude2004/matensemble:perlmutter-vX.Y.Z"
 else
-	echo "Next: matensemble set-image ghcr.io/freddude2004/matensemble:perlmutter-dev"
+	echo "Next: matensemble set-image /path/to/matensemble.sif"
 fi

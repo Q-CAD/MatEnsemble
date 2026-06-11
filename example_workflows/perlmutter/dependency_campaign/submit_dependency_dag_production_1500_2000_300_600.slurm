@@ -12,7 +12,7 @@
 
 set -euo pipefail
 
-cd /pscratch/sd/s/sbagchi/ORNL_Work/Hetero_interfaces_MACE/FreeEnergy_/matensemble_dependency_campaign
+cd "$(dirname "$0")"
 mkdir -p logs
 
 export RECRYST_CONFIG=recryst_config_dependency_production_1500_2000_300_600.json

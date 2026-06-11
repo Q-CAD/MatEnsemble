@@ -120,13 +120,14 @@ class Pipeline:
         inherit_env: bool = True,
     ) -> Callable[[Callable[..., Any]], Callable[..., OutputReference]]:
         """
-        Wrap a function to produce a :obj:`Chore` and returns a :obj: `OutputReference`
+        Wrap a function to produce a :obj:`Chore` and returns an
+        :class:`~matensemble.model.OutputReference`.
         which other chore definitions can use to define dependencies.
 
         :obj:`Chore` objects are delayed function calls that are put into the
-        :obj: `Pipeline` and are added into its graph when you run it.
-        A PYTHON :obj: `Chore` contains meta-data that is needed to reproduce a
-        function. The :obj: `FluxManager` will create a :obj: `Fluxlet` and
+        :obj:`Pipeline` and are added into its graph when you run it.
+        A PYTHON :obj:`Chore` contains metadata that is needed to reproduce a
+        function. The :obj:`FluxManager` will create a :obj:`Fluxlet` and
         submit the chore to flux which calls the module :py:mod: `matensemble.runtime_worker`.
         :py:mod: `matensemble.runtime_worker` takes in two command line
         arguments which are the :param: `chore_id` and :param: `spec_file` which
@@ -534,7 +535,7 @@ class Pipeline:
 
     def _submit(
         self,
-        write_restart_freq: int | None = 100,
+        write_restart_freq: int | None = None,
         buffer_time: float = 1.0,
         log_delay: float = 5.0,
         set_cpu_affinity: bool = True,
@@ -553,6 +554,11 @@ class Pipeline:
             The results of the workflow with each key being the chores ID and
             the value being the results of the chore.
         """
+        if write_restart_freq is not None:
+            raise NotImplementedError(
+                "MatEnsemble restart/checkpoint files are not supported yet. "
+                "Leave write_restart_freq=None."
+            )
 
         with self._submission_state_lock:
             self._finished = False
@@ -622,7 +628,7 @@ class Pipeline:
 
     def submit(
         self,
-        write_restart_freq: int | None = 100,
+        write_restart_freq: int | None = None,
         buffer_time: float = 1.0,
         log_delay: float = 5.0,
         set_cpu_affinity: bool = True,
@@ -639,10 +645,8 @@ class Pipeline:
         Parameters
         ----------
         write_restart_freq : int or None
-            If an integer *N*, the completion strategy tries to checkpoint after each *N*
-            successful chores. **Checkpointing is not implemented yet**; leave ``None`` (or
-            pass ``None`` explicitly) for production runs until restart files are supported.
-            The default remains ``100`` for historical reasons only.
+            Restart/checkpoint files are not supported yet. Leave this as
+            ``None``. Passing an integer raises :exc:`NotImplementedError`.
         buffer_time : float
             The amount of seconds that the :obj:`FluxManager` should wait between
             submission of chores, defaults to 1.0s.
@@ -662,7 +666,7 @@ class Pipeline:
             The strategy that should be used to process the future objects as :obj:`Chore`'s
             complete.
         dashboard : bool
-            Whether or not MatEnsemble will server a GUI Dashboard on port 8000
+            Whether MatEnsemble will serve a GUI dashboard on port 8000
             as the workflow runs. Defaults to False.
 
         Returns
@@ -705,7 +709,7 @@ class Pipeline:
             self._submission_future = fut
         return fut
 
-    # TODO: Add logic to make the funciton work with ChoreType.EXECUTABLE
+    # TODO: Add logic to make the function work with ChoreType.EXECUTABLE
     def results(self, timeout=100):
         """
         Returns a dictionary of each chore to its results

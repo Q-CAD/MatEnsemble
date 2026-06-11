@@ -15,7 +15,7 @@ class ChoreSpec:
     """
     The specification of a :obj:`Chore`
 
-    Holds the arguments, key-word
+    Holds the arguments, keyword
     arguments and the name of the chore that you want those arguments to be
     passed to. This is class is used by the user when creating a UserStrategy
     that does processing on completed chores and can spawn new chores.
@@ -35,7 +35,7 @@ class Chore:
 
     Python chores are delayed function calls that will be submitted to the
     runtime-worker when the :obj:`Chore`'s dependencies are resolved and they are
-    schduled in the queue.
+    scheduled in the queue.
 
     Executable chores are simply commands that will usually call an Executable script
     when the chore is scheduled.
@@ -80,11 +80,11 @@ class Chore:
         serialized_callable : bytes
             The original function that was wrapped stored as bytes
         deps : tuple[str, ...]
-            A tupele of chore-id's which results this :obj:`Chore
+            A tuple of chore IDs whose results this :obj:`Chore` depends on
         args : tuple
             The arguments to give the function if type is PYTHON
         kwargs : dict
-            The key-word arguments to give the function if flaovr is PYTHON
+            The keyword arguments to give the function if flavor is PYTHON
         nnodes : int, optional
             When set, this chore will be scheduled via ``per_resource`` and will
             occupy *nnodes* whole nodes (all cores and all GPUs on each node).

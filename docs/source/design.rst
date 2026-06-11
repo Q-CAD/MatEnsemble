@@ -140,7 +140,7 @@ failure list. Check per-chore ``stderr`` for the detailed MatEnsemble annotation
 Dashboard (optional)
 --------------------
 
-Pass ``dashboard=True`` to :meth:`~matensemble.pipeline.Pipeline.submit`. A FastAPI + uvicorn thread
+Pass ``dashboard=True`` to :meth:`~matensemble.pipeline.Pipeline.submit`. A Starlette + uvicorn thread
 serves static assets and ``GET /api/status`` on **port 8000**. On a cluster you typically **SSH tunnel**
 from your laptop to the compute node running the driver—for example:
 

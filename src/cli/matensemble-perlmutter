@@ -11,7 +11,7 @@ Usage:
   matensemble run <script.py> [args...]
 
 Perlmutter behavior:
-  run -> srun ... podman-hpc run <hacky Flux/NVIDIA/Slurm bind args> $MATENSEMBLE_IMAGE bash <generated-container-script>
+  run -> srun ... podman-hpc run <Flux/NVIDIA/Slurm bind args> $MATENSEMBLE_IMAGE bash <generated-container-script>
 
 Notes:
   Run inside an existing SLURM allocation.

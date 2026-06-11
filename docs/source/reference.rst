@@ -12,10 +12,10 @@ debug a run without spelunking the source.
 ``basedir`` (optional :class:`str`)
     If omitted, the workflow root directory is created under :meth:`pathlib.Path.cwd`. If provided,
     the stamped ``matensemble_workflow-…`` directory is created **inside** this path. The parent of
-    the stamped directory is what gets added to ``PYTHONPATH`` for Python chores (see :doc:`architecture`).
+    the stamped directory is what gets added to ``PYTHONPATH`` for Python chores (see :doc:`design`).
 
 ``Pipeline.chore`` decorator factory
-----------------------------------
+------------------------------------
 
 Each optional argument becomes part of :class:`~matensemble.model.Resources` and affects the Flux jobspec.
 
@@ -54,10 +54,9 @@ a Python chore if you need DAG edges.
 ``Pipeline.submit``
 -------------------
 
-``write_restart_freq`` (:class:`int` or ``None``; default ``100``)
-    After every *N* successful completions, strategies call :meth:`~matensemble.manager.FluxManager._make_restart`.
-    **Checkpointing is not implemented yet** and the method raises :exc:`NotImplementedError`. Until a release
-    ships with working restart files, pass ``write_restart_freq=None`` to disable this hook on long runs.
+``write_restart_freq`` (:class:`int` or ``None``; default ``None``)
+    Restart/checkpoint files are not supported yet. Leave this as ``None``. Passing an integer raises
+    :exc:`NotImplementedError` before work is submitted.
 
 ``buffer_time`` (:class:`float`; default ``1.0``)
     Passed to :func:`concurrent.futures.wait` as the ``timeout`` when draining Flux futures; also used as a
@@ -76,17 +75,19 @@ a Python chore if you need DAG edges.
     only drains futures.
 
 ``dynopro``
-    Whether or not the dynopro module will be used. Currently acts as a shim and has no use right now.
+    Reserved for whole-node dynopro workflows. General users should leave this ``False``.
+
     .. warning::
-        do not use this
+
+       The in-tree ``dynopro`` stack is experimental and is not part of the stable public API.
 
 ``processing_strategy``
     Supply your own :class:`~matensemble.strategy.FutureProcessingStrategy` to replace adaptive / non-adaptive
     selection entirely.
 
 ``dashboard`` (default ``False``)
-    When true, starts uvicorn on ``0.0.0.0:8000`` serving the packaged static UI and JSON status (see
-    :func:`matensemble.utils.setup_dashboard`).
+    When true, starts a Starlette/uvicorn server on ``0.0.0.0:8000`` serving the packaged static UI
+    and JSON status (see :func:`matensemble.utils.setup_dashboard`).
 
 ``status.json`` schema
 ----------------------
@@ -119,7 +120,7 @@ Written atomically (temp file + rename) by :class:`~matensemble.logger.StatusWri
 The dashboard’s ``GET /api/status`` returns the same object, or zeros if the file is missing.
 
 Per-chore artifacts
------------------
+-------------------
 
 ``stdout`` / ``stderr``
     Standard streams from Flux. MatEnsemble appends human-readable blocks to ``stderr`` when futures raise
@@ -146,4 +147,3 @@ Recorded in :meth:`~matensemble.manager.FluxManager._record_failure` entries:
 * ``exception`` — future completion raised (wrapper or process error surfaced as an exception).
 * ``nonzero_exit:<rc>`` — future returned a non-zero integer exit code.
 * ``dependency_failed`` — cascaded skip because an upstream chore failed.
-

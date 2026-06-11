@@ -85,7 +85,7 @@ EXAMPLES: tuple[ExampleSummary, ...] = (
     ),
     ExampleSummary(
         name="perlmutter_lammps",
-        path="example_workflows/perlmutter/run_lammps_mace_calculator.sh",
+        path="example_workflows/perlmutter/lammps_mace/run_batch.slurm",
         demonstrates="Site batch launch pattern for running MatEnsemble inside Flux.",
     ),
 )
@@ -98,7 +98,7 @@ EXAMPLE_NAME_BY_PATH = {
     "generic_flux/executable/workflow.py": "executable",
     "generic_flux/mpi/workflow.py": "mpi",
     "generic_flux/strategy/workflow.py": "strategy",
-    "perlmutter/lammps_mace_calculator/run_lammps_mace_calculator.sh": "perlmutter_lammps",
+    "perlmutter/lammps_mace/run_batch.slurm": "perlmutter_lammps",
 }
 
 
@@ -228,7 +228,7 @@ print(future.result())
 #SBATCH --gpus-per-node=4
 #SBATCH --gpu-bind=closest
 
-IMAGE="ghcr.io/freddude2004/matensemble:perlmutter-dev"
+IMAGE="ghcr.io/freddude2004/matensemble:perlmutter-vX.Y.Z"
 FLUX_CMD="python workflow.py"
 
 srun -N "${SLURM_NNODES}" -n "${SLURM_NNODES}" --mpi=pmi2 \\
@@ -252,6 +252,7 @@ EXAMPLE_ALIASES = {
     "common_strategy": "generic_flux.strategy",
     "generic_flux_strategy": "generic_flux.strategy",
     "frontier_lammps_smoke": "frontier.lammps_smoke",
+    "pathfinder_lammps_smoke": "pathfinder.lammps_smoke",
     "perlmutter_lammps_smoke": "perlmutter.lammps_smoke",
     "perlmutter_lammps_mace": "perlmutter.lammps_mace",
     "perlmutter_dependency_campaign": "perlmutter.dependency_campaign",

@@ -27,11 +27,12 @@ Reference implementations live under ``example_workflows/`` in the `MatEnsemble 
 Minimal executable (“exec”) workflow
 ====================================
 
-``Pipeline.exec`` records a :class:`~matensemble.chore.Chore
+``Pipeline.exec`` records a :class:`~matensemble.chore.Chore`.
 The command is either a string (split with :mod:`shlex`) or an argv list.
 
 .. code-block:: python
    :linenos:
+
    from matensemble.pipeline import Pipeline
 
    pipe = Pipeline()
@@ -55,13 +56,13 @@ inspect :class:`~matensemble.model.OutputReference` objects; they are always tre
 external commands inside a Python chore.
 
 Python chores and ``OutputReference`` dependencies
-=================================================
+==================================================
 
 Decorated functions are **not** executed immediately. Each call appends a Python :class:`~matensemble.chore.Chore`
 and returns a :class:`~matensemble.model.OutputReference` placeholder.
 
 Defining chores (importable module — **not** ``__main__``)
---------------------------------------------------------
+----------------------------------------------------------
 
 .. code-block:: python
    :linenos:
@@ -83,7 +84,7 @@ Defining chores (importable module — **not** ``__main__``)
        print(f"Hello World! I am process {rank} of {size} on {name}.")
 
 
-   # Then we add the chore to the workflow 10 seperate times
+   # Then we add the chore to the workflow 10 separate times
    for _ in range(10):
        mpi_hello_world()
 
@@ -122,7 +123,7 @@ Chained dependencies (any acyclic DAG)
    pipe.submit()
 
 :class:`~matensemble.manager.FluxManager` only schedules ``chore2`` after ``chore1`` finishes, and ``chore3`` after
-``chore2`` finishes. Internally, the worker unpickles ``../chore1/result.pkl`` before invoking ``chore2``.
+``chore2`` finishes. Internally, the worker unpickles ``../chore1/result.pickle`` before invoking ``chore2``.
 
 .. note::
 
@@ -132,7 +133,9 @@ Chained dependencies (any acyclic DAG)
 User Defined Strategies
 =======================
 
-Coming soon
+User-defined strategies can observe completed chores and dynamically add more work by returning
+:class:`~matensemble.chore.ChoreSpec` objects. See ``example_workflows/generic_flux/strategy/workflow.py``
+for a compact runnable example.
 
 Nested arguments
 ================
@@ -142,7 +145,7 @@ mixing plain data and :class:`~matensemble.model.OutputReference` instances; the
 references with concrete Python objects.
 
 Third-party imports inside chores
-===============================
+=================================
 
 Because workers import the defining module in full, **top-level imports** run automatically. You do not need
 to bury ``import numpy`` inside the chore body unless you want lazy loading for side-effect control.
@@ -156,7 +159,7 @@ If you need extra wheels:
 Operational tips
 ================
 
-* Pass ``dashboard=True`` and tunnel port ``8000`` if you want the browser UI (:doc:`architecture`).
+* Pass ``dashboard=True`` and tunnel port ``8000`` if you want the browser UI (:doc:`design`).
 * Inspect ``matensemble_workflow.log`` for human-readable progress; parse ``status.json`` for machine consumption.
 * On failure, always read the chore’s ``stderr``—MatEnsemble annotates wrapper errors there.
 

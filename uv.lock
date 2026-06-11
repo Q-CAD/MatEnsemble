@@ -752,6 +752,8 @@ dependencies = [
     { name = "scikit-learn" },
     { name = "scipy" },
     { name = "seaborn" },
+    { name = "starlette" },
+    { name = "uvicorn" },
 ]
 
 [package.optional-dependencies]
@@ -782,6 +784,8 @@ requires-dist = [
     { name = "scikit-learn", specifier = ">=1.0.0" },
     { name = "scipy", specifier = ">=1.7.0" },
     { name = "seaborn", specifier = ">=0.11.0" },
+    { name = "starlette", specifier = ">=1.0.0" },
+    { name = "uvicorn", specifier = ">=0.42.0" },
 ]
 provides-extras = ["flux"]
 
@@ -2203,8 +2207,8 @@ name = "uvicorn"
 version = "0.42.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "click", marker = "sys_platform != 'emscripten'" },
-    { name = "h11", marker = "sys_platform != 'emscripten'" },
+    { name = "click" },
+    { name = "h11" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/e3/ad/4a96c425be6fb67e0621e62d86c402b4a17ab2be7f7c055d9bd2f638b9e2/uvicorn-0.42.0.tar.gz", hash = "sha256:9b1f190ce15a2dd22e7758651d9b6d12df09a13d51ba5bf4fc33c383a48e1775", size = 85393, upload-time = "2026-03-16T06:19:50.077Z" }
 wheels = [
