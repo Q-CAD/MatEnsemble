@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import stat
 from pathlib import Path
 
@@ -62,11 +63,7 @@ def main(argv: list[str] | None = None) -> None:
     wrapper = install_dir / f"mcp-matensemble-{system}"
     _write_executable(
         wrapper,
-        f"""#!/usr/bin/env bash
-set -euo pipefail
-export PATH="{install_dir}:$PATH"
-exec "{install_dir / "mcp-matensemble"}"
-""",
+        _server_wrapper_script(install_dir=install_dir),
     )
 
     if system in {"frontier", "perlmutter", "pathfinder"} and ns.install_site_cli:
@@ -113,6 +110,26 @@ def _write_executable(path: Path, text: str) -> None:
     path.write_text(text, encoding="utf-8")
     mode = path.stat().st_mode
     path.chmod(mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+
+def _server_wrapper_script(*, install_dir: Path) -> str:
+    repo = _repo_root()
+    uv = shutil.which("uv") or "uv"
+    return f"""#!/usr/bin/env bash
+set -euo pipefail
+export PATH="{install_dir}:$PATH"
+cd "{repo}"
+exec "{uv}" run mcp-matensemble
+"""
+
+
+def _repo_root() -> Path:
+    for parent in Path(__file__).resolve().parents:
+        if (parent / "pyproject.toml").is_file() and (
+            parent / "src" / "mcp_matensemble"
+        ).is_dir():
+            return parent
+    raise SystemExit("could not locate the MatEnsemble MCP repository root")
 
 
 def _write_readme(workspace: Path, system: str) -> None:

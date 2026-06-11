@@ -38,6 +38,10 @@ def test_agent_install_writes_workspace_and_wrappers(tmp_path):
     assert mcp_config["servers"]["matensemble"]["command"] == str(
         install_dir / "mcp-matensemble-frontier"
     )
+    wrapper = (install_dir / "mcp-matensemble-frontier").read_text(encoding="utf-8")
+    assert "uv" in wrapper
+    assert "run mcp-matensemble" in wrapper
+    assert "exec" in wrapper
     assert not (install_dir / "matensemble").exists()
     assert (workspace / "README.md").exists()
     assert (workspace / ".matensemble-mcp.toml").exists()
