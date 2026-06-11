@@ -42,6 +42,8 @@ def test_agent_install_writes_workspace_and_wrappers(tmp_path):
     assert "uv" in wrapper
     assert "run mcp-matensemble" in wrapper
     assert "exec" in wrapper
-    assert not (install_dir / "matensemble").exists()
+    site_cli = (install_dir / "matensemble").read_text(encoding="utf-8")
+    assert "perlmutter" not in site_cli
+    assert "frontier" in site_cli
     assert (workspace / "README.md").exists()
     assert (workspace / ".matensemble-mcp.toml").exists()

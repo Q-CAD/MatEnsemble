@@ -27,12 +27,12 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "--install-site-cli",
         action="store_true",
-        help="Install the MatEnsemble site CLI wrapper for HPC systems.",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--confirm-cli-install",
         action="store_true",
-        help="Confirm writing the site CLI wrapper outside the scratch workspace.",
+        help=argparse.SUPPRESS,
     )
     parser.add_argument(
         "--config-dir",
@@ -61,17 +61,16 @@ def main(argv: list[str] | None = None) -> None:
     config_dir.mkdir(parents=True, exist_ok=True)
 
     wrapper = install_dir / f"mcp-matensemble-{system}"
-    _write_executable(
+    wrapper_changed = _write_executable(
         wrapper,
         _server_wrapper_script(install_dir=install_dir),
     )
 
-    if system in {"frontier", "perlmutter", "pathfinder"} and ns.install_site_cli:
-        if not ns.confirm_cli_install:
-            raise SystemExit(
-                "installing the MatEnsemble site CLI writes outside $SCRATCH; rerun with --confirm-cli-install"
-            )
-        _write_executable(install_dir / "matensemble", site_cli_script(system))
+    site_cli = None
+    site_cli_changed = False
+    if system in {"frontier", "perlmutter", "pathfinder"}:
+        site_cli = install_dir / "matensemble"
+        site_cli_changed = _write_executable(site_cli, site_cli_script(system))
 
     mcp_config = {
         "servers": {
@@ -96,7 +95,12 @@ def main(argv: list[str] | None = None) -> None:
     print(f"Installed MatEnsemble MCP workspace for {system}")
     print(f"Workspace: {workspace}")
     print(f"VS Code MCP config: {workspace / '.vscode' / 'mcp.json'}")
-    print(f"Wrapper: {wrapper}")
+    print(f"Wrapper: {wrapper} ({'updated' if wrapper_changed else 'already current'})")
+    if site_cli is not None:
+        print(
+            f"MatEnsemble site CLI: {site_cli} "
+            f"({'updated' if site_cli_changed else 'already current'})"
+        )
 
 
 def _default_workspace() -> str:
@@ -106,10 +110,16 @@ def _default_workspace() -> str:
     return str(Path(scratch) / "matensemble_campaigns")
 
 
-def _write_executable(path: Path, text: str) -> None:
+def _write_executable(path: Path, text: str) -> bool:
+    changed = not path.exists() or path.read_text(encoding="utf-8") != text
+    if not changed:
+        mode = path.stat().st_mode
+        path.chmod(mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+        return False
     path.write_text(text, encoding="utf-8")
     mode = path.stat().st_mode
     path.chmod(mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    return True
 
 
 def _server_wrapper_script(*, install_dir: Path) -> str:
