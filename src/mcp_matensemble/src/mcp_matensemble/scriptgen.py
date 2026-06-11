@@ -294,7 +294,7 @@ def render_interactive_script(*, site: str, workflow_filename: str) -> str:
             set -euo pipefail
 
             if ! command -v matensemble >/dev/null 2>&1; then
-              echo "Install the MatEnsemble CLI first: curl -fsSL https://raw.githubusercontent.com/FredDude2004/MatEnsemble/main/scripts/install-matensemble-agent.sh | bash -s -- --system frontier" >&2
+              echo "Install the MatEnsemble MCP/site CLI from the cloned repo first: uv run --package mcp-matensemble matensemble-agent-install --system frontier --install-site-cli --confirm-cli-install" >&2
               exit 1
             fi
 
@@ -314,7 +314,7 @@ def render_interactive_script(*, site: str, workflow_filename: str) -> str:
             set -euo pipefail
 
             if ! command -v matensemble >/dev/null 2>&1; then
-              echo "Install the MatEnsemble CLI first: curl -fsSL https://raw.githubusercontent.com/FredDude2004/MatEnsemble/main/scripts/install-matensemble-agent.sh | bash -s -- --system perlmutter" >&2
+              echo "Install the MatEnsemble MCP/site CLI from the cloned repo first: uv run --package mcp-matensemble matensemble-agent-install --system perlmutter --install-site-cli --confirm-cli-install" >&2
               exit 1
             fi
 
@@ -354,7 +354,7 @@ def render_batch_script(
             mkdir -p logs
 
             if ! command -v matensemble >/dev/null 2>&1; then
-              echo "Install the MatEnsemble CLI first: curl -fsSL https://raw.githubusercontent.com/FredDude2004/MatEnsemble/main/scripts/install-matensemble-agent.sh | bash -s -- --system frontier" >&2
+              echo "Install the MatEnsemble MCP/site CLI from the cloned repo first: uv run --package mcp-matensemble matensemble-agent-install --system frontier --install-site-cli --confirm-cli-install" >&2
               exit 1
             fi
 
@@ -387,7 +387,7 @@ def render_batch_script(
             mkdir -p logs
 
             if ! command -v matensemble >/dev/null 2>&1; then
-              echo "Install the MatEnsemble CLI first: curl -fsSL https://raw.githubusercontent.com/FredDude2004/MatEnsemble/main/scripts/install-matensemble-agent.sh | bash -s -- --system perlmutter" >&2
+              echo "Install the MatEnsemble MCP/site CLI from the cloned repo first: uv run --package mcp-matensemble matensemble-agent-install --system perlmutter --install-site-cli --confirm-cli-install" >&2
               exit 1
             fi
 

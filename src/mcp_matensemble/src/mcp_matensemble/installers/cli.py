@@ -149,6 +149,15 @@ I want to run a LAMMPS GPU smoke test with MatEnsemble on {system}. Use the MatE
 
 Use prepare/confirm tools for launch, build, pull, cancel, and delete actions.
 The server will not execute those actions without a matching plan id.
+
+For MatEnsemble containers, ask the agent to use `prepare_container_pull_plan`.
+The MCP server forms GHCR image tags from the local MatEnsemble version, for
+example `ghcr.io/freddude2004/matensemble:{system}-vX.Y.Z`; agents should not
+query registry tag APIs.
+
+For HPC systems, generated Slurm resources use at least 2 nodes because Flux
+uses one node as a broker/orchestrator and leaves the remaining node(s) for
+MatEnsemble chores.
 """,
         encoding="utf-8",
     )

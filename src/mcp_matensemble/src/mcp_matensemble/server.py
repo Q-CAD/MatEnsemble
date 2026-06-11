@@ -208,12 +208,12 @@ def write_batch_script(
     campaign: str,
     system: str,
     account: str | None = None,
-    nodes: int = 1,
+    nodes: int = 2,
     walltime: str = "00:30:00",
     queue: str = "batch",
     gpus: int = 0,
     tasks: int = 1,
-    container_backend: str = "apptainer",
+    container_backend: str = "auto",
     container_path: str | None = None,
     overwrite: bool = False,
 ) -> dict[str, Any]:
@@ -248,11 +248,13 @@ def prepare_launch_plan(
     system: str,
     mode: str = "batch",
     account: str | None = None,
-    nodes: int = 1,
+    nodes: int = 2,
     walltime: str = "00:30:00",
     queue: str = "batch",
     gpus: int = 0,
     tasks: int = 1,
+    container_backend: str = "auto",
+    container_path: str | None = None,
 ) -> dict[str, Any]:
     """Prepare a launch plan without executing it."""
 
@@ -267,6 +269,8 @@ def prepare_launch_plan(
         queue=queue,
         gpus=gpus,
         tasks=tasks,
+        container_backend=container_backend,
+        container_path=container_path,
     )
 
 
@@ -285,10 +289,25 @@ def get_job_status(job_id: str, timeout_seconds: int = 30) -> dict[str, Any]:
 
 
 @mcp.tool()
-def prepare_container_pull_plan(system: str, force: bool = False) -> dict[str, Any]:
-    """Prepare a reusable GHCR container pull plan."""
+def prepare_container_pull_plan(
+    system: str,
+    force: bool = False,
+    version: str | None = None,
+    image_tag: str | None = None,
+) -> dict[str, Any]:
+    """Prepare a reusable GHCR container pull plan using the local version by default.
 
-    return wrap(v1_tools.prepare_container_pull_plan, system, force=force)
+    This tool never queries GHCR tags. For "latest", it forms the image from
+    the local MatEnsemble version: ghcr.io/freddude2004/matensemble:<system>-vX.Y.Z.
+    """
+
+    return wrap(
+        v1_tools.prepare_container_pull_plan,
+        system,
+        force=force,
+        version=version,
+        image_tag=image_tag,
+    )
 
 
 @mcp.tool()

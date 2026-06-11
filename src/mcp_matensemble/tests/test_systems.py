@@ -16,7 +16,8 @@ def test_perlmutter_profile_prefers_cli():
     assert profile.container_runtime == "Podman-HPC or Apptainer"
     assert profile.container_backends == ("podman-hpc", "apptainer")
     assert "matensemble run workflow.py" == profile.launch_command
-    assert "podman-hpc pull" in profile.cli_install
+    assert "prepare_container_pull_plan" in profile.cli_install
+    assert "local MatEnsemble version" in profile.cli_install
 
 
 def test_frontier_profile_mentions_apptainer():

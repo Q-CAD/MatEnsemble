@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from .contracts import error, ok
-from .environment import resolve_image_tag
+from .environment import get_local_matensemble_version, resolve_image_tag
 from .examples import (
     get_container_template as read_container_template,
     get_system_example,
@@ -60,6 +60,18 @@ SOURCE_SYMBOLS = {
     "chore": "src/matensemble/chore.py",
     "utils": "src/matensemble/utils.py",
 }
+HPC_SYSTEMS = {"frontier", "perlmutter", "pathfinder"}
+FLUX_BROKER_NODE_WARNING = (
+    "MatEnsemble launches Flux inside the Slurm allocation, and Flux reserves "
+    "one node for broker/orchestration work. HPC campaigns need at least 2 "
+    "nodes so at least one node remains available for chores; nodes was "
+    "auto-bumped to 2."
+)
+REGISTRY_LOOKUP_WARNING = (
+    "GHCR tag discovery is intentionally unsupported. The MCP server resolves "
+    "the MatEnsemble image deterministically from the local checked-out "
+    "MatEnsemble version or an explicit version/image_tag override."
+)
 
 
 def repo_root() -> Path:
@@ -87,6 +99,26 @@ def get_system_context(system: str) -> dict[str, Any]:
         "examples": list_examples_for_system(key),
         "container_templates": discover_container_templates(key),
         "workspace_root": str(scratch_workspace_root()),
+        "container_image_policy": {
+            "latest_source": "local_matensemble_version",
+            "pattern": "ghcr.io/freddude2004/matensemble:<system>-vX.Y.Z",
+            "registry_lookup_performed": False,
+            "registry_tag_discovery_supported": False,
+            "guidance": (
+                "Use prepare_container_pull_plan(system) for the local-version "
+                "MatEnsemble image. Do not query GHCR tags, registry token APIs, "
+                "or tag-list endpoints."
+            ),
+        },
+        "resource_policy": {
+            "hpc_min_nodes": 2 if key in HPC_SYSTEMS else None,
+            "reason": (
+                "Flux uses one node as a broker/orchestrator, so HPC campaigns "
+                "need at least 2 nodes for chores to have resources."
+                if key in HPC_SYSTEMS
+                else "Local Linux workflows use local Flux test-size resources."
+            ),
+        },
     }
     return ok(result)
 
@@ -308,12 +340,12 @@ def write_batch_script(
     system: str,
     *,
     account: str | None,
-    nodes: int = 1,
+    nodes: int = 2,
     walltime: str = "00:30:00",
     queue: str = "batch",
     gpus: int = 0,
     tasks: int = 1,
-    container_backend: str = "apptainer",
+    container_backend: str = "auto",
     container_path: str | None = None,
     overwrite: bool = False,
     cwd: Path | None = None,
@@ -322,8 +354,10 @@ def write_batch_script(
     if not account:
         return error("ACCOUNT_REQUIRED", "Slurm account/project allocation is required.")
     profile = get_system_profile(key)
+    container_backend = _resolve_container_backend(key, container_backend)
     if container_backend not in profile.container_backends:
         raise ValueError(f"container_backend must be one of {profile.container_backends}")
+    nodes, resource_warnings = _normalize_nodes(key, nodes)
     campaign_dir = _campaign_dir(campaign, cwd=cwd)
     workflow = campaign_dir / "workflow.py"
     if not workflow.is_file():
@@ -332,7 +366,8 @@ def write_batch_script(
     existed = target.exists()
     if existed and not overwrite:
         raise FileExistsError(f"submit.slurm already exists: {target}")
-    container = container_path or f"../containers/{key}/matensemble.sif"
+    image = resolve_image_tag(key)
+    container = container_path or _default_container_reference(key, container_backend, image)
     text = _render_batch(
         system=key,
         campaign=campaign_dir.name,
@@ -349,9 +384,16 @@ def write_batch_script(
     target.write_text(text, encoding="utf-8")
     rel = relative_to_workspace(target, cwd=cwd)
     return ok(
-        {"path": rel, "resources": _resources(account, nodes, walltime, queue, gpus, tasks)},
+        {
+            "path": rel,
+            "resources": _resources(account, nodes, walltime, queue, gpus, tasks),
+            "container": container,
+            "image": image,
+            "container_backend": container_backend,
+        },
         created_files=[] if existed else [rel],
         modified_files=[rel] if existed else [],
+        warnings=resource_warnings,
     )
 
 
@@ -383,11 +425,13 @@ def prepare_launch_plan(
     *,
     mode: str = "batch",
     account: str | None = None,
-    nodes: int = 1,
+    nodes: int = 2,
     walltime: str = "00:30:00",
     queue: str = "batch",
     gpus: int = 0,
     tasks: int = 1,
+    container_backend: str = "auto",
+    container_path: str | None = None,
     cwd: Path | None = None,
 ) -> dict[str, Any]:
     key = normalize_system(system)
@@ -397,6 +441,10 @@ def prepare_launch_plan(
     if mode == "batch" and not (campaign_dir / "submit.slurm").is_file():
         raise ValueError("batch mode requires submit.slurm")
     command = _launch_command(mode)
+    nodes, resource_warnings = _normalize_nodes(key, nodes)
+    container_backend = _resolve_container_backend(key, container_backend)
+    image = resolve_image_tag(key)
+    container = container_path or _default_container_reference(key, container_backend, image)
     plan = {
         "launch_plan_id": str(uuid.uuid4()),
         "created_at": _now(),
@@ -406,10 +454,13 @@ def prepare_launch_plan(
         "mode": mode,
         "workflow_script": "workflow.py",
         "batch_script": "submit.slurm" if mode == "batch" else None,
-        "container": f"../containers/{key}/matensemble.sif",
+        "container": container,
+        "image": image,
+        "container_backend": container_backend,
         "command": command,
         "cwd": str(campaign_dir),
         "resources": _resources(account, nodes, walltime, queue, gpus, tasks),
+        "warnings": resource_warnings,
         "requires_confirmation": True,
     }
     plan["command_hash"] = _plan_hash(plan)
@@ -419,6 +470,7 @@ def prepare_launch_plan(
         {"launch_plan": plan, "launch_plan_path": relative_to_workspace(path, cwd=cwd)},
         modified_files=[relative_to_workspace(path, cwd=cwd)] if path.exists() else [],
         commands_not_run=[command],
+        warnings=resource_warnings,
     )
 
 
@@ -470,6 +522,8 @@ def prepare_container_pull_plan(
     system: str,
     *,
     force: bool = False,
+    version: str | None = None,
+    image_tag: str | None = None,
     cwd: Path | None = None,
 ) -> dict[str, Any]:
     key = normalize_system(system)
@@ -477,19 +531,50 @@ def prepare_container_pull_plan(
     target_dir = workspace / "containers" / key
     target = target_dir / "matensemble.sif"
     if target.exists() and not force:
-        return ok({"system": key, "container": str(target), "already_exists": True})
-    image = resolve_image_tag(key)
+        image = resolve_image_tag(key, version=version, image_tag=image_tag)
+        return ok(
+            {
+                "system": key,
+                "container": str(target),
+                "already_exists": True,
+                "image": image,
+                "version": version or get_local_matensemble_version(),
+                "registry_lookup_performed": False,
+            },
+            warnings=[REGISTRY_LOOKUP_WARNING],
+        )
+    image = resolve_image_tag(key, version=version, image_tag=image_tag)
     if key == "linux":
         command = ["docker", "pull", image]
     elif key == "perlmutter":
         command = ["podman-hpc", "pull", image]
     else:
         command = ["apptainer", "pull", str(target), f"docker://{image}"]
-    plan = _generic_plan("container_pull", key, command, cwd=str(target_dir), target=str(target))
+    plan = _generic_plan(
+        "container_pull",
+        key,
+        command,
+        cwd=str(target_dir),
+        target=str(target),
+        image=image,
+        version=version or get_local_matensemble_version(),
+        registry_lookup_performed=False,
+    )
     target_dir.mkdir(parents=True, exist_ok=True)
     path = target_dir / "pull_plan.json"
     path.write_text(json.dumps(plan, indent=2) + "\n", encoding="utf-8")
-    return ok({"pull_plan": plan, "plan_path": relative_to_workspace(path, cwd=cwd)}, created_files=[relative_to_workspace(path, cwd=cwd)], commands_not_run=[command])
+    return ok(
+        {
+            "pull_plan": plan,
+            "plan_path": relative_to_workspace(path, cwd=cwd),
+            "image": image,
+            "version": version or get_local_matensemble_version(),
+            "registry_lookup_performed": False,
+        },
+        created_files=[relative_to_workspace(path, cwd=cwd)],
+        commands_not_run=[command],
+        warnings=[REGISTRY_LOOKUP_WARNING],
+    )
 
 
 def confirm_container_pull(plan_id: str, *, timeout_seconds: int = 1800, cwd: Path | None = None) -> dict[str, Any]:
@@ -708,7 +793,14 @@ def _render_batch(**kwargs: Any) -> str:
         f"#SBATCH -N {nodes}",
     ]
     if key == "perlmutter":
-        lines.extend([f"#SBATCH --qos {queue}", "#SBATCH -C gpu", f"#SBATCH --ntasks-per-node={tasks}", f"#SBATCH --gpus-per-node={gpus}"])
+        lines.extend(
+            [
+                f"#SBATCH --qos {queue}",
+                "#SBATCH -C gpu",
+                f"#SBATCH --ntasks-per-node={tasks}",
+                f"#SBATCH --gpus-per-node={gpus}",
+            ]
+        )
     elif key in {"frontier", "pathfinder"}:
         lines.append(f"#SBATCH -p {queue}")
     lines.extend(
@@ -724,10 +816,42 @@ def _render_batch(**kwargs: Any) -> str:
     if backend == "apptainer":
         lines.append(f"apptainer exec {container} flux start python workflow.py")
     elif backend == "podman-hpc":
-        lines.append(f"podman-hpc run --rm --network=host --ipc=host -v \"$PWD:$PWD\" -w \"$PWD\" {container} flux start python workflow.py")
+        lines.extend(
+            [
+                'NNODES="${SLURM_NNODES:-${SLURM_JOB_NUM_NODES}}"',
+                f'srun -N "$NNODES" -n "$NNODES" --cpu-bind=none --mpi=pmi2 \\',
+                f"  podman-hpc run --rm --network=host --ipc=host -v \"$PWD:$PWD\" -w \"$PWD\" {container} \\",
+                "  flux start python workflow.py",
+            ]
+        )
     else:
         lines.append(f"docker run --rm -v \"$PWD:$PWD\" -w \"$PWD\" {container} flux start --test-size={max(tasks, 1)} python workflow.py")
     return "\n".join(lines) + "\n"
+
+
+def _resolve_container_backend(system: str, backend: str) -> str:
+    if backend != "auto":
+        return backend
+    if system == "linux":
+        return "docker"
+    if system == "perlmutter":
+        return "podman-hpc"
+    return "apptainer"
+
+
+def _default_container_reference(system: str, backend: str, image: str) -> str:
+    if backend in {"podman-hpc", "docker"}:
+        return image
+    if backend == "apptainer":
+        return f"../containers/{system}/matensemble.sif"
+    return image
+
+
+def _normalize_nodes(system: str, nodes: int) -> tuple[int, list[str]]:
+    requested = int(nodes)
+    if system in HPC_SYSTEMS and requested < 2:
+        return 2, [FLUX_BROKER_NODE_WARNING]
+    return requested, []
 
 
 def _resources(account: str | None, nodes: int, walltime: str, queue: str, gpus: int, tasks: int) -> dict[str, Any]:

@@ -100,7 +100,8 @@ PROFILES: dict[str, SystemProfile] = {
             "Use Apptainer `.sif` or sandbox images on Frontier.",
         ),
         cli_install=(
-            "curl -fsSL https://raw.githubusercontent.com/FredDude2004/MatEnsemble/main/src/cli/install.sh | bash\n"
+            "uv run --package mcp-matensemble matensemble-agent-install --system frontier\n"
+            "Use prepare_container_pull_plan(system='frontier') to resolve and pull the local-version GHCR image.\n"
             "matensemble set-image /path/to/matensemble.sif"
         ),
         interactive_setup=(
@@ -111,7 +112,8 @@ PROFILES: dict[str, SystemProfile] = {
         launch_command="matensemble run workflow.py",
         batch_notes=(
             "Run inside an existing Slurm allocation. The Frontier CLI expands to "
-            "`srun --external-launcher --mpi=pmi2 apptainer exec <image> flux start python workflow.py`."
+            "`srun --external-launcher --mpi=pmi2 apptainer exec <image> flux start python workflow.py`. "
+            "Request at least 2 nodes because Flux uses one node as a broker/orchestrator."
         ),
         external_docs=(
             "https://docs.olcf.ornl.gov/systems/frontier_user_guide.html",
@@ -134,7 +136,8 @@ PROFILES: dict[str, SystemProfile] = {
             "Use Apptainer `.sif` or sandbox images on Pathfinder.",
         ),
         cli_install=(
-            "curl -fsSL https://raw.githubusercontent.com/FredDude2004/MatEnsemble/main/src/cli/install.sh | bash\n"
+            "uv run --package mcp-matensemble matensemble-agent-install --system pathfinder\n"
+            "Use prepare_container_pull_plan(system='pathfinder') to resolve and pull the local-version GHCR image.\n"
             "matensemble set-image /path/to/matensemble.sif"
         ),
         interactive_setup=(
@@ -143,7 +146,8 @@ PROFILES: dict[str, SystemProfile] = {
         ),
         launch_command="matensemble run workflow.py",
         batch_notes=(
-            "Use the same high-level pattern as Frontier: Slurm allocation, Apptainer, Flux, then Python."
+            "Use the same high-level pattern as Frontier: Slurm allocation, Apptainer, Flux, then Python. "
+            "Request at least 2 nodes because Flux uses one node as a broker/orchestrator."
         ),
         external_docs=("https://docs.olcf.ornl.gov/",),
     ),
@@ -163,8 +167,9 @@ PROFILES: dict[str, SystemProfile] = {
             "The MatEnsemble CLI is strongly preferred because Perlmutter Podman-HPC launch details are verbose.",
         ),
         cli_install=(
-            "curl -fsSL https://raw.githubusercontent.com/FredDude2004/MatEnsemble/main/src/cli/install.sh | bash\n"
-            "podman-hpc pull ghcr.io/freddude2004/matensemble:perlmutter-vX.Y.Z\n"
+            "uv run --package mcp-matensemble matensemble-agent-install --system perlmutter\n"
+            "Use prepare_container_pull_plan(system='perlmutter') to resolve and pull "
+            "ghcr.io/freddude2004/matensemble:perlmutter-vX.Y.Z from the local MatEnsemble version.\n"
             "matensemble set-image ghcr.io/freddude2004/matensemble:perlmutter-vX.Y.Z"
         ),
         interactive_setup=(
@@ -175,7 +180,8 @@ PROFILES: dict[str, SystemProfile] = {
         batch_notes=(
             "Run inside an existing Slurm allocation. The Perlmutter CLI writes a temporary "
             "Flux resource config to SCRATCH and launches Podman-HPC with the required PMI, Slurm, "
-            "NVIDIA, CXI, and library bind settings."
+            "NVIDIA, CXI, and library bind settings. Request at least 2 nodes because Flux uses "
+            "one node as a broker/orchestrator."
         ),
         external_docs=(
             "https://docs.nersc.gov/systems/perlmutter/",

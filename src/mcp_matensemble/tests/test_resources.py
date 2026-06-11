@@ -60,5 +60,6 @@ def test_container_context_and_install_guidance():
     install = container_build_instructions("perlmutter")
 
     assert "flux-core" in contents or "Flux core" in contents
-    assert "podman-hpc pull" in install
+    assert "prepare_container_pull_plan" in install
+    assert "local MatEnsemble version" in install
     assert "matensemble run workflow.py" in install
