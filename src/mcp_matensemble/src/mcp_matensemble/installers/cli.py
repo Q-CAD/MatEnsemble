@@ -11,11 +11,25 @@ from mcp_matensemble.systems import normalize_system
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(description="Install a MatEnsemble MCP agent workspace.")
-    parser.add_argument("--system", required=True, help="frontier, perlmutter, pathfinder, linux, or conda")
-    parser.add_argument("--workspace", default=None, help="Campaign workspace to create")
+    parser = argparse.ArgumentParser(
+        description="Install a MatEnsemble MCP agent workspace."
+    )
+    parser.add_argument(
+        "--system",
+        required=True,
+        help="frontier, perlmutter, pathfinder, linux, or conda",
+    )
+    parser.add_argument(
+        "--workspace", default=None, help="Campaign workspace to create"
+    )
     parser.add_argument("--install-dir", default=str(Path.home() / ".local" / "bin"))
-    parser.add_argument("--config-dir", default=str(Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config")) / "matensemble"))
+    parser.add_argument(
+        "--config-dir",
+        default=str(
+            Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
+            / "matensemble"
+        ),
+    )
     ns = parser.parse_args(argv)
 
     system = normalize_system(ns.system)
