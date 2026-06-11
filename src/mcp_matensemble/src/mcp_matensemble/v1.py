@@ -813,7 +813,18 @@ def _render_batch(**kwargs: Any) -> str:
             "",
         ]
     )
-    if backend == "apptainer":
+    if key == "perlmutter":
+        lines.extend(
+            [
+                "command -v matensemble >/dev/null 2>&1 || {",
+                '  echo "MatEnsemble site CLI is required. Run: uv run --package mcp-matensemble matensemble-agent-install --system perlmutter" >&2',
+                "  exit 1",
+                "}",
+                f"matensemble set-image {container}",
+                "matensemble run workflow.py",
+            ]
+        )
+    elif backend == "apptainer":
         lines.append(f"apptainer exec {container} flux start python workflow.py")
     elif backend == "podman-hpc":
         lines.extend(

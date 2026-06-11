@@ -7,7 +7,6 @@ import shutil
 import stat
 from pathlib import Path
 
-from mcp_matensemble.installers.site_cli import site_cli_script
 from mcp_matensemble.systems import normalize_system
 
 
@@ -70,7 +69,7 @@ def main(argv: list[str] | None = None) -> None:
     site_cli_changed = False
     if system in {"frontier", "perlmutter", "pathfinder"}:
         site_cli = install_dir / "matensemble"
-        site_cli_changed = _write_executable(site_cli, site_cli_script(system))
+        site_cli_changed = _install_repo_site_cli(system=system, target=site_cli)
 
     mcp_config = {
         "servers": {
@@ -140,6 +139,20 @@ def _repo_root() -> Path:
         ).is_dir():
             return parent
     raise SystemExit("could not locate the MatEnsemble MCP repository root")
+
+
+def _install_repo_site_cli(*, system: str, target: Path) -> bool:
+    source = _repo_site_cli_path(system)
+    return _write_executable(target, source.read_text(encoding="utf-8"))
+
+
+def _repo_site_cli_path(system: str) -> Path:
+    filename = f"matensemble-{system}"
+    for parent in Path(__file__).resolve().parents:
+        candidate = parent / "src" / "cli" / filename
+        if candidate.is_file():
+            return candidate
+    raise SystemExit(f"could not locate stable MatEnsemble CLI script: src/cli/{filename}")
 
 
 def _write_readme(workspace: Path, system: str) -> None:

@@ -122,7 +122,7 @@ def test_pull_plan_accepts_explicit_version(tmp_path):
     ]
 
 
-def test_perlmutter_batch_defaults_to_two_nodes_and_ghcr_podman(tmp_path):
+def test_perlmutter_batch_defaults_to_two_nodes_and_matensemble_cli(tmp_path):
     created = v1.create_campaign("pm_batch", "perlmutter", cwd=tmp_path)
     campaign = created["result"]["campaign"]
     v1.write_workflow(campaign, "Run a smoke calculation.", cwd=tmp_path)
@@ -139,9 +139,10 @@ def test_perlmutter_batch_defaults_to_two_nodes_and_ghcr_podman(tmp_path):
     assert result["result"]["resources"]["nodes"] == 2
     assert "#SBATCH -N 2" in script
     assert "ghcr.io/freddude2004/matensemble:perlmutter-v" in script
-    assert "srun -N \"$NNODES\" -n \"$NNODES\"" in script
-    assert "podman-hpc run" in script
-    assert "flux start python workflow.py" in script
+    assert "matensemble set-image ghcr.io/freddude2004/matensemble:perlmutter-v" in script
+    assert "matensemble run workflow.py" in script
+    assert "podman-hpc run" not in script
+    assert "flux start python workflow.py" not in script
 
 
 def test_hpc_nodes_bump_to_two_with_warning(tmp_path):

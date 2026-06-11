@@ -158,13 +158,13 @@ PROFILES: dict[str, SystemProfile] = {
         container_runtime="Podman-HPC or Apptainer",
         container_backends=("podman-hpc", "apptainer"),
         install_summary=(
-            "Use Podman-HPC with the MatEnsemble Perlmutter CLI. The CLI hides "
+            "Use Podman-HPC through the MatEnsemble Perlmutter CLI. The CLI is required on Perlmutter because it writes "
             "the Flux resource config, Slurm/NVIDIA/PMI bind mounts, and container launch details."
         ),
         container_summary=(
             "Perlmutter image is based on NERSC GPU/Flux container images.",
             "Includes Flux, CUDA-oriented LAMMPS, mpi4py, MACE/Torch-related packages, and MatEnsemble.",
-            "The MatEnsemble CLI is strongly preferred because Perlmutter Podman-HPC launch details are verbose.",
+            "The MatEnsemble CLI is required because Perlmutter Podman-HPC and Flux launch details are site-specific.",
         ),
         cli_install=(
             "uv run --package mcp-matensemble matensemble-agent-install --system perlmutter\n"
@@ -178,7 +178,7 @@ PROFILES: dict[str, SystemProfile] = {
         ),
         launch_command="matensemble run workflow.py",
         batch_notes=(
-            "Run inside an existing Slurm allocation. The Perlmutter CLI writes a temporary "
+            "Run through the MatEnsemble CLI inside an existing Slurm allocation. The CLI writes a temporary "
             "Flux resource config to SCRATCH and launches Podman-HPC with the required PMI, Slurm, "
             "NVIDIA, CXI, and library bind settings. Request at least 2 nodes because Flux uses "
             "one node as a broker/orchestrator."

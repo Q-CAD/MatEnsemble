@@ -18,8 +18,8 @@
 
 # ============================INPUT IMAGE AND SCRIPT==============================
 # Change IMAGE and the FLUX_CMD to what you need for your run
-IMAGE="ghcr.io/freddude2004/matensemble:perlmutter-v0.3.11"
-FLUX_CMD="python lammps_mace_calculator.py"
+IMAGE="ghcr.io/freddude2004/matensemble:perlmutter-v0.3.101"
+FLUX_CMD="python workflow.py"
 # ================================================================================
 
 export NNODES=${SLURM_JOB_NUM_NODES}

@@ -1,8 +1,13 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
+import subprocess
 
 from mcp_matensemble.installers.cli import main
+
+
+REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 def test_agent_install_writes_workspace_and_wrappers(tmp_path):
@@ -43,7 +48,35 @@ def test_agent_install_writes_workspace_and_wrappers(tmp_path):
     assert "run mcp-matensemble" in wrapper
     assert "exec" in wrapper
     site_cli = (install_dir / "matensemble").read_text(encoding="utf-8")
-    assert "perlmutter" not in site_cli
-    assert "frontier" in site_cli
+    stable_cli = (REPO_ROOT / "src" / "cli" / "matensemble-frontier").read_text(
+        encoding="utf-8"
+    )
+    assert site_cli == stable_cli
     assert (workspace / "README.md").exists()
     assert (workspace / ".matensemble-mcp.toml").exists()
+
+
+def test_stable_perlmutter_cli_matches_flux_gpu_launch_requirements():
+    script = (REPO_ROOT / "src" / "cli" / "matensemble-perlmutter").read_text(
+        encoding="utf-8"
+    )
+    checked = subprocess.run(
+        ["bash", "-n"],
+        input=script,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert checked.returncode == 0, checked.stderr
+    assert "expand_nodelist" in script
+    assert '"nodelist": nodes' in script
+    assert '"nodelist": [nodes]' not in script
+    assert "LD_PRELOAD=/opt/basic/lib/python3.12/site-packages/nvidia/nccl/lib/libnccl.so.2" in script
+    assert "-e \"LD_LIBRARY_PATH=/usr/local/nvidia/lib64:${ld_path}\"" in script
+    assert "-v /dev/shm:/dev/shm" in script
+    assert "-v /dev/cxi0:/dev/cxi0" in script
+    assert "-v /dev/xpmem:/dev/xpmem" in script
+    assert "--device /dev/nvidia0" in script
+    assert "--device /dev/nvidia-uvm" in script
+    assert "FLUX_CONF_DIR=/tmp/fluxcfg flux start" in script
