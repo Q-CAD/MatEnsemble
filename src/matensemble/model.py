@@ -73,7 +73,7 @@ class ChoreType(StrEnum):
     """
     The different types that a chore can be. As of right now there are two types
     of Chores, Python chores and Executable chores. Python chores are delayed function
-    calls and executable chores are paths to executable files.
+    calls and executable chores are argv style commands.
     """
 
     PYTHON = auto()

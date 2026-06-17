@@ -1,0 +1,241 @@
+FROM ghcr.io/freddude2004/25.03_gnu_ubuntu:latest
+
+ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-lc"]
+WORKDIR /opt
+
+# Keep this image leaner and avoid packages that commonly pull GNU OpenMP
+# into the Python process, especially OpenBLAS and pyfftw.
+RUN apt-get update && apt-get install -y --no-install-recommends               \
+    build-essential autoconf automake bash ca-certificates curl git wget unzip \
+    gfortran pkg-config ninja-build cmake libblas-dev libtool                  \
+    liblapack-dev libgsl-dev libfftw3-dev libhdf5-dev                          \
+    libsqlite3-dev libarchive-dev libcurl4-openssl-dev libzmq3-dev libtool-bin \
+    libsodium-dev libjansson-dev libczmq-dev libyaml-cpp-dev libedit-dev       \
+    libboost-all-dev uuid-dev lua5.3 liblua5.3-dev python3-venv python3-dev    \
+    freeglut3-dev libgl1-mesa-dev libglu1-mesa-dev libglew-dev mesa-utils      \
+    && rm -rf /var/lib/apt/lists/*
+
+# Remove Ubuntu/OpenMPI artifacts. We want Cray MPICH ABI from the base/runtime.
+RUN apt-get remove -y --purge                                                  \
+        libopenmpi-dev libopenmpi3 mpi-default-dev mpi-default-bin openmpi-bin \
+    || true &&                                                                 \
+    rm -f /lib/x86_64-linux-gnu/libmpi.so*                                     \
+          /lib/x86_64-linux-gnu/libmpi_cxx.so*                                 \
+          /lib/x86_64-linux-gnu/libmpi_usempif08.so*                           \
+          /usr/lib/x86_64-linux-gnu/libmpi.so*                                 \
+          /usr/lib/x86_64-linux-gnu/libmpi_cxx.so* &&                          \
+    ldconfig
+
+# These are expected from the Frontier-compatible base image / build environment.
+ENV ROCM_PATH=/opt/rocm-6.3.1
+ENV MPICH_LIB=${MPICH_DIR}/lib
+ENV CRAYPE_LINK_TYPE=dynamic
+
+RUN test -n "${MPICH_DIR}" && test -d "${MPICH_DIR}" && test -d "${MPICH_LIB}"
+RUN test -n "${ROCM_PATH}" && test -d "${ROCM_PATH}"
+
+RUN python3 -m venv /opt/basic && \
+    ln -sf /opt/basic/bin/python /usr/local/bin/python && \
+    ln -sf /opt/basic/bin/pip /usr/local/bin/pip
+
+ENV PATH=/opt/basic/bin:$PATH
+
+RUN python -m pip install --no-cache-dir -U setuptools wheel cffi pip && \
+    python -m pip install --no-cache-dir \
+        PyYAML cython pyarrow tqdm papermill py3Dmol ply pyyaml
+
+# Build mpi4py against the Cray MPICH ABI stack.
+RUN MPICC="hipcc -L${MPICH_LIB} -lmpi ${PE_MPICH_GTL_DIR_amd_gfx90a:-} ${PE_MPICH_GTL_LIBS_amd_gfx90a:-} -I${MPICH_DIR}/include" \
+    python -m pip install --no-cache-dir --no-binary=mpi4py mpi4py
+
+RUN git clone -b v0.70.0 https://github.com/flux-framework/flux-core.git && \
+    cd flux-core && \
+    PYTHON=/opt/basic/bin/python ./autogen.sh && \
+    ./configure && \
+    make -j16 && \
+    make install && \
+    ldconfig
+
+RUN git clone -b v0.41.0 https://github.com/flux-framework/flux-sched.git && \
+    cd flux-sched && \
+    cmake -B build && \
+    cmake --build build -j16 && \
+    cmake --build build -t install && \
+    ldconfig
+
+RUN python -m pip install --no-cache-dir flux-python==0.70.0
+
+ENV LD_LIBRARY_PATH=${MPICH_LIB}:/usr/local/lib:${LD_LIBRARY_PATH}
+
+# Fetch LAMMPS and Symmetrix/MACE package.
+RUN wget https://github.com/lammps/lammps/archive/refs/tags/patch_10Dec2025.tar.gz && \
+    tar -xzvf patch_10Dec2025.tar.gz && \
+    rm -rf patch_10Dec2025.tar.gz && \
+    mv lammps-patch_10Dec2025 lammps && \
+    mkdir -p /opt/lammps/build && \
+    git clone --recursive https://github.com/wcwitt/symmetrix && \
+    cd symmetrix && \
+    git checkout daeda1c1cf5eee633c3f3f409b6bba327f29b4b7 && \
+    cd symmetrix && \
+    python -m pip install . && \
+    cd pair_symmetrix && \
+    ./install.sh /opt/lammps
+
+WORKDIR /opt/lammps/build
+
+ENV LMP_MACH=frontier_gfx90a
+ENV MPICH_GPU_SUPPORT_ENABLED=1
+
+# Key changes versus your previous Dockerfile:
+#   - Kokkos_ENABLE_OPENMP=OFF
+#   - BUILD_OMP=OFF
+#   - HIP + SERIAL Kokkos only
+# This avoids loading Cray libomp into Python/LAMMPS and prevents the libomp/libgomp
+# finalization crash seen in the core.
+RUN cmake ../cmake                                                \
+    -D CMAKE_INSTALL_PREFIX=/opt/lammps/install                   \
+    -D CMAKE_BUILD_TYPE=Release                                   \
+    -D BUILD_SHARED_LIBS=ON                                       \
+    -D BUILD_MPI=ON                                               \
+    -D BUILD_OMP=OFF                                              \
+    -D CMAKE_CXX_COMPILER=${ROCM_PATH}/bin/hipcc                  \
+    -D CMAKE_CXX_STANDARD=20                                      \
+    -D CMAKE_CXX_STANDARD_REQUIRED=ON                             \
+    -D CMAKE_CXX_SCAN_FOR_MODULES=OFF                             \
+    -D CMAKE_CXX_FLAGS="-fdenormal-fp-math=ieee -fgpu-flush-denormals-to-zero -munsafe-fp-atomics -D__HIP_PLATFORM_AMD__=1" \
+    -D MPI_CXX_COMPILER=${MPICH_DIR}/bin/mpicxx                   \
+    -D MPI_C_COMPILER=${MPICH_DIR}/bin/mpicc                      \
+    -D MPI_CXX_SKIP_MPICXX=TRUE                                   \
+    -D MPI_CXX_LIB_NAMES=mpi                                      \
+    -D MPI_C_LIB_NAMES=mpi                                        \
+    -D MPI_mpi_LIBRARY=${MPICH_LIB}/libmpi.so                     \
+    -D MPI_CXX_HEADER_DIR=${MPICH_DIR}/include                    \
+    -D MPI_C_HEADER_DIR=${MPICH_DIR}/include                      \
+    -D CMAKE_EXE_LINKER_FLAGS="-L${MPICH_LIB} -lmpi ${PE_MPICH_GTL_DIR_amd_gfx90a:-} ${PE_MPICH_GTL_LIBS_amd_gfx90a:-}" \
+    -D CMAKE_SHARED_LINKER_FLAGS="-L${MPICH_LIB} -lmpi ${PE_MPICH_GTL_DIR_amd_gfx90a:-} ${PE_MPICH_GTL_LIBS_amd_gfx90a:-}" \
+    -D KokkosKernels_ENABLE_ETI=OFF                               \
+    -D KokkosKernels_INST_DOUBLE=OFF                              \
+    -D KokkosKernels_INST_LAYOUTLEFT=OFF                          \
+    -D PKG_KOKKOS=ON                                              \
+    -D Kokkos_ENABLE_HIP=ON                                       \
+    -D Kokkos_ENABLE_SERIAL=ON                                    \
+    -D Kokkos_ENABLE_OPENMP=OFF                                   \
+    -D Kokkos_ARCH_VEGA90A=ON                                     \
+    -D Kokkos_ARCH_ZEN3=ON                                        \
+    -D Kokkos_ENABLE_HIP_MULTIPLE_KERNEL_INSTANTIATIONS=ON        \
+    -D Kokkos_ENABLE_AGGRESSIVE_VECTORIZATION=ON                  \
+    -D SYMMETRIX_KOKKOS=ON                                        \
+    -D FFT=FFTW3                                                  \
+    -D BLAS_LIBRARIES="${LIBSCI_PATH}"                            \
+    -D LAPACK_LIBRARIES="${LIBSCI_PATH}"                          \
+    -D PYTHON_EXECUTABLE="$(which python)"                        \
+    -D PKG_MANYBODY=ON                                            \
+    -D PKG_MOLECULE=ON                                            \
+    -D PKG_KSPACE=ON                                              \
+    -D PKG_RIGID=ON                                               \
+    -D PKG_REAXFF=ON                                              \
+    -D PKG_REPLICA=ON                                             \
+    -D PKG_ML-SNAP=ON                                             \
+    -D PKG_ML-IAP=ON                                              \
+    -D PKG_ML-PACE=ON                                             \
+    -D PKG_SPIN=ON                                                \
+    -D PKG_PYTHON=ON                                              \
+    -D MLIAP_ENABLE_PYTHON=ON
+
+RUN make -j16 && \
+    make install && \
+    make install-python
+
+# Critical: force Python's lammps package to use the installed LAMMPS shared library,
+# not a second package-local copy with a different checksum.
+RUN rm -f /opt/basic/lib/python3.12/site-packages/lammps/liblammps.so && \
+    ln -s /opt/lammps/install/lib/liblammps.so \
+          /opt/basic/lib/python3.12/site-packages/lammps/liblammps.so && \
+    readlink -f /opt/basic/lib/python3.12/site-packages/lammps/liblammps.so && \
+    sha256sum /opt/basic/lib/python3.12/site-packages/lammps/liblammps.so \
+              /opt/lammps/install/lib/liblammps.so.0
+
+ENV PATH=/opt/lammps/install/bin:${PATH}
+ENV LD_LIBRARY_PATH=/opt/lammps/install/lib:/opt/lammps/install/lib64:${MPICH_LIB}:/usr/local/lib:${LD_LIBRARY_PATH}
+ENV LAMMPS_LIBRARY=/opt/lammps/install/lib/liblammps.so
+
+# Safer defaults for one GPU/MPI-rank style jobs.
+ENV OMP_NUM_THREADS=1
+ENV OMP_DYNAMIC=FALSE
+ENV OMP_PROC_BIND=false
+ENV HSA_XNACK=1
+ENV MPICH_GPU_SUPPORT_ENABLED=1
+ENV MPICH_OFI_NIC_POLICY=BLOCK
+
+# Keep OVITO installed, but avoid importing OVITO in the same Python process as LAMMPS
+# in production workflows if possible.
+RUN python -m pip install --no-cache-dir -U ovito
+
+# Linkage checks.
+RUN echo "=== LAMMPS linkage check ===" && \
+    ldd /opt/lammps/install/lib/liblammps.so.0 | tee /tmp/lammps.ldd && \
+    grep -q "libmpi.so.12" /tmp/lammps.ldd && \
+    ! grep -q "libmpicxx" /tmp/lammps.ldd && \
+    ! grep -q "not found" /tmp/lammps.ldd && \
+    ! grep -q "libgomp" /tmp/lammps.ldd && \
+    ! grep -q "libomp" /tmp/lammps.ldd
+
+RUN python - <<'PY'
+import glob
+import os
+import subprocess
+import mpi4py
+
+mpi_exts = glob.glob(os.path.join(os.path.dirname(mpi4py.__file__), "MPI*.so"))
+assert mpi_exts, "Could not find mpi4py extension"
+out = subprocess.check_output(["ldd", mpi_exts[0]], text=True)
+print(out)
+assert "libmpi.so.12" in out
+assert "libmpicxx" not in out
+PY
+
+# Import checks.
+RUN python -c "import mpi4py; print('mpi4py ok')" && \
+    python -c "import lammps; print('lammps ok')" && \
+    python -c "import ovito; print('ovito ok')" && \
+    python -c "import flux; print('flux ok')"
+
+# Python LAMMPS close sanity check. This is the check that previously failed at
+# interpreter shutdown.
+RUN python - <<'PY'
+from lammps import lammps
+from pathlib import Path
+import os
+import gc
+
+print("before constructor", flush=True)
+lmp = lammps(cmdargs=["-log", "none"])
+print("after constructor", flush=True)
+
+lmp.command("units metal")
+lmp.command("atom_style atomic")
+lmp.command("lattice fcc 3.615")
+lmp.command("region box block 0 1 0 1 0 1")
+lmp.command("create_box 1 box")
+lmp.command("create_atoms 1 box")
+lmp.command("mass 1 63.546")
+
+print("before close", flush=True)
+lmp.close()
+print("after close", flush=True)
+
+del lmp
+gc.collect()
+
+maps = Path(f"/proc/{os.getpid()}/maps").read_text()
+has_libomp = "libomp" in maps
+has_libgomp = "libgomp" in maps
+print("has libomp:", has_libomp)
+print("has libgomp:", has_libgomp)
+
+if has_libomp and has_libgomp:
+    raise SystemExit("ERROR: both libomp and libgomp are loaded")
+
+print("LAMMPS Python close test passed", flush=True)
+PY

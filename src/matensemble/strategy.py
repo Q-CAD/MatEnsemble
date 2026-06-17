@@ -229,10 +229,13 @@ class NonAdaptiveStrategy(FutureProcessingStrategy):
 
 
 class UserStrategy(FutureProcessingStrategy):
-    def __init__(self, manager, pipeline, processing_chore, bolo_list) -> None:
+    def __init__(
+        self, manager, pipeline, processing_chore, processing_chore_resources, bolo_list
+    ) -> None:
         super().__init__(manager)
         self.pipeline = pipeline
         self.proc_chore = processing_chore
+        self.proc_chore_res = processing_chore_resources
         self.bolo_list = set(bolo_list)
 
         # if not isinstance(chore, Callable[..., Chore]):
@@ -332,7 +335,7 @@ class UserStrategy(FutureProcessingStrategy):
                         try:
                             out_ref = OutputReference(chore_id, chore.workdir)
                             new_chore, new_out = self.pipeline._spawn_chore_from_name(
-                                self.proc_chore, dependent=out_ref
+                                self.proc_chore, self.proc_chore_res, dependent=out_ref
                             )
                             self.pipeline._admit_spawned_chore(
                                 new_chore, new_out, self.manager

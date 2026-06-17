@@ -47,3 +47,7 @@ dev = [
 members = [
     "src/mcp_matensemble",
 ]
+
+
+[tool.pyright]
+pythonVersion = "3.10"

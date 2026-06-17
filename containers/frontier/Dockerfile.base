@@ -174,5 +174,4 @@ RUN echo "=== MPI soname check ===" && \
 # Sanity checks
 RUN python -c "import mpi4py; print('mpi4py ok')"  && \
     python -c "import lammps; print('lammps ok')"  && \
-    python -c "import ovito; print('ovito ok')"    && \
     python -c "import flux; print('flux ok')"

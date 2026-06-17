@@ -38,7 +38,7 @@ def _registry_entry_filename(key: str) -> str:
 
 class Pipeline:
     """
-    Build and submit a MatEnsemble workflow as a directed acyclic graph (DAG)
+    Object to build and submit a MatEnsemble workflow as a directed acyclic graph (DAG)
     of delayed chores.
 
     A :obj:`Pipeline` is the main user-facing workflow builder in MatEnsemble.
@@ -61,7 +61,6 @@ class Pipeline:
     For Python chores, the pipeline records enough metadata to reproduce the
     original function call later, including:
 
-    - the module where the function is defined
     - the function's qualified name
     - the positional and keyword arguments
     - the chore's resource requirements
@@ -77,9 +76,9 @@ class Pipeline:
 
     For Python chores, the manager will submit a Flux job whose command runs
     ``matensemble.runtime_worker``. That worker loads the serialized ``Chore``
-    specification from disk, imports the recorded module, resolves the target
-    function by qualified name, replaces dependency references with their
-    concrete upstream results, and calls the function
+    specification from disk, deserializes the function from MatEnsemble's internal
+    function registry, replaces dependency references with their
+    concrete upstream results, and calls the function.
     """
 
     def __init__(self, basedir: str | None = None) -> None:
@@ -131,10 +130,9 @@ class Pipeline:
         submit the chore to flux which calls the module :py:mod: `matensemble.runtime_worker`.
         :py:mod: `matensemble.runtime_worker` takes in two command line
         arguments which are the :param: `chore_id` and :param: `spec_file` which
-        the module will use to find the *pickled* python object containing all
-        of the data on the chore, and it will use it to import the function and
-        call it with its respective arguments. The result will then be stored
-        in the chores respective directory.
+        the module will use to load the serialized function from MatEnsemble's
+        internal function registry, call the function with the given arguements
+        and key-word arguments and store the results in the chores respective directory.
 
         Parameters
         ----------
@@ -229,10 +227,6 @@ class Pipeline:
 
         return decorator
 
-    # WARNING: This is deprecated and only here for compatibility
-    def add_user_strat(self, chore_name: str, bolo_list: list[str]):
-        self._strategy_spec = {"name": chore_name, "bolo_list": bolo_list}
-
     def strategy(
         self,
         bolo_list: list[str],
@@ -245,11 +239,10 @@ class Pipeline:
         inherit_env: bool = True,
     ):
         """
-        The strategy function creates a strategy, which is essentially a
-        callback function to another chore. But the callback function is itself
-        a chore. This function is expected to return an :obj:`ChoreSpec` which
-        will then dynamically spawn a new chore into the queue based on the
-        specification that is returned.
+        Creates a strategy, which is essentially a callback function to another chore.
+        The callback function itself is a chore. This function is expected to
+        return an :obj:`ChoreSpec` which will then dynamically spawn a new chore
+        into the queue based on the specification that is returned.
 
         Parameters
         ----------
@@ -293,7 +286,18 @@ class Pipeline:
             registry_key = name or str(func.__qualname__)
             self._registry[registry_key] = func
 
-            self._strategy_spec = {"name": registry_key, "bolo_list": bolo_list}
+            self._strategy_spec = {
+                "name": registry_key,
+                "resources": Resources(
+                    num_tasks=num_tasks,
+                    cores_per_task=cores_per_task,
+                    gpus_per_task=gpus_per_task,
+                    mpi=mpi,
+                    env=env,
+                    inherit_env=inherit_env,
+                ),
+                "bolo_list": bolo_list,
+            }
 
             def disabled_wrapper(*args: Any, **kwargs: Any) -> None:
                 raise RuntimeError(
@@ -317,7 +321,7 @@ class Pipeline:
         inherit_env: bool = True,
     ) -> Chore:
         """
-        Create a :obj:`Chore` with a path to an executable rather than a delayed
+        Create a :obj:`Chore` with an argv style command rather than a delayed
         python function call.
 
         Parameters
@@ -589,6 +593,7 @@ class Pipeline:
                     manager=manager,
                     pipeline=self,
                     processing_chore=self._strategy_spec["name"],
+                    processing_chore_resources=self._strategy_spec["resources"],
                     bolo_list=self._strategy_spec["bolo_list"],
                 )
             else:
@@ -709,7 +714,6 @@ class Pipeline:
             self._submission_future = fut
         return fut
 
-    # TODO: Add logic to make the function work with ChoreType.EXECUTABLE
     def results(self, timeout=100):
         """
         Returns a dictionary of each chore to its results

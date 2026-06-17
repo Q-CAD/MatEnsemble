@@ -245,7 +245,7 @@ class FluxManager:
         familiar ``num_tasks * cores_per_task`` / ``num_tasks * gpus_per_task``.
         """
 
-        if getattr(chore, "nnodes", None) is not None:
+        if chore.nnodes is not None:
             needed_cores = chore.nnodes * self._cores_per_node
             needed_gpus = chore.nnodes * self._gpus_per_node
         else:
