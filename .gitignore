@@ -43,6 +43,7 @@ core.*
 *.core
 *.pem
 
+
 # MatEnsemble generated workflow output and large model artifacts
 matensemble_workflow-*/
 example_workflows/**/matensemble_workflow-*/

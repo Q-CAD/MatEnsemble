@@ -1,27 +1,27 @@
 [[example]]
-id = "generic_flux.chores"
-name = "generic_flux_chores"
-title = "Chore Dependency Workflow"
+id = "generic.dependencies"
+name = "generic_dependencies"
+title = "Chore dependencies Workflow"
 system = "linux"
 system_title = "Portable Linux/Flux Workflows"
 compatible_systems = ["frontier", "perlmutter", "pathfinder", "linux"]
 kind = "workflow"
-directory = "generic_flux/chores"
+directory = "generic/dependencies"
 entrypoint = "workflow.py"
 files = ["workflow.py", "README.md"]
-description = "Portable MatEnsemble chore dependency workflow using Pipeline and OutputReference."
+description = "Portable MatEnsemble chore dependencies workflow using Pipeline and OutputReference."
 agent_guidance = "Use this example to understand MatEnsemble workflow structure. Adapt only launch scripts, resources, and site-specific dependencies for Frontier, Perlmutter, or Pathfinder."
 include_in_mcp = true
 
 [[example]]
-id = "generic_flux.mpi"
-name = "generic_flux_mpi"
+id = "generic.mpi"
+name = "generic_mpi"
 title = "MPI Chore Workflow"
 system = "linux"
 system_title = "Portable Linux/Flux Workflows"
 compatible_systems = ["frontier", "perlmutter", "pathfinder", "linux"]
 kind = "workflow"
-directory = "generic_flux/mpi"
+directory = "generic/mpi"
 entrypoint = "workflow.py"
 files = ["workflow.py", "README.md"]
 description = "Portable MatEnsemble MPI workflow that demonstrates num_tasks and mpi=True."
@@ -29,14 +29,14 @@ agent_guidance = "Use this example to understand MatEnsemble workflow structure.
 include_in_mcp = true
 
 [[example]]
-id = "generic_flux.strategy"
-name = "generic_flux_strategy"
+id = "generic.strategy"
+name = "generic_strategy"
 title = "Adaptive Strategy Workflow"
 system = "linux"
 system_title = "Portable Linux/Flux Workflows"
 compatible_systems = ["frontier", "perlmutter", "pathfinder", "linux"]
 kind = "workflow"
-directory = "generic_flux/strategy"
+directory = "generic/strategy"
 entrypoint = "workflow.py"
 files = ["workflow.py", "README.md"]
 description = "Portable adaptive strategy workflow that returns ChoreSpec objects."
@@ -44,14 +44,14 @@ agent_guidance = "Use this example to understand MatEnsemble workflow structure.
 include_in_mcp = true
 
 [[example]]
-id = "generic_flux.executable"
-name = "generic_flux_executable"
+id = "generic.executable"
+name = "generic_executable"
 title = "Executable Chore Workflow"
 system = "linux"
 system_title = "Portable Linux/Flux Workflows"
 compatible_systems = ["frontier", "perlmutter", "pathfinder", "linux"]
 kind = "workflow"
-directory = "generic_flux/executable"
+directory = "generic/executable"
 entrypoint = "workflow.py"
 files = ["workflow.py", "README.md"]
 description = "Portable executable chore workflow using Pipeline.exec with argv-style commands."

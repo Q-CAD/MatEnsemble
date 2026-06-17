@@ -200,26 +200,36 @@
 ## === AFTER EVERYTHING ABOVE IS DONE AND STABLE ===
 
 ## --- Model Context Protocol ---
-- [ ] MCP implementation
-- [ ] Map out the Tool and Resources
+- [x] MCP implementation
+- [x] Map out the Tool and Resources
     ### Implement the Resources
-    - [ ] Resource to Fetch ALL Docs
-    - [ ] Resource to Fetch Relavant Source Code
-    - [ ] Resource to Fetch Examples General or system dependent
+    - [x] Resource to Fetch ALL Docs
+    - [x] Resource to Fetch Relavant Source Code
+    - [x] Resource to Fetch Examples General or system dependent
     ### Implement the Tools
-    - [ ] Tool to create a directory for the workflow
-    - [ ] Tool to write a file in that directory
-    - [ ] Tool to delete a file in that directory
-    - [ ] Tool to create a workflow
-    - [ ] Tool to verify a workflow
-    - [ ] Tool to create a batch script
-    - [ ] Tool to setup container env
-    - [ ] Tool to submit a batch script
+    - [x] Tool to create a directory for the workflow
+    - [x] Tool to write a file in that directory
+    - [x] Tool to delete a file in that directory
+    - [x] Tool to create a workflow
+    - [x] Tool to verify a workflow
+    - [x] Tool to create a batch script
+    - [x] Tool to setup container env
+    - [x] Tool to submit a batch script
     ### Implement the Prompts
-    - [ ] ???
-- [ ] Test the server locally
-- [ ] Test the server on an HPC cluster
+    - [x] ???
+- [x] Test the server locally
+- [x] Test the server on an HPC cluster
 - [ ] Create documentation for setting it up
+
+## --- Frontier Dynopro Fix ---
+
+## --- Demo ---
+- [ ] Video demonstrating the MCP server
+- [ ] DAG workflow based on active learning
+- [ ] Nice big fonts
+- [ ] Dashboard connection
+- [ ] Creation of the environment
+
 
 ## --- Reading List ---
 - [ ] [Agentic Orchestration of HPC Applications](https://vsoch.github.io/assets/posts/agentic-orchestration-hpc-workloads-cloud-sochat-milroy.pdf)

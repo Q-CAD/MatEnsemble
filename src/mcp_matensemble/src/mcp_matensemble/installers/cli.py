@@ -105,7 +105,9 @@ def main(argv: list[str] | None = None) -> None:
 def _default_workspace() -> str:
     scratch = os.environ.get("SCRATCH")
     if not scratch:
-        raise SystemExit("$SCRATCH is not set. MatEnsemble MCP requires an HPC scratch directory.")
+        raise SystemExit(
+            "$SCRATCH is not set. MatEnsemble MCP requires an HPC scratch directory."
+        )
     return str(Path(scratch) / "matensemble_campaigns")
 
 
@@ -152,7 +154,9 @@ def _repo_site_cli_path(system: str) -> Path:
         candidate = parent / "src" / "cli" / filename
         if candidate.is_file():
             return candidate
-    raise SystemExit(f"could not locate stable MatEnsemble CLI script: src/cli/{filename}")
+    raise SystemExit(
+        f"could not locate stable MatEnsemble CLI script: src/cli/{filename}"
+    )
 
 
 def _write_readme(workspace: Path, system: str) -> None:

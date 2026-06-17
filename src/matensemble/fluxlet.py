@@ -83,11 +83,12 @@ class Fluxlet:
         if dynopro:
             jobspec = flux.job.JobspecV1.per_resource(
                 chore.command,
+                ncores=chore.resources.num_tasks,
                 nnodes=chore.nnodes,
                 gpus_per_node=self.gpus_per_node,
-                per_resource_type="node",
+                per_resource_type="core",
                 per_resource_count=1,
-                exclusive=True,  # dynopro needs whole nodes
+                exclusive=True,
             )
 
             chore.workdir.mkdir(parents=True, exist_ok=True)
