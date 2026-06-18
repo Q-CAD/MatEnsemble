@@ -191,7 +191,11 @@ class NonAdaptiveStrategy(FutureProcessingStrategy):
                 had_failure = True
                 continue
 
-            if rc != 0:
+            # rc 134 is a double free or corruption error caused by lammps-symmetrix in the
+            # in the frontier image during lammps cleanup
+            # the function will still complete successfully and produce a result.pickle file
+            # so if we can safely ignore the return code
+            if rc != 0 and rc != 134:
                 append_text(
                     chore.workdir / "stderr",
                     f"\n\n===== MATENSEMBLE: NONZERO EXIT =====\nchore={chore_id} rc={rc}\n",
@@ -283,7 +287,11 @@ class UserStrategy(FutureProcessingStrategy):
                 had_failure = True
                 continue
 
-            if rc != 0:
+            # rc 134 is a double free or corruption error caused by lammps-symmetrix in the
+            # in the frontier image during lammps cleanup
+            # the function will still complete successfully and produce a result.pickle file
+            # so if we can safely ignore the return code
+            if rc != 0 and rc != 134:
                 append_text(
                     chore.workdir / "stderr",
                     f"\n\n===== MATENSEMBLE: NONZERO EXIT =====\nchore={chore_id} rc={rc}\n",

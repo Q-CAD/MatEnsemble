@@ -131,12 +131,12 @@
 - [x] If that doesn't work break it down into smaller pieces
   ## --- Smaller pieces ---
   - [x] Maybe start with an nvidia image rather than Neil's image
-  - [ ] Make sure that flux works in the container
-  - [ ] Create a container that just has flux and have some different tests for that
-  - [ ] Create a container that has just MPI and test that make sure it works
-  - [ ] Combine flux and MPI and see if that works
-  - [ ] Create a container that has lammps and make sure that that is working
-  - [ ] Combine all the pieces
+  - [x] Make sure that flux works in the container
+  - [x] Create a container that just has flux and have some different tests for that
+  - [x] Create a container that has just MPI and test that make sure it works
+  - [x] Combine flux and MPI and see if that works
+  - [x] Create a container that has lammps and make sure that that is working
+  - [x] Combine all the pieces
 
 ## --- Test Frontier Apptainer container ---
 - [x] Need lots more help here
@@ -227,7 +227,7 @@
 - [x] Patch MatEnsemble to ignore the double free error: 134 or 137 idk whichever one it is
 - [x] Update the Base image or retag the one that I used to build this john
 - [x] The double free is likely from symmetrix so forget fixing it
-- [ ] Run the release script and do a PR
+- [x] Run the release script and do a PR
 
 ## --- Demo ---
 - [ ] Video demonstrating the MCP server
