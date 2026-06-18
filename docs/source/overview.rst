@@ -3,7 +3,8 @@ Overview
 ========
 
 MatEnsemble is a **workflow manager** for running many :class:`~matensemble.chore.Chore` instances on a
-supercomputer as efficiently as possible. You build a directed acyclic graph (DAG) of :class:`~matensemble.chore.Chore`s in Python; MatEnsemble
+supercomputer as efficiently as possible. You build a directed acyclic graph (DAG) of :class:`~matensemble.chore.Chore`
+objects in Python; MatEnsemble
 submits work to **Flux**, tracks completions, records logs, and keeps hardware busy while tasks finish
 at different rates.
 
@@ -45,7 +46,7 @@ Core concepts
     adds argv-style work.
 
 :class:`~matensemble.model.OutputReference`
-    Placeholder returned from a delayed funciton call. Passing it into another chore encodes a **dependency edge**
+    Placeholder returned from a delayed function call. Passing it into another chore encodes a **dependency edge**
     and ensures upstream results are unpickled before the downstream function runs.
 
 :class:`~matensemble.chore.Chore`
@@ -113,8 +114,8 @@ MatEnsemble uses the *strategy pattern* when processing :class:`flux.job.FluxExe
            ...
 
 Users can define their own strategies to be injected into the processing loop. Say for instance you wanted to
-spawn more :class:`~matensemble.chore.Chore`s dynamically (while the workflow is already running) based on the
-results of a ceratin :class:`~matensemble.chore.Chore`. You can define a funciton that takes the results of a
+spawn more :class:`~matensemble.chore.Chore` objects dynamically (while the workflow is already running) based on the
+results of a certain :class:`~matensemble.chore.Chore`. You can define a function that takes the results of a
 :class:`~matensemble.chore.Chore` and performs your processing on it and returns a :class:`~matensemble.chore.ChoreSpec`
 which will be dynamically added to the submissions queue. Which can effectively add cycles to the workflow if
 needed.

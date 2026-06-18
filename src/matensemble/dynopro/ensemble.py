@@ -22,7 +22,7 @@ class EnsembleDynamicsRunner:
         tasks_per_job (int): Number of tasks per job.
         cores_per_task (int): Number of cores per task.
         gpus_per_task (int): Number of GPUs per task.
-        write_restart_freq (int): Frequency to write restart files.
+        write_restart_freq (int | None): Reserved for future restart support.
         buffer_time (float): Buffer time for task execution.
     """
 
@@ -34,7 +34,7 @@ class EnsembleDynamicsRunner:
         tasks_per_job=1,
         cores_per_task=1,
         gpus_per_task=0,
-        write_restart_freq=1000,
+        write_restart_freq=None,
         buffer_time=0.1,
         adaptive=False,
         nnodes=None,

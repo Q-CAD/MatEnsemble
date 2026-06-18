@@ -1,14 +1,19 @@
 FROM ghcr.io/freddude2004/matensemble-base:pathfinder
 
+# Install OpenGL for OVITO
 RUN apt-get update && apt-get install -y \
-    git libgl1-mesa-dev libglu1-mesa-dev mesa-utils
+    git \
+    libgl1-mesa-dev \
+    libglu1-mesa-dev \
+    mesa-utils \
+    libgl1-mesa-dri \
+    libosmesa6 \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# clone MatEnsemble
+# Clone and install MatEnsemble
 WORKDIR /opt
 RUN git clone --depth 1 https://github.com/FredDude2004/MatEnsemble.git matensemble && \
     cd matensemble && \
     uv export --format requirements.txt --no-hashes --no-emit-project --output-file requirements.txt && \
     /opt/basic/bin/python -m pip install -r requirements.txt && \
     /opt/basic/bin/python -m pip install --no-deps .
-
-

@@ -21,6 +21,8 @@ dependencies = [
     "scikit-learn>=1.0.0",
     "scipy>=1.7.0",
     "seaborn>=0.11.0",
+    "starlette>=1.0.0",
+    "uvicorn>=0.42.0",
 ]
 
 [project.optional-dependencies]
@@ -29,7 +31,7 @@ flux = [
 ]
 
 [build-system]
-requires = ["uv_build>=0.10.0,<0.11.0"]
+requires = ["uv_build>=0.10.0,<0.12.0"]
 build-backend = "uv_build"
 
 [dependency-groups]
@@ -43,6 +45,9 @@ dev = [
 
 [tool.uv.workspace]
 members = [
-    "src/mcp",
     "src/mcp_matensemble",
 ]
+
+
+[tool.pyright]
+pythonVersion = "3.10"

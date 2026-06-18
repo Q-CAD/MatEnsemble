@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 <p align="center">
-  <img src="images/Logo-Matensemble.png" alt="MatEnsemble" width="720" />
+  <img src="media/Logo-Matensemble.png" alt="MatEnsemble" width="720" />
 </p>
 
 # MatEnsemble
@@ -22,11 +22,11 @@ An optional in-tree **dynopro** stack supports streaming dynamics and on-the-fly
 - **Observability**: `status.json`, `matensemble_workflow.log`, per-chore `stdout` / `stderr`, pickle and JSON result artifacts; optional **web dashboard**
 
 <p align="center">
-  <img src="images/Cap_1_adaptive_task_management.png" alt="Adaptive task management" width="620" />
+  <img src="media/Cap_1_adaptive_task_management.png" alt="Adaptive task management" width="620" />
 </p>
 
 <p align="center">
-  <img src="images/Cap_2_dynopro.png" alt="On-the-fly dynamics and analysis" width="620" />
+  <img src="media/Cap_2_dynopro.png" alt="On-the-fly dynamics and analysis" width="620" />
 </p>
 
 
@@ -36,7 +36,7 @@ OCI images are published to GitHub Container Registry
 
 `ghcr.io/freddude2004/matensemble:baseline-vX.Y.Z`
 
-See the [container packages](https://github.com/FredDude2004/MatEnsemble/pkgs/container/matensemble) and the [Quick start](https://matensemble.readthedocs.io/en/latest/quickstart.html) in the docs for Apptainer/Singularity and site-specific notes.
+See the [container packages](https://github.com/FredDude2004/MatEnsemble/pkgs/container/matensemble) and the [installation guide](https://matensemble.readthedocs.io/en/latest/installation.html) in the docs for Apptainer/Singularity and site-specific notes.
 
 ### Anaconda
 
@@ -66,7 +66,7 @@ Illustrative workflows live under [`example_workflows/`](https://github.com/Fred
 
 - A **Flux allocation** (or equivalent) on the machine where you call `Pipeline.submit()`
 - For MPI Python or executable chores: a coherent MPI/Flux setup (e.g. PMI2) as expected by your site
-- Optional: SSH port forwarding if you enable the dashboard on a compute node (see the architecture guide in the docs)
+- Optional: SSH port forwarding if you enable the dashboard on a compute node (see the design guide in the docs)
 
 ## Related links
 

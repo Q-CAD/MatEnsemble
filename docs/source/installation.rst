@@ -12,7 +12,7 @@ Official images are published to GitHub Container Registry:
 
 `ghcr.io/freddude2004/matensemble <https://github.com/FredDude2004/MatEnsemble/pkgs/container/matensemble>`__
 
-Tags follow the pattern vX.Y.Z:
+Tags follow the pattern ``<platform>-vX.Y.Z``:
 
 .. list-table::
    :widths: 28 72
@@ -32,7 +32,7 @@ Tags follow the pattern vX.Y.Z:
 Apptainer
 ---------
 
-Apptainer (formerly Singularity) was developed at Lawerence Berkeley National Laboratory and is currently maintained by
+Apptainer (formerly Singularity) was developed at Lawrence Berkeley National Laboratory and is currently maintained by
 The Linux Foundation. It is open source and is meant to be a container engine targeted
 specifically for HPC systems. To get started you with MatEnsemble using Apptainer is simple.
 You can build a Singularity Image Format (\*.sif) file that acts as a full portable container.
@@ -119,11 +119,11 @@ pattern for creating a container for Apptainer to create an environment to run M
 
 .. code-block:: bash
 
-    apptainer build matensemble.sif docker://ghcr.io/freddude2004/matensemble:frontier-dev
+    apptainer build matensemble.sif docker://ghcr.io/freddude2004/matensemble:frontier-vX.Y.Z
 
 .. note::
    The Frontier image is quite large and squashing the image into the singularity image format
-   may take a lot of time. It may be necesary to allocate yourself a compute node to build the
+   may take a lot of time. It may be necessary to allocate yourself a compute node to build the
    container.
 
 .. code-block:: bash
@@ -140,9 +140,10 @@ pattern for creating a container for Apptainer to create an environment to run M
    # build the container
    apptainer build matensemble.sif docker://ghcr.io/freddude2004/matensemble:frontier-vX.Y.Z
 
-The frontier-dev tag will be the most up to date version of MatEnsemble which is updated with each
-push to main, but may be unstable. You can also build a sandbox in the same fashion. You should make
-sure you are in your $SCRATCH space to make sure you have enough room for the sandbox environment
+Tagged releases such as ``frontier-vX.Y.Z`` are the recommended images for users. Development images, when
+published, may be more up to date but can be unstable. You can also build a sandbox in the same fashion.
+You should make sure you are in your $SCRATCH space to make sure you have enough room for the sandbox
+environment.
 
 .. code-block:: bash
 
@@ -184,17 +185,17 @@ You should see all of the resources ready to use. You are ready run one of your 
 Perlmutter (NERSC)
 ------------------
 
-To get MatEnsemble to work on Perlmutter you have to do some pretty hacky stuff. Podman-HPC does not automatically
-bind all environemnt variables into the image like Apptainer and Shifter, so you need to bind in the variables
-that allow the container to hook into the systems optimized network and MPI implementation. This can get ugly quickly
-especially when trying to work with flux. So we provide a CLI tool to simplify this process for the user. See our `batch script <https://github.com/FredDude2004/MatEnsemble/blob/main/example_workflows/perlmutter/run_lammps_mace_calculator.sh>`_
+To get MatEnsemble to work on Perlmutter you need to bind in the environment variables and devices that
+allow the container to hook into the system's optimized network and MPI implementation. This can get ugly
+quickly, especially when trying to work with Flux. So we provide a CLI tool to simplify this process for
+the user. See our `batch script <https://github.com/FredDude2004/MatEnsemble/blob/main/example_workflows/perlmutter/lammps_mace/run_batch.slurm>`_
 if you are curious.
 
 To install the CLI tool you can run our install script:
 
 .. code-block:: bash
 
-   curl -fsSL https://raw.githubusercontent.com/freddude2004/MatEnsemble/main/scripts/install.sh | bash
+   curl -fsSL https://raw.githubusercontent.com/FredDude2004/MatEnsemble/main/src/cli/install.sh | bash
 
 
 After installation you can pull an image from our registry and allocate some nodes.
@@ -202,7 +203,7 @@ After installation you can pull an image from our registry and allocate some nod
 .. code-block:: bash
 
    # pull one of the perlmutter images for matensemble
-   podman-hcp pull ghcr.io/freddude2004/matensemble:perlmutter-vX.Y.Z
+   podman-hpc pull ghcr.io/freddude2004/matensemble:perlmutter-vX.Y.Z
 
    # allocate yourself some nodes
    salloc -A <account_id> \
@@ -213,18 +214,13 @@ After installation you can pull an image from our registry and allocate some nod
     --gpus-per-node=4 \
     --gpu-bind=closest
 
-To use the tool you will first setup your workflow before running it. You provide the image that you want
-to run the workflow with and the script that you want to run.
+To use the tool you first configure the image that you want to run the workflow with and then run the
+script that you want to execute.
 
 .. code-block:: bash
 
-   matensemble setup-run <image> <script.py>
-
-After setting up the run then you can then run it with
-
-.. code-block:: bash
-
-   matensemble run
+   matensemble set-image ghcr.io/freddude2004/matensemble:perlmutter-vX.Y.Z
+   matensemble run <script.py>
 
 Pathfinder (OLCF)
 -----------------
@@ -234,10 +230,10 @@ as Frontier
 
 .. code-block:: bash
 
-    apptainer build matensemble.sif docker://ghcr.io/freddude2004/matensemble:pathfinder-dev
+    apptainer build matensemble.sif docker://ghcr.io/freddude2004/matensemble:pathfinder-vX.Y.Z
 
 .. note::
-   It may be necesary to allocate yourself a compute node to speed up the build.
+   It may be necessary to allocate yourself a compute node to speed up the build.
 
 .. code-block:: bash
 
@@ -248,7 +244,7 @@ as Frontier
 
 .. code-block:: bash
 
-    # Example of building a sandbox for Frontier
+    # Example of building a sandbox for Pathfinder
     apptainer build --sandbox matensemble_sandbox docker://ghcr.io/freddude2004/matensemble:pathfinder-vX.Y.Z
 
 
@@ -271,6 +267,8 @@ You should see all of the resources ready to use. You are ready run one of your 
 
    python <script.py>
 
+The curated Pathfinder smoke-test example lives under ``example_workflows/pathfinder/lammps_smoke``.
+
 Conda
 -----
 
@@ -285,7 +283,7 @@ You can build a Conda environment with MatEnsemble and dependencies installed us
     conda env create -f environment.yaml
     conda activate matensemble
 
-For more information see the `Anaconda Documentation <https://www.anaconda.com/docs/main>_`.
+For more information see the `Anaconda Documentation <https://www.anaconda.com/docs/main>`__.
 
 Dev Container
 -------------
@@ -305,9 +303,17 @@ In the CLI you can start a flux instance and a Jupyter server that has access to
 After starting the flux allocation you can copy the link that is printed and register it as a
 jupyter kernel in VS Code.
 
+Dashboard dependencies
+----------------------
+
+Passing ``dashboard=True`` starts a Starlette/uvicorn web server on port ``8000``. Make sure
+``starlette`` and ``uvicorn`` are installed in the runtime environment and tunnel the compute-node
+port back to your workstation as described in :doc:`design`.
+
 Where to read next
 ==================
 
 * :doc:`tutorials` — minimal working programs.
+* :doc:`examples` — curated repository examples by system.
 * :doc:`reference` — exhaustive knobs (affinities, ``buffer_time``, dashboard port, failure reasons).
 * :ref:`api-reference` — Sphinx autodoc for modules under ``src/matensemble``.

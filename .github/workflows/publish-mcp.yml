@@ -1,0 +1,27 @@
+name: Publish mcp-matensemble
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Build mcp-matensemble
+        run: uv build --package mcp-matensemble --no-sources
+
+      - name: Publish to PyPI
+        run: uv publish

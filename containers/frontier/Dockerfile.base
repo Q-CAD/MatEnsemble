@@ -14,8 +14,30 @@ RUN apt-get update && apt-get install -y --no-install-recommends               \
     freeglut3-dev libgl1-mesa-dev libglu1-mesa-dev libglew-dev mesa-utils      \
     && rm -rf /var/lib/apt/lists/*
 
-# Remove system OpenMPI so cmake cannot accidentally pick it up instead of Cray MPICH
-RUN apt-get remove -y libopenmpi-dev libopenmpi3 mpi-default-dev mpi-default-bin || true
+# Fully purge OpenMPI — including runtime .so files that apt-get remove leaves
+# behind. Without this, cmake/ld can pick up libmpi.so.40 (OpenMPI ABI) instead
+# of libmpi.so.12 (MPICH/Cray ABI), causing the "Inconsistent MPI library"
+# error at runtime.
+RUN apt-get remove -y --purge                                                  \
+        libopenmpi-dev libopenmpi3 mpi-default-dev mpi-default-bin openmpi-bin \
+    || true &&                                                                 \
+    rm -f /lib/x86_64-linux-gnu/libmpi.so*                                     \
+          /lib/x86_64-linux-gnu/libmpi_cxx.so*                                 \
+          /lib/x86_64-linux-gnu/libmpi_usempif08.so*                           \
+          /usr/lib/x86_64-linux-gnu/libmpi.so*                                 \
+          /usr/lib/x86_64-linux-gnu/libmpi_cxx.so* &&                          \
+    ldconfig
+
+# MPICH_DIR is set by the CPE base image to /opt/mpich/3.4.3 (vanilla MPICH).
+# This is ABI-compatible with Cray MPICH — both use soname libmpi.so.12 —
+# so we build LAMMPS and mpi4py against it at image-build time.
+#
+# At runtime, apptainer-enable-mpi bind-mounts the host Cray MPICH into the
+# container. Because the soname matches (libmpi.so.12), both LAMMPS and mpi4py
+# resolve to the same bound-in library automatically. No path overrides needed.
+#
+# MPICH_LIB is just a convenience alias for the library directory.
+ENV MPICH_LIB=${MPICH_DIR}/lib
 
 # Python env
 RUN python3 -m venv /opt/basic && \
@@ -26,7 +48,7 @@ RUN python -m pip install --no-cache-dir setuptools wheel cffi \
     PyYAML cython pyarrow pyfftw tqdm papermill py3Dmol ply pyyaml
 
 # Build mpi4py against Cray MPICH
-RUN MPICC="hipcc -L${MPICH_DIR}/lib -lmpi ${PE_MPICH_GTL_DIR_amd_gfx90a} ${PE_MPICH_GTL_LIBS_amd_gfx90a} -I${MPICH_DIR}/include" \
+RUN MPICC="hipcc -L${MPICH_LIB} -lmpi ${PE_MPICH_GTL_DIR_amd_gfx90a} ${PE_MPICH_GTL_LIBS_amd_gfx90a} -I${MPICH_DIR}/include" \
     pip install --no-cache-dir --no-binary=mpi4py mpi4py
 
 # Flux & Fluxion Build
@@ -48,101 +70,104 @@ RUN git clone -b v0.41.0 https://github.com/flux-framework/flux-sched.git && \
     ldconfig
 
 RUN python -m pip install --no-cache-dir flux-python==0.70.0
-ENV LD_LIBRARY_PATH=${MPICH_DIR}/lib:/usr/local/lib:${LD_LIBRARY_PATH}
+ENV LD_LIBRARY_PATH=${MPICH_LIB}:/usr/local/lib:${LD_LIBRARY_PATH}
 
-# Build symmetrix
-RUN git clone --recursive https://github.com/wcwitt/symmetrix && \
-    cd symmetrix && \
-    git checkout daeda1c1cf5eee633c3f3f409b6bba327f29b4b7 && \
-    cd symmetrix && \
-    pip install .
 
-# Build LAMMPS
-WORKDIR /opt
 RUN wget https://github.com/lammps/lammps/archive/refs/tags/patch_10Dec2025.tar.gz && \
     tar -xzvf patch_10Dec2025.tar.gz && \
-    rm -rf patch_10Dec2025.tar.gz    && \
+    rm -rf patch_10Dec2025.tar.gz && \
     mv lammps-patch_10Dec2025 lammps && \
-    mkdir -p /opt/lammps/build
+    git clone --recursive https://github.com/wcwitt/symmetrix && \
+    cd symmetrix && \
+    git checkout daeda1c1cf5eee633c3f3f409b6bba327f29b4b7 && \
+    git submodule update --init --recursive && \
+    cd pair_symmetrix && \
+    ./install.sh /opt/lammps
 
-# Patch LAMMPS to use pair_style symmetrix
-WORKDIR /opt/symmetrix/pair_symmetrix
-RUN ./install.sh /opt/lammps
-
-WORKDIR /opt/lammps/build
+# WORKDIR /opt/symmetix/pair_symmetrix
+# RUN ./install.sh /opt/lammps
 
 ENV LMP_MACH=frontier_gfx90a
 ENV MPICH_GPU_SUPPORT_ENABLED=1
 
-RUN cmake ../cmake \
-    -D CMAKE_INSTALL_PREFIX=${INSTDIR:-$PWD/install} \
-    -D CMAKE_BUILD_TYPE=Release \
-    -D BUILD_SHARED_LIBS=ON \
-    -D BUILD_MPI=ON \
-    -D CMAKE_CXX_COMPILER=${ROCM_PATH}/bin/hipcc \
-    -D CMAKE_CXX_STANDARD=20 \
-    -D CMAKE_CXX_STANDARD_REQUIRED=ON \
-    -D CMAKE_CXX_SCAN_FOR_MODULES=OFF \
+
+WORKDIR /opt/lammps/build
+RUN cmake ../cmake                                         \
+    -D CMAKE_INSTALL_PREFIX=/opt/lammps/install            \
+    -D CMAKE_BUILD_TYPE=Release                            \
+    -D BUILD_SHARED_LIBS=ON                                \
+    -D BUILD_MPI=ON                                        \
+    -D CMAKE_CXX_COMPILER=${ROCM_PATH}/bin/hipcc           \
+    -D CMAKE_CXX_STANDARD=20                               \
+    -D CMAKE_CXX_STANDARD_REQUIRED=ON                      \
+    -D CMAKE_CXX_SCAN_FOR_MODULES=OFF                      \
     -D CMAKE_CXX_FLAGS="-fdenormal-fp-math=ieee -fgpu-flush-denormals-to-zero -munsafe-fp-atomics -D__HIP_PLATFORM_AMD__=1" \
-    -D MPI_CXX_COMPILER=${MPICH_DIR}/bin/mpicxx \
-    -D MPI_C_COMPILER=${MPICH_DIR}/bin/mpicc \
-    -D MPI_CXX_LIB_NAMES=mpi \
-    -D MPI_C_LIB_NAMES=mpi \
-    -D MPI_mpi_LIBRARY=${MPICH_DIR}/lib/libmpi.so \
-    -D MPI_CXX_HEADER_DIR=${MPICH_DIR}/include \
-    -D MPI_C_HEADER_DIR=${MPICH_DIR}/include \
-    -D CMAKE_EXE_LINKER_FLAGS="-L${MPICH_DIR}/lib -lmpi ${PE_MPICH_GTL_DIR_amd_gfx90a} ${PE_MPICH_GTL_LIBS_amd_gfx90a}" \
-    -D CMAKE_SHARED_LINKER_FLAGS="-L${MPICH_DIR}/lib -lmpi ${PE_MPICH_GTL_DIR_amd_gfx90a} ${PE_MPICH_GTL_LIBS_amd_gfx90a}" \
-    -D KokkosKernels_ENABLE_ETI=OFF \
-    -D KokkosKernels_INST_DOUBLE=OFF \
-    -D KokkosKernels_INST_LAYOUTLEFT=OFF \
-    -D PKG_KOKKOS=ON \
-    -D Kokkos_ENABLE_HIP=ON \
-    -D Kokkos_ARCH_VEGA90A=ON \
-    -D Kokkos_ARCH_ZEN3=ON \
-    -D Kokkos_ENABLE_SERIAL=ON \
-    -D Kokkos_ENABLE_OPENMP=ON \
+    -D MPI_CXX_SKIP_MPICXX=TRUE                            \
+    -D MPI_CXX_COMPILER=${MPICH_DIR}/bin/mpicxx            \
+    -D MPI_C_COMPILER=${MPICH_DIR}/bin/mpicc               \
+    -D MPI_CXX_LIB_NAMES=mpi                               \
+    -D MPI_C_LIB_NAMES=mpi                                 \
+    -D MPI_mpi_LIBRARY=${MPICH_LIB}/libmpi.so              \
+    -D MPI_CXX_HEADER_DIR=${MPICH_DIR}/include             \
+    -D MPI_C_HEADER_DIR=${MPICH_DIR}/include               \
+    -D CMAKE_EXE_LINKER_FLAGS="-L${MPICH_LIB} -lmpi ${PE_MPICH_GTL_DIR_amd_gfx90a} ${PE_MPICH_GTL_LIBS_amd_gfx90a}" \
+    -D CMAKE_SHARED_LINKER_FLAGS="-L${MPICH_LIB} -lmpi ${PE_MPICH_GTL_DIR_amd_gfx90a} ${PE_MPICH_GTL_LIBS_amd_gfx90a}" \
+    -D KokkosKernels_ENABLE_ETI=OFF                        \
+    -D KokkosKernels_INST_DOUBLE=OFF                       \
+    -D KokkosKernels_INST_LAYOUTLEFT=OFF                   \
+    -D PKG_KOKKOS=ON                                       \
+    -D Kokkos_ENABLE_HIP=ON                                \
+    -D Kokkos_ARCH_VEGA90A=ON                              \
+    -D Kokkos_ARCH_ZEN3=ON                                 \
+    -D Kokkos_ENABLE_SERIAL=ON                             \
+    -D Kokkos_ENABLE_OPENMP=ON                             \
     -D Kokkos_ENABLE_HIP_MULTIPLE_KERNEL_INSTANTIATIONS=ON \
-    -D Kokkos_ENABLE_AGGRESSIVE_VECTORIZATION=ON \
-    -D SYMMETRIX_KOKKOS=ON \
-    -D BUILD_OMP=ON \
-    -D FFT=FFTW3 \
-    -D BLAS_LIBRARIES="${LIBSCI_PATH}" \
-    -D LAPACK_LIBRARIES="${LIBSCI_PATH}" \
-    -D PYTHON_EXECUTABLE=$(which python) \
-    -D PKG_MANYBODY=ON \
-    -D PKG_MOLECULE=ON \
-    -D PKG_KSPACE=ON \
-    -D PKG_RIGID=ON \
-    -D PKG_REAXFF=ON \
-    -D PKG_REPLICA=ON \
-    -D PKG_ML-SNAP=ON \
-    -D PKG_ML-IAP=ON \
-    -D PKG_ML-PACE=ON \
-    -D PKG_SPIN=ON \
-    -D PKG_PYTHON=ON \
+    -D Kokkos_ENABLE_AGGRESSIVE_VECTORIZATION=ON           \
+    -D SYMMETRIX_KOKKOS=ON                                 \
+    -D BUILD_OMP=ON                                        \
+    -D FFT=FFTW3                                           \
+    -D BLAS_LIBRARIES="${LIBSCI_PATH}"                     \
+    -D LAPACK_LIBRARIES="${LIBSCI_PATH}"                   \
+    -D PYTHON_EXECUTABLE=$(which python)                   \
+    -D PKG_MANYBODY=ON                                     \
+    -D PKG_MOLECULE=ON                                     \
+    -D PKG_KSPACE=ON                                       \
+    -D PKG_RIGID=ON                                        \
+    -D PKG_REAXFF=ON                                       \
+    -D PKG_REPLICA=ON                                      \
+    -D PKG_ML-SNAP=ON                                      \
+    -D PKG_ML-IAP=ON                                       \
+    -D PKG_ML-PACE=ON                                      \
+    -D PKG_SPIN=ON                                         \
+    -D PKG_PYTHON=ON                                       \
     -D MLIAP_ENABLE_PYTHON=ON
 
 RUN make -j16     && \
     make install  && \
     make install-python
-
 ENV PATH=/opt/lammps/install/bin:${PATH}
-
-RUN pip uninstall -y ovito && \
-    pip install -U ovito
 
 # LAMMPS / Kokkos runtime flags
 ENV OMP_PROC_BIND=spread
 ENV OMP_PLACES=threads
-ENV HIP_VISIBLE_DEVICES=$ROCR_VISIBLE_DEVICES
 ENV HSA_XNACK=1
 ENV MPICH_GPU_SUPPORT_ENABLED=1
-ENV SLURM_GPUS_PER_NODE=8
-ENV CRAYPE_LINK_TYPE=dynamic
+ENV MPICH_OFI_NIC_POLICY=BLOCK
+
+# Verify all three components see the same MPI soname (must all show .so.12)
+RUN echo "=== MPI soname check ===" && \
+    ldd /opt/lammps/build/liblammps.so | grep libmpi && \
+    python -c "import subprocess, mpi4py, os; \
+        lib=os.path.join(os.path.dirname(mpi4py.__file__),'MPI.cpython-312-x86_64-linux-gnu.so'); \
+        out=subprocess.check_output(['ldd',lib]).decode(); \
+        [print(l) for l in out.splitlines() if 'libmpi' in l]" && \
+    echo "=== Check complete: both lines above must show libmpi.so.12 ==="
+
+RUN ldd /opt/lammps/build/liblammps.so | tee /tmp/lammps.ldd && \
+    grep 'libmpi.so.12' /tmp/lammps.ldd && \
+    ! grep 'libmpicxx' /tmp/lammps.ldd
 
 # Sanity checks
-RUN python -c "import mpi4py; print('python stack ok')"  && \
-    python -c "import lammps; print('lammps python ok')" && \
-    python -c "import ovito; print('ovito python ok')"   && \
-    python -c "import flux; print('flux python ok')"
+RUN python -c "import mpi4py; print('mpi4py ok')" && \
+    python -c "import flux; print('flux ok')"     && \
+    python -c "import lammps; print('lammps ok')"

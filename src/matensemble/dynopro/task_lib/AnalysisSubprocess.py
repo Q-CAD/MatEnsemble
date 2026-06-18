@@ -92,9 +92,9 @@ def AnalysisSubprocess(comm, input_params):
                 file.write(f"{data.timestep} {twist_angle}")
 
             if "target_window" in input_params["compute_twist"].keys():
-                assert input_params["compute_twist"]["grid_resolution"] > 1, (
-                    f"Grid resolution has to be greater than 1 for for a multigrid coverage analysis"
-                )
+                assert (
+                    input_params["compute_twist"]["grid_resolution"] > 1
+                ), f"Grid resolution has to be greater than 1 for for a multigrid coverage analysis"
 
                 from matensemble.dynopro.utils.stat import get_probability
 
@@ -111,8 +111,10 @@ def AnalysisSubprocess(comm, input_params):
         if "compute_xrd" in input_params.keys():
             if input_params["compute_xrd"]:
                 filetag = f"XRD_{data.timestep}"
-                xrd_pattern = compute_diffraction.get_xrd_pattern(data, filetag)
+                xrd_pattern = compute_diffraction.get_xrd_ovito(data, filetag)
                 if rds is not None:
+                    if isinstance(xrd_pattern, np.ndarray):
+                        xrd_pattern = xrd_pattern.tolist()
                     rds.register_on_stream(
                         namespace=input_params["stream"]["namespace"],
                         key="xrd_data",

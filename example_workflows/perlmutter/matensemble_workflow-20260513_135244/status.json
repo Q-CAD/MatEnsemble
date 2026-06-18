@@ -1,1 +1,0 @@
-{"nodes": 1, "cores_per_node": 128, "gpus_per_node": 4, "pending": 0, "running": 0, "completed": 1, "failed": 0, "free_cores": 127, "free_gpus": 3}

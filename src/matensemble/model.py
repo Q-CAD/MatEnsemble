@@ -24,15 +24,12 @@ class OutputReference:
             with dep_result.open("rb") as f:
                 return str(pickle.load(f))
         except Exception as e:
-            return f"Error: Could not open result of chore: {self.chore_id} becuase of the following exception: {e}"
+            return f"Error: Could not open result of chore: {self.chore_id} because of the following exception: {e}"
 
     def result(self):
         dep_result = self.workdir / "result.pickle"
-        try:
-            with dep_result.open("rb") as f:
-                return pickle.load(f)
-        except Exception as e:
-            return f"Error: Could not open result of chore: {self.chore_id} becuase of the following exception: {e}"
+        with dep_result.open("rb") as f:
+            return pickle.load(f)
 
 
 @dataclass
@@ -76,7 +73,7 @@ class ChoreType(StrEnum):
     """
     The different types that a chore can be. As of right now there are two types
     of Chores, Python chores and Executable chores. Python chores are delayed function
-    calls and executable chores are paths to executable files.
+    calls and executable chores are argv style commands.
     """
 
     PYTHON = auto()

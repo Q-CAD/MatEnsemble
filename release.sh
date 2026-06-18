@@ -60,6 +60,7 @@ fi
 
 echo "Would bump version:"
 uv version --bump "$1" --dry-run
+uv version --package mcp-matensemble --bump "$1" --dry-run
 
 # prompt for confirmation
 if [ "$FORCE" = false ]; then
@@ -75,9 +76,10 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 	uv version --bump "$1"
 
 	new_version=$(uv version --short)
+	uv version --package mcp-matensemble "$new_version"
 
 	# commit changes
-	git add pyproject.toml uv.lock
+	git add pyproject.toml src/mcp_matensemble/pyproject.toml uv.lock
 	git commit -m "bump version to $new_version"
 	git tag -a "v$new_version" -m "v$new_version"
 

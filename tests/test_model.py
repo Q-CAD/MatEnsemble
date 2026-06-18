@@ -30,5 +30,11 @@ def test_output_reference_result_reads_pickled_value(tmp_path: Path):
     assert ref.result() == {"x": 1}
 
 
+def test_output_reference_result_raises_for_missing_file(tmp_path: Path):
+    ref = OutputReference("missing", tmp_path / "missing")
+    with pytest.raises(FileNotFoundError):
+        ref.result()
+
+
 def test_choretype_enum_distinct():
     assert ChoreType.PYTHON != ChoreType.EXECUTABLE

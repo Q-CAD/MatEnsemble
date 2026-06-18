@@ -11,7 +11,6 @@ from pathlib import Path
 
 from abc import ABC, abstractmethod
 
-from matensemble import dynopro
 from matensemble.model import OutputReference
 
 
@@ -67,9 +66,8 @@ class AdaptiveStrategy(FutureProcessingStrategy):
 
         had_failure = False
         for fut in completed:
-            chore_id = fut.chore_id
-            chore = fut.chore_obj
-            chore_name = chore_id.removeprefix("chore-").rsplit("-", 1)[0]
+            chore_id = getattr(fut, "chore_id")
+            chore = getattr(fut, "chore_obj")
             self.manager._running_chores.remove(chore_id)
 
             try:
@@ -98,7 +96,11 @@ class AdaptiveStrategy(FutureProcessingStrategy):
                 had_failure = True
                 continue
 
-            if rc != 0:
+            # rc 134 is a double free or corruption error caused by lammps-symmetrix in the
+            # in the frontier image during lammps cleanup
+            # the function will still complete successfully and produce a result.pickle file
+            # so if we can safely ignore the return code
+            if rc != 0 and rc != 134:
                 append_text(
                     chore.workdir / "stderr",
                     f"\n\n===== MATENSEMBLE: NONZERO EXIT =====\nchore={chore_id} rc={rc}\n",
@@ -159,8 +161,8 @@ class NonAdaptiveStrategy(FutureProcessingStrategy):
 
         had_failure = False
         for fut in completed:
-            chore_id = fut.chore_id
-            chore = fut.chore_obj
+            chore_id = getattr(fut, "chore_id")
+            chore = getattr(fut, "chore_obj")
             self.manager._running_chores.remove(chore_id)
 
             try:
@@ -229,10 +231,13 @@ class NonAdaptiveStrategy(FutureProcessingStrategy):
 
 
 class UserStrategy(FutureProcessingStrategy):
-    def __init__(self, manager, pipeline, processing_chore, bolo_list) -> None:
+    def __init__(
+        self, manager, pipeline, processing_chore, processing_chore_resources, bolo_list
+    ) -> None:
         super().__init__(manager)
         self.pipeline = pipeline
         self.proc_chore = processing_chore
+        self.proc_chore_res = processing_chore_resources
         self.bolo_list = set(bolo_list)
 
         # if not isinstance(chore, Callable[..., Chore]):
@@ -247,8 +252,8 @@ class UserStrategy(FutureProcessingStrategy):
 
         had_failure = False
         for fut in completed:
-            chore_id = fut.chore_id
-            chore = fut.chore_obj
+            chore_id = getattr(fut, "chore_id")
+            chore = getattr(fut, "chore_obj")
             chore_name = chore_id.removeprefix("chore-").rsplit("-", 1)[0]
             self.manager._running_chores.remove(chore_id)
 
@@ -332,7 +337,7 @@ class UserStrategy(FutureProcessingStrategy):
                         try:
                             out_ref = OutputReference(chore_id, chore.workdir)
                             new_chore, new_out = self.pipeline._spawn_chore_from_name(
-                                self.proc_chore, dependent=out_ref
+                                self.proc_chore, self.proc_chore_res, dependent=out_ref
                             )
                             self.pipeline._admit_spawned_chore(
                                 new_chore, new_out, self.manager
