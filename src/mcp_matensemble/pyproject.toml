@@ -1,6 +1,6 @@
 [project]
 name = "mcp-matensemble"
-version = "0.3.11"
+version = "0.4.0"
 description = "Model Context Protocol server for generating MatEnsemble workflow campaigns."
 readme = "README.md"
 license = "BSD-3-Clause"

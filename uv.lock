@@ -738,7 +738,7 @@ wheels = [
 
 [[package]]
 name = "matensemble"
-version = "0.3.11"
+version = "0.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "ase" },
@@ -885,7 +885,7 @@ cli = [
 
 [[package]]
 name = "mcp-matensemble"
-version = "0.3.11"
+version = "0.4.0"
 source = { editable = "src/mcp_matensemble" }
 dependencies = [
     { name = "mcp", extra = ["cli"] },
