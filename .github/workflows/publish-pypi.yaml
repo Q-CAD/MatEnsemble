@@ -31,8 +31,3 @@ jobs:
       - name: Publish MatEnsemble to PyPI
         run: uv publish
 
-      - name: Build mcp-matensemble
-        run: uv build --package mcp-matensemble --no-sources
-
-      - name: Publish mcp-matensemble to PyPI
-        run: uv publish

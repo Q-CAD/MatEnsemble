@@ -763,6 +763,7 @@ flux = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "mcp-matensemble" },
     { name = "myst-parser" },
     { name = "pytest" },
     { name = "sphinx" },
@@ -791,6 +792,7 @@ provides-extras = ["flux"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "mcp-matensemble", editable = "src/mcp_matensemble" },
     { name = "myst-parser", specifier = ">=5.0.0" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "sphinx", specifier = ">=9.1.0" },
