@@ -110,7 +110,7 @@ class EnsembleDynamicsRunner:
         fm = FluxManager(
             chore_list=chores,
             base_dir=basedir,
-            write_restart_freq=self.write_restart_freq,
+            # write_restart_freq=self.write_restart_freq, # leave this out for now until restarts are ready for use
         )
 
         # Execute the simulations
