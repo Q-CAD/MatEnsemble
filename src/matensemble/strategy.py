@@ -11,7 +11,6 @@ from pathlib import Path
 
 from abc import ABC, abstractmethod
 
-from matensemble import dynopro
 from matensemble.model import OutputReference
 
 
@@ -67,9 +66,8 @@ class AdaptiveStrategy(FutureProcessingStrategy):
 
         had_failure = False
         for fut in completed:
-            chore_id = fut.chore_id
-            chore = fut.chore_obj
-            chore_name = chore_id.removeprefix("chore-").rsplit("-", 1)[0]
+            chore_id = getattr(fut, "chore_id")
+            chore = getattr(fut, "chore_obj")
             self.manager._running_chores.remove(chore_id)
 
             try:
@@ -98,7 +96,11 @@ class AdaptiveStrategy(FutureProcessingStrategy):
                 had_failure = True
                 continue
 
-            if rc != 0:
+            # rc 134 is a double free or corruption error caused by lammps-symmetrix in the
+            # in the frontier image during lammps cleanup
+            # the function will still complete successfully and produce a result.pickle file
+            # so if we can safely ignore the return code
+            if rc != 0 and rc != 134:
                 append_text(
                     chore.workdir / "stderr",
                     f"\n\n===== MATENSEMBLE: NONZERO EXIT =====\nchore={chore_id} rc={rc}\n",
@@ -159,8 +161,8 @@ class NonAdaptiveStrategy(FutureProcessingStrategy):
 
         had_failure = False
         for fut in completed:
-            chore_id = fut.chore_id
-            chore = fut.chore_obj
+            chore_id = getattr(fut, "chore_id")
+            chore = getattr(fut, "chore_obj")
             self.manager._running_chores.remove(chore_id)
 
             try:
@@ -250,8 +252,8 @@ class UserStrategy(FutureProcessingStrategy):
 
         had_failure = False
         for fut in completed:
-            chore_id = fut.chore_id
-            chore = fut.chore_obj
+            chore_id = getattr(fut, "chore_id")
+            chore = getattr(fut, "chore_obj")
             chore_name = chore_id.removeprefix("chore-").rsplit("-", 1)[0]
             self.manager._running_chores.remove(chore_id)
 

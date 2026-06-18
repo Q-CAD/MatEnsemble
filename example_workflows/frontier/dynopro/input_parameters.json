@@ -1,0 +1,33 @@
+{
+    "species": [
+        "Bi",
+        "Se"
+    ],
+    "lammps_input": "/lustre/orion/world-shared/lrn090/Demo_workflows_Feb2026/Automated_XRD/Bi-Se/in.recryst.npt",
+    "verlet_delta_t": 0.001,
+    "heat": {
+        "T_heat": 1500,
+        "heat_timesteps": 100
+    },
+    "lattice_scale": 1.025,
+    "quench": {
+        "T_quench": 10
+    },
+    "run_on_gpus": true,
+    "nnodes": 3,
+    "gpus_per_node": 8,
+    "total_procs": 168,
+    "md_procs": 24,
+    "i_o_freq": 100,
+    "total_number_of_timesteps": 1000,
+    "compute_xrd": true,
+    "compute_rdf": {
+        "cutoff": 10,
+        "number_of_bins": 100,
+        "z_min": 0
+    },
+    "full_trajectory_dump": true,
+    "trajectory_output_format": [
+        "lammps/dump"
+    ]
+}

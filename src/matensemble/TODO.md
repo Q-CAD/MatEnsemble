@@ -223,6 +223,12 @@
 
 ## --- Frontier Dynopro Fix ---
 
+- [x] Fix the diff in Dynopro to use get_xrd_ovito()
+- [x] Patch MatEnsemble to ignore the double free error: 134 or 137 idk whichever one it is
+- [x] Update the Base image or retag the one that I used to build this john
+- [x] The double free is likely from symmetrix so forget fixing it
+- [ ] Run the release script and do a PR
+
 ## --- Demo ---
 - [ ] Video demonstrating the MCP server
 - [ ] DAG workflow based on active learning
