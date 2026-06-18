@@ -1,7 +1,7 @@
 [[example]]
-id = "generic.dependencies"
-name = "generic_dependencies"
-title = "Chore dependencies Workflow"
+id = "generic_flux.chores"
+name = "generic_flux_chores"
+title = "Chore Dependency Workflow"
 system = "linux"
 system_title = "Portable Linux/Flux Workflows"
 compatible_systems = ["frontier", "perlmutter", "pathfinder", "linux"]
@@ -14,8 +14,8 @@ agent_guidance = "Use this example to understand MatEnsemble workflow structure.
 include_in_mcp = true
 
 [[example]]
-id = "generic.mpi"
-name = "generic_mpi"
+id = "generic_flux.mpi"
+name = "generic_flux_mpi"
 title = "MPI Chore Workflow"
 system = "linux"
 system_title = "Portable Linux/Flux Workflows"
@@ -29,8 +29,8 @@ agent_guidance = "Use this example to understand MatEnsemble workflow structure.
 include_in_mcp = true
 
 [[example]]
-id = "generic.strategy"
-name = "generic_strategy"
+id = "generic_flux.strategy"
+name = "generic_flux_strategy"
 title = "Adaptive Strategy Workflow"
 system = "linux"
 system_title = "Portable Linux/Flux Workflows"
@@ -44,8 +44,8 @@ agent_guidance = "Use this example to understand MatEnsemble workflow structure.
 include_in_mcp = true
 
 [[example]]
-id = "generic.executable"
-name = "generic_executable"
+id = "generic_flux.executable"
+name = "generic_flux_executable"
 title = "Executable Chore Workflow"
 system = "linux"
 system_title = "Portable Linux/Flux Workflows"
@@ -70,7 +70,7 @@ entrypoint = "workflow.py"
 files = [
   "workflow.py",
   "run_interactive.sh",
-  "run_batch.slurm",
+  "submit.slurm",
 ]
 description = "Frontier LAMMPS GPU smoke test using the MatEnsemble CLI and Apptainer."
 agent_guidance = "Use this system-specific example for Frontier launch scripts, Apptainer runtime details, Slurm flags, and GPU-oriented LAMMPS setup."
@@ -89,7 +89,7 @@ files = [
   "README.md",
   "workflow.py",
   "run_interactive.sh",
-  "run_batch.slurm",
+  "submit.slurm",
 ]
 description = "Pathfinder CPU LAMMPS smoke test using the MatEnsemble CLI and Apptainer."
 agent_guidance = "Use this system-specific example for Pathfinder launch scripts, Apptainer runtime details, Slurm flags, and CPU LAMMPS setup."
@@ -107,7 +107,7 @@ entrypoint = "workflow.py"
 files = [
   "workflow.py",
   "run_interactive.sh",
-  "run_batch.slurm",
+  "submit.slurm",
 ]
 description = "Perlmutter LAMMPS GPU smoke test using the MatEnsemble CLI and Podman-HPC."
 agent_guidance = "Use this system-specific example for Perlmutter launch scripts, Podman-HPC runtime details, Slurm flags, and GPU-oriented LAMMPS setup."
@@ -124,7 +124,7 @@ directory = "perlmutter/lammps_mace"
 entrypoint = "workflow.py"
 files = [
   "workflow.py",
-  "run_batch.slurm",
+  "submit.slurm",
 ]
 description = "Perlmutter LAMMPS/MACE workflow and batch launch pattern."
 agent_guidance = "Use this system-specific example for Perlmutter launch scripts, Podman-HPC runtime details, Slurm flags, and MACE/LAMMPS dependency setup."
