@@ -6,6 +6,7 @@ from pathlib import Path
 from textwrap import dedent
 
 from .environment import resolve_image_tag
+from .examples import get_system_example
 from .security import resolve_campaign_dir, slugify
 from .systems import get_system_profile
 
@@ -67,6 +68,8 @@ def create_campaign(
         raise FileExistsError(f"campaign files already exist: {paths}")
 
     campaign_dir.mkdir(parents=True, exist_ok=True)
+    (campaign_dir / "launch_logs").mkdir(exist_ok=True)
+    (campaign_dir / "logs").mkdir(exist_ok=True)
     workflow_text = render_workflow_script(
         campaign_name=campaign_name,
         science_goal=science_goal,
@@ -287,44 +290,22 @@ def render_launch_guide(
 
 def render_interactive_script(*, site: str, workflow_filename: str) -> str:
     profile = get_system_profile(site)
-    if profile.name == "frontier":
-        return dedent(
-            f"""\
-            #!/usr/bin/env bash
-            set -euo pipefail
-
-            if ! command -v matensemble >/dev/null 2>&1; then
-              echo "Install the MatEnsemble MCP/site CLI from the cloned repo first: uv run --package mcp-matensemble matensemble-agent-install --system frontier" >&2
-              exit 1
-            fi
-
-            module reset
-            module load olcf-container-tools
-            module load apptainer-enable-mpi apptainer-enable-gpu
-
-            matensemble set-image ./matensemble.sif
-            matensemble run {workflow_filename}
-            """
+    if profile.name in {"frontier", "perlmutter", "pathfinder"}:
+        container = (
+            resolve_image_tag(profile.name)
+            if profile.name == "perlmutter"
+            else "./matensemble.sif"
         )
-    if profile.name == "perlmutter":
-        image = resolve_image_tag(profile.name)
-        return dedent(
-            f"""\
-            #!/usr/bin/env bash
-            set -euo pipefail
-
-            if ! command -v matensemble >/dev/null 2>&1; then
-              echo "Install the MatEnsemble MCP/site CLI from the cloned repo first: uv run --package mcp-matensemble matensemble-agent-install --system perlmutter" >&2
-              exit 1
-            fi
-
-            matensemble set-image {image}
-            matensemble run {workflow_filename}
-            """
+        return _render_repository_script(
+            system=profile.name,
+            template_name="lammps_smoke/run_interactive.sh",
+            replacements={},
+            container=container,
+            workflow_filename=workflow_filename,
         )
     if profile.name == "linux":
         return f"#!/usr/bin/env bash\nset -euo pipefail\nflux start --test-size=4 python {workflow_filename}\n"
-    return f"#!/usr/bin/env bash\nset -euo pipefail\n{profile.launch_command.replace('workflow.py', workflow_filename)}\n"
+    raise ValueError(f"unsupported interactive-script system: {profile.name}")
 
 
 def render_batch_script(
@@ -337,81 +318,18 @@ def render_batch_script(
     profile = get_system_profile(site)
     image = resolve_image_tag(profile.name, version=matensemble_version)
     job_name = slugify(campaign_name)[:32] or "matensemble"
-    if profile.name == "frontier":
-        return dedent(
-            f"""\
-            #!/usr/bin/env bash
-            #SBATCH -A <account>
-            #SBATCH -J {job_name}
-            #SBATCH -o logs/%x-%j.out
-            #SBATCH -e logs/%x-%j.err
-            #SBATCH -t 00:10:00
-            #SBATCH -N 2
-            #SBATCH -C nvme
-
-            set -euo pipefail
-            cd "$(dirname "$0")"
-            mkdir -p logs
-
-            if ! command -v matensemble >/dev/null 2>&1; then
-              echo "Install the MatEnsemble MCP/site CLI from the cloned repo first: uv run --package mcp-matensemble matensemble-agent-install --system frontier" >&2
-              exit 1
-            fi
-
-            module reset
-            module load olcf-container-tools
-            module load apptainer-enable-mpi apptainer-enable-gpu
-
-            matensemble set-image ./matensemble.sif
-            matensemble run {workflow_filename}
-            """
-        )
-    if profile.name == "perlmutter":
-        return dedent(
-            f"""\
-            #!/usr/bin/env bash
-            #SBATCH -A <account>
-            #SBATCH -C gpu
-            #SBATCH --qos debug
-            #SBATCH -t 00:30:00
-            #SBATCH -N 2
-            #SBATCH --ntasks-per-node=1
-            #SBATCH --gpus-per-node=4
-            #SBATCH --gpu-bind=closest
-            #SBATCH -J {job_name}
-            #SBATCH -o logs/%x-%j.out
-            #SBATCH -e logs/%x-%j.err
-
-            set -euo pipefail
-            cd "$(dirname "$0")"
-            mkdir -p logs
-
-            if ! command -v matensemble >/dev/null 2>&1; then
-              echo "Install the MatEnsemble MCP/site CLI from the cloned repo first: uv run --package mcp-matensemble matensemble-agent-install --system perlmutter" >&2
-              exit 1
-            fi
-
-            matensemble set-image {image}
-            matensemble run {workflow_filename}
-            """
-        )
-    if profile.name == "pathfinder":
-        return dedent(
-            f"""\
-            #!/usr/bin/env bash
-            #SBATCH -A <account>
-            #SBATCH -J {job_name}
-            #SBATCH -o logs/%x-%j.out
-            #SBATCH -e logs/%x-%j.err
-            #SBATCH -t 00:10:00
-            #SBATCH -N 2
-
-            set -euo pipefail
-            cd "$(dirname "$0")"
-            mkdir -p logs
-            matensemble set-image ./matensemble.sif
-            matensemble run {workflow_filename}
-            """
+    if profile.name in {"frontier", "perlmutter", "pathfinder"}:
+        return render_site_batch_script(
+            system=profile.name,
+            account="<account>",
+            job_name=job_name,
+            walltime="00:30:00" if profile.name == "perlmutter" else "00:10:00",
+            nodes=2,
+            queue="debug",
+            gpus=4,
+            tasks=1,
+            container=image if profile.name == "perlmutter" else "./matensemble.sif",
+            workflow_filename=workflow_filename,
         )
     return dedent(
         f"""\
@@ -423,11 +341,82 @@ def render_batch_script(
         #SBATCH -N 1
 
         set -euo pipefail
-        cd "$(dirname "$0")"
-        mkdir -p logs
         {profile.launch_command.replace("workflow.py", workflow_filename)}
         """
     )
+
+
+def render_site_batch_script(
+    *,
+    system: str,
+    account: str,
+    job_name: str,
+    walltime: str,
+    nodes: int,
+    queue: str,
+    gpus: int,
+    tasks: int,
+    container: str,
+    workflow_filename: str = "workflow.py",
+) -> str:
+    """Render a parameterized copy of a repository submit.slurm example."""
+
+    template_name = (
+        "lammps_mace/submit.slurm"
+        if system == "perlmutter"
+        else "lammps_smoke/submit.slurm"
+    )
+    replacements = {
+        "-A": account,
+        "-J": job_name,
+        "-t": walltime,
+        "-N": str(nodes),
+        "--qos": queue,
+        "--ntasks-per-node": str(tasks),
+        "--gpus-per-node": str(gpus),
+    }
+    return _render_repository_script(
+        system=system,
+        template_name=template_name,
+        replacements=replacements,
+        container=container,
+        workflow_filename=workflow_filename,
+    )
+
+
+def _render_repository_script(
+    *,
+    system: str,
+    template_name: str,
+    replacements: dict[str, str],
+    container: str,
+    workflow_filename: str,
+) -> str:
+    template = get_system_example(system, template_name)
+    rendered: list[str] = []
+    for line in template.splitlines():
+        stripped = line.strip()
+        if stripped.startswith('cd "$(dirname'):
+            continue
+        if stripped.startswith("#SBATCH"):
+            directive = stripped.removeprefix("#SBATCH").strip()
+            option = directive.split("=", 1)[0].split(maxsplit=1)[0]
+            if option in replacements:
+                separator = "=" if "=" in directive else " "
+                line = f"#SBATCH {option}{separator}{replacements[option]}"
+            else:
+                line = stripped
+        if stripped.startswith("matensemble set-image "):
+            line = f"matensemble set-image {container}"
+        elif stripped.startswith("matensemble run "):
+            line = f"matensemble run {workflow_filename}"
+        elif stripped.startswith("echo ") and "curl -fsSL" in stripped:
+            line = (
+                f'\techo "uv run --package mcp-matensemble '
+                f'matensemble-agent-install --system {system}"'
+            )
+        rendered.append(line)
+    return "\n".join(rendered).rstrip() + "\n"
 
 
 def _markdown_bullets(items: tuple[str, ...]) -> str:
