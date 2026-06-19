@@ -953,7 +953,11 @@ def _load_example_manifest() -> tuple[ExampleManifestEntry, ...]:
         )
         if system not in SUPPORTED_SYSTEMS:
             continue
-        if system == "linux" and raw.get("id", "").startswith("generic_flux.") and not compatible_systems:
+        if (
+            system == "linux"
+            and raw.get("id", "").startswith("generic_flux.")
+            and not compatible_systems
+        ):
             compatible_systems = GENERIC_FLUX_COMPATIBLE_SYSTEMS
         system_title = str(raw.get("system_title") or _default_system_title(system))
         description = str(raw["description"])
@@ -1028,9 +1032,13 @@ def get_container_template(system: str, filename: str) -> str:
     try:
         path.relative_to(container_root)
     except ValueError as exc:
-        raise ValueError("filename must stay inside the system container directory") from exc
+        raise ValueError(
+            "filename must stay inside the system container directory"
+        ) from exc
     if not path.is_file():
-        raise ValueError(f"container template not found: containers/{normalized}/{filename}")
+        raise ValueError(
+            f"container template not found: containers/{normalized}/{filename}"
+        )
     return path.read_text(encoding="utf-8", errors="replace")
 
 
@@ -1116,7 +1124,11 @@ def get_container_contents(name: str) -> str:
     key = normalize_system(name)
     templates = list_container_templates(key)
     preferred = next(
-        (template for template in templates if template["filename"] in {"Dockerfile.matensemble", "Containerfile"}),
+        (
+            template
+            for template in templates
+            if template["filename"] in {"Dockerfile.matensemble", "Containerfile"}
+        ),
         None,
     )
     if preferred is not None:

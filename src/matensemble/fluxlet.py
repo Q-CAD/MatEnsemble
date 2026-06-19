@@ -80,6 +80,8 @@ class Fluxlet:
         flux.job.FluxExecutorFuture
         """
 
+        # Dynopro splits jobs between the CPUs and GPUs. GPUs are used for
+        # the intensive jobs and then processing jobs are spawned into the CPUs
         if dynopro:
             jobspec = flux.job.JobspecV1.per_resource(
                 chore.command,

@@ -79,8 +79,9 @@ def _load_dep_result(spec_file: Path, dep_id: str):
 
 def main():
     """
-    Takes in the command line arguments and uses them to find the :obj:`Chore`, import
-    the module where the user defined the function, import it, then run the function
+    Takes in the command line arguments and uses them to find the :obj:`Chore`, loads
+    the chore object to find the name of the function to call, the arguments and
+    keyword arguments. Deserializes the function from the registry and calls the function
     with the arguments and keyword arguments. Then pickles the result into the outdir.
     """
 
