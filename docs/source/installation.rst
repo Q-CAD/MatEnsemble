@@ -29,6 +29,10 @@ Tags follow the pattern ``<platform>-vX.Y.Z``:
    * - ``linux-vX.Y.Z``
      - General install, not optimized for any specific system.
 
+Containers are the recommended way to run MatEnsemble on HPC systems. If you are unfamiliar with HPC
+container runtimes, see our overview of supported container engines for a brief introduction. Experienced
+users can skip ahead to the installation and usage instructions for their target system.
+
 Apptainer
 ---------
 
@@ -47,28 +51,34 @@ The <name> is whatever you want the portable squashed image to be named and the 
 the version of MatEnsemble that you want to use. Here is an example of building a \*.sif file.
 
 Apptainer images are immutable by design to ensure reproducibility, but you may want to add software
-or packages into the image. Apptainer makes this very seamless, instead of building an immutable
-image you can build a "sandbox" which will allow you to install other packages or compile other
-software into the image. You can then convert the changes you made into a transferrable \*.sif file
-that is immutable
+or packages into the image. Apptainer makes this very seamless, you can either convert your \*.sif file
+into "sandbox" or you can build the sandbox from an OCI image published to a registry. The sandbox format
+will allow you to install other packages or compile other software into the image. You can then convert
+the changes you made into a transferrable \*.sif file that is immutable.
 
 .. code-block:: bash
 
+
     apptainer build --sandbox <sandbox_name> docker://<source>/<image>:<tag>
+
+    # or
+
+    apptainer build --sandbox <sandbox_name> <path/to/sif>.sif
+
 
 Once you have built the image you can install packages or compile software into it as if it were a Ubuntu
 system. You just need to open it in an editable mode.
 
 .. code-block:: bash
 
-    apptainer shell --writable --cleanenv --fakeroot matensemble_sandbox
+    apptainer shell --writable --cleanenv --fakeroot <path/to/sandbox>
 
 After you have installed and changed all of the things that you want in the container you can then
 squash it into an immutable format:
 
 .. code-block:: bash
 
-   apptainer build <name>.sif <path/to/sandbox/>
+   apptainer build <name>.sif <path/to/sandbox>
 
 For more information on how to build and manage apptainer images see `Introduction to Apptainer/Singularity <https://hsf-training.github.io/hsf-training-singularity-webpage/>`_.
 
@@ -146,7 +156,6 @@ You should make sure you are in your $SCRATCH space to make sure you have enough
 environment.
 
 .. code-block:: bash
-
     # Example of building a sandbox for Frontier
     apptainer build --sandbox matensemble_sandbox docker://ghcr.io/freddude2004/matensemble:frontier-vX.Y.Z
 
@@ -154,23 +163,31 @@ environment.
    If building a sandbox is taking too long you can split it into multiple stages to speed things up.
 
 .. code-block:: bash
-
    # first clean the cache to start fresh
    apptainer cache clean
-
    apptainer pull image.sif docker://ghcr.io/freddude2004/matensemble:frontier-vX.Y.Z
-
    apptainer build ./matensemble_sand image.sif
 
 
-After building your container you can run your workflows interactively in flux quite simply:
+After building your container you can run your workflows interactively in flux quite simply. You can optionally install
+the MatEnsemble CLI tool to simplify the commands you need to run.
 
 .. code-block:: bash
+    # install the CLI tool to /usr/bin/
+    curl -fsSL https://raw.githubusercontent.com/FredDude2004/MatEnsemble/main/src/cli/install.sh | bash
 
+After getting a SLURM allocation you can run your workflows:
+
+.. code-block:: bash
    srun -N $SLURM_NNODES -n $SLURM_NNODES --external-launcher --mpi=pmi2 --pty apptainer exec matensemble.sif flux start
 
-This will start a terminal session inside of the container with a flux allocation that can see all of
-the allocated resources. To verify run
+   # or with CLI tool
+
+   matensemble set-image <path/to/sif_or_sandbox>
+   matensemble shell                              # for an interactive session
+   matensemble run <script.py>                    # to run a script non-interacitvely
+
+In the interactive sessions you can verify that flux started properly with
 
 .. code-block:: bash
 
@@ -186,7 +203,7 @@ Perlmutter (NERSC)
 ------------------
 
 To get MatEnsemble to work on Perlmutter you need to bind in the environment variables and devices that
-allow the container to hook into the system's optimized network and MPI implementation. This can get ugly
+allow the container to hook into the system's optimized network and MPI implementation manually. This can get ugly
 quickly, especially when trying to work with Flux. So we provide a CLI tool to simplify this process for
 the user. See our `batch script <https://github.com/FredDude2004/MatEnsemble/blob/main/example_workflows/perlmutter/lammps_mace/run_batch.slurm>`_
 if you are curious.
@@ -248,20 +265,31 @@ as Frontier
     apptainer build --sandbox matensemble_sandbox docker://ghcr.io/freddude2004/matensemble:pathfinder-vX.Y.Z
 
 
-You can run your workflows interactively in flux quite simply:
+You can run your workflows interactively in flux quite simply. You can either type the command yourself or
+install our CLI tool to simplify the process.
+
+.. code-block:: bash
+
+   curl -fsSL https://raw.githubusercontent.com/FredDude2004/MatEnsemble/main/src/cli/install.sh | bash
+
 
 .. code-block:: bash
 
    srun -N $SLURM_NNODES -n $SLURM_NNODES --external-launcher --mpi=pmi2 --pty apptainer exec matensemble.sif flux start
 
-This will start a terminal session inside of the container with a flux allocation that can see all of
-the allocated resources. To verify run
+   # or with CLI tool
+
+   matensemble set-image <path/to/sif_or_sandbox>
+   matensemble shell                              # for an interactive session
+   matensemble run <script.py>                    # to run a script non-interacitvely
+
+In the interactive sessions you can verify that flux started properly with
 
 .. code-block:: bash
 
    flux resource list
 
-You should see all of the resources ready to use. You are ready run one of your matensemble scripts.
+You should see all of the resources ready to use and are ready run one of your matensemble scripts.
 
 .. code-block:: bash
 
@@ -302,13 +330,6 @@ In the CLI you can start a flux instance and a Jupyter server that has access to
 
 After starting the flux allocation you can copy the link that is printed and register it as a
 jupyter kernel in VS Code.
-
-Dashboard dependencies
-----------------------
-
-Passing ``dashboard=True`` starts a Starlette/uvicorn web server on port ``8000``. Make sure
-``starlette`` and ``uvicorn`` are installed in the runtime environment and tunnel the compute-node
-port back to your workstation as described in :doc:`design`.
 
 Where to read next
 ==================

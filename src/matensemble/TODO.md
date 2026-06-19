@@ -228,6 +228,7 @@
 - [x] Update the Base image or retag the one that I used to build this john
 - [x] The double free is likely from symmetrix so forget fixing it
 - [x] Run the release script and do a PR
+- [ ] Make sure that the Pathfinder CLI tool works
 
 ## --- Demo ---
 - [ ] Video demonstrating the MCP server

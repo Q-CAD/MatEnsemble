@@ -9,24 +9,24 @@ validated Slurm batch scripts.
 Install on an HPC login node
 ============================
 
-The recommended installation is the site-aware bootstrap script:
+To install the mcp server for a system you first have to login to the cluster. The
+server is managed with uv so that also needs to be installed, then you can run our
+script to install the server.
 
 .. code-block:: bash
 
-   curl -fsSL https://raw.githubusercontent.com/FredDude2004/MatEnsemble/main/scripts/install-matensemble-agent.sh | bash -s -- --system frontier
+    # install uv
+    curl -LsSf https://astral.sh/uv/install.sh | sh
 
-Use ``--system perlmutter`` or ``--system pathfinder`` for other systems.
+    # clone out MatEnsemble
+    git clone https://github.com/freddude2004/MatEnsemble.git
+    cd MatEnsemble
 
-The installer:
+    uv run --package mcp-matensemble matensemble-agent-install --system <system>
 
-* installs ``mcp-matensemble`` with ``uv tool install``
-* installs the MatEnsemble site CLI as ``matensemble``
-* creates ``$SCRATCH/matensemble_campaigns`` when ``$SCRATCH`` exists
-* writes ``.vscode/mcp.json`` in the campaign workspace
-* writes a small workspace README and MCP config file
-
-Open the generated campaign workspace with VS Code Remote SSH. The MCP server
-runs on the remote system and writes files into that workspace.
+When you run the script it will create a directory $SCRATCH/matensemble_campaigns/
+which will have a configuration for vscode to be able to launch the MCP server. The
+script will also install the matensemble CLI tool for your system.
 
 Tool safety model
 =================
