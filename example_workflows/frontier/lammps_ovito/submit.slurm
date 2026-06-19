@@ -1,12 +1,12 @@
 #!/usr/bin/bash
 
- #SBATCH -A lrn090
- #SBATCH -J post_matsemble
- #SBATCH -o %x-%j.out
- #SBATCH -e %x-%j.err
- #SBATCH -t 0:05:00
- #SBATCH -N 2
- #SBATCH -C nvme
+#SBATCH -A lrn090
+#SBATCH -J post_matsemble
+#SBATCH -o %x-%j.out
+#SBATCH -e %x-%j.err
+#SBATCH -t 0:05:00
+#SBATCH -N 2
+#SBATCH -C nvme
 
 if ! command -v matensemble &>/dev/null; then
 	echo "Install the MatEnsemble CLI for Frontier"

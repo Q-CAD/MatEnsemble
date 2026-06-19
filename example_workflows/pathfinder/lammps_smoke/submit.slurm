@@ -7,7 +7,6 @@
 #SBATCH -N 2
 
 set -euo pipefail
-cd "$(dirname "$0")"
 mkdir -p logs
 
 if ! command -v matensemble >/dev/null 2>&1; then

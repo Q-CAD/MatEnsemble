@@ -4,7 +4,11 @@ import json
 
 import pytest
 
-from mcp_matensemble.scriptgen import create_campaign
+from mcp_matensemble.scriptgen import (
+    create_campaign,
+    render_batch_script,
+    render_interactive_script,
+)
 
 
 def test_create_campaign_writes_workflow_launch_and_manifest(tmp_path):
@@ -43,6 +47,44 @@ def test_create_campaign_writes_workflow_launch_and_manifest(tmp_path):
     batch = result.batch_path.read_text(encoding="utf-8")
     assert "#SBATCH" in batch
     assert "matensemble run workflow.py" in batch
+    assert 'cd "$(dirname' not in batch
+
+
+@pytest.mark.parametrize("system", ["frontier", "perlmutter", "pathfinder"])
+def test_batch_scripts_follow_repository_examples_without_chdir(system):
+    batch = render_batch_script(
+        site=system,
+        campaign_name="Canonical campaign",
+        workflow_filename="workflow.py",
+    )
+
+    assert 'cd "$(dirname' not in batch
+    assert "matensemble set-image " in batch
+    assert "matensemble run workflow.py" in batch
+    assert "if ! command -v matensemble" in batch
+
+
+def test_frontier_batch_keeps_canonical_module_setup():
+    batch = render_batch_script(
+        site="frontier",
+        campaign_name="Frontier campaign",
+        workflow_filename="workflow.py",
+    )
+
+    assert "module reset" in batch
+    assert "module load olcf-container-tools" in batch
+    assert "module load apptainer-enable-mpi apptainer-enable-gpu" in batch
+    assert "matensemble set-image ./matensemble.sif" in batch
+
+
+@pytest.mark.parametrize("system", ["frontier", "perlmutter", "pathfinder"])
+def test_interactive_scripts_follow_repository_examples(system):
+    script = render_interactive_script(site=system, workflow_filename="workflow.py")
+
+    assert 'cd "$(dirname' not in script
+    assert "matensemble set-image " in script
+    assert "matensemble run workflow.py" in script
+    assert "if ! command -v matensemble" in script
 
 
 def test_create_campaign_rejects_unknown_workflow_kind(tmp_path):

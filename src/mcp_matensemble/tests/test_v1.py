@@ -165,6 +165,7 @@ def test_perlmutter_batch_defaults_to_two_nodes_and_matensemble_cli(tmp_path):
     assert "matensemble run workflow.py" in script
     assert "podman-hpc run" not in script
     assert "flux start python workflow.py" not in script
+    assert 'cd "$(dirname' not in script
 
 
 def test_hpc_nodes_bump_to_two_with_warning(tmp_path):
@@ -193,6 +194,9 @@ def test_hpc_nodes_bump_to_two_with_warning(tmp_path):
     assert batch["warnings"]
     assert "broker" in batch["warnings"][0]
     assert "#SBATCH -N 2" in script
+    assert "module load olcf-container-tools" in script
+    assert "matensemble set-image ../containers/frontier/matensemble.sif" in script
+    assert 'cd "$(dirname' not in script
     assert plan["ok"] is True
     assert plan["result"]["launch_plan"]["resources"]["nodes"] == 2
     assert plan["result"]["launch_plan"]["warnings"]
@@ -216,3 +220,24 @@ def test_linux_nodes_are_not_bumped(tmp_path):
     assert result["result"]["resources"]["nodes"] == 1
     assert result["warnings"] == []
     assert "#SBATCH -N 1" in script
+    assert 'cd "$(dirname' not in script
+
+
+def test_pathfinder_batch_uses_fixed_repository_skeleton(tmp_path):
+    created = v1.create_campaign("pathfinder_batch", "pathfinder", cwd=tmp_path)
+    campaign = created["result"]["campaign"]
+    v1.write_workflow(campaign, "Run a smoke calculation.", cwd=tmp_path)
+
+    result = v1.write_batch_script(
+        campaign,
+        "pathfinder",
+        account="MAT269",
+        cwd=tmp_path,
+    )
+    script = (tmp_path / campaign / "submit.slurm").read_text(encoding="utf-8")
+
+    assert result["ok"] is True
+    assert 'cd "$(dirname' not in script
+    assert "mkdir -p logs" in script
+    assert "matensemble set-image ../containers/pathfinder/matensemble.sif" in script
+    assert "matensemble run workflow.py" in script
