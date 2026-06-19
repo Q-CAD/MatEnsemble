@@ -40,6 +40,8 @@ research project folder:
 
 Useful tools:
 
+- `get_examples`
+- `get_container_build_info`
 - `get_api_overview`
 - `list_matensemble_examples`
 - `get_matensemble_example`

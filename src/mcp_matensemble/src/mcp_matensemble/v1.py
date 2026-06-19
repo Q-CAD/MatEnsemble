@@ -15,7 +15,9 @@ from typing import Any
 from .contracts import error, ok
 from .environment import get_local_matensemble_version, resolve_image_tag
 from .examples import (
+    get_container_build_info as read_container_build_info,
     get_container_template as read_container_template,
+    get_examples as read_examples,
     get_system_example,
     list_container_templates as discover_container_templates,
     list_examples_for_system,
@@ -131,8 +133,18 @@ def get_example(system: str, name: str) -> dict[str, Any]:
     return ok({"system": normalize_system(system), "name": name, "text": get_system_example(system, name)})
 
 
+def get_examples(system: str) -> dict[str, Any]:
+    key = normalize_system(system)
+    return ok({"system": key, "files": read_examples(key)})
+
+
 def list_container_templates(system: str | None = None) -> dict[str, Any]:
     return ok({"templates": discover_container_templates(system)})
+
+
+def get_container_build_info(system: str) -> dict[str, Any]:
+    key = normalize_system(system)
+    return ok({"system": key, "files": read_container_build_info(key)})
 
 
 def get_container_template(system: str, filename: str) -> dict[str, Any]:

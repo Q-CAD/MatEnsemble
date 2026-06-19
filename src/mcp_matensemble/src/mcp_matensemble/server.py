@@ -133,10 +133,24 @@ def get_example(system: str, name: str) -> dict[str, Any]:
 
 
 @mcp.tool()
+def get_examples(system: str) -> dict[str, Any]:
+    """Read generic workflows plus every example file for the selected system."""
+
+    return wrap(v1_tools.get_examples, system)
+
+
+@mcp.tool()
 def list_container_templates(system: str | None = None) -> dict[str, Any]:
     """List dynamically discovered container templates."""
 
     return wrap(v1_tools.list_container_templates, system)
+
+
+@mcp.tool()
+def get_container_build_info(system: str) -> dict[str, Any]:
+    """Read every file under containers/<system>/."""
+
+    return wrap(v1_tools.get_container_build_info, system)
 
 
 @mcp.tool()
@@ -432,7 +446,7 @@ def list_matensemble_examples() -> list[dict[str, object]]:
 
 @mcp.tool()
 def get_matensemble_example(name: str) -> str:
-    """Read a curated in-repository example by name."""
+    """Read a live in-repository example by name."""
 
     return read_repo_example(name)
 

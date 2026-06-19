@@ -21,6 +21,28 @@ def test_unsupported_system_returns_structured_error():
     ]
 
 
+def test_v1_returns_live_example_and_container_file_bundles():
+    examples = v1.get_examples("perlmutter")
+    containers = v1.get_container_build_info("perlmutter")
+
+    assert examples["ok"] is True
+    assert {
+        file["path"] for file in examples["result"]["files"]
+    } >= {
+        "example_workflows/generic/dependencies/workflow.py",
+        "example_workflows/perlmutter/lammps_smoke/workflow.py",
+        "example_workflows/perlmutter/lammps_mace/submit.slurm",
+    }
+    assert containers["ok"] is True
+    assert {
+        file["path"] for file in containers["result"]["files"]
+    } == {
+        "containers/perlmutter/Dockerfile.base",
+        "containers/perlmutter/Dockerfile.base.lammps",
+        "containers/perlmutter/Dockerfile.matensemble",
+    }
+
+
 def test_campaign_batch_and_launch_plan_contract(tmp_path):
     created = v1.create_campaign("valid_name_123", "frontier", cwd=tmp_path)
     campaign = created["result"]["campaign"]
