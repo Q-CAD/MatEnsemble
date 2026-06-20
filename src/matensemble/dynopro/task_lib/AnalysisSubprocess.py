@@ -92,9 +92,9 @@ def AnalysisSubprocess(comm, input_params):
                 file.write(f"{data.timestep} {twist_angle}")
 
             if "target_window" in input_params["compute_twist"].keys():
-                assert input_params["compute_twist"]["grid_resolution"] > 1, (
-                    f"Grid resolution has to be greater than 1 for for a multigrid coverage analysis"
-                )
+                assert (
+                    input_params["compute_twist"]["grid_resolution"] > 1
+                ), f"Grid resolution has to be greater than 1 for for a multigrid coverage analysis"
 
                 from matensemble.dynopro.utils.stat import get_probability
 

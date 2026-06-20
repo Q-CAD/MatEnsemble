@@ -1,4 +1,4 @@
-name: Build & Publish Dev Containers (GHCR)
+name: Build & Publish Latest Developer Versions
 
 on:
   push:
@@ -51,12 +51,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - flavor: baseline
-            dockerfile: containers/Dockerfile.matensemble.baseline
+          - flavor: pathfinder
+            dockerfile: containers/pathfinder/Dockerfile.matensemble
           - flavor: frontier
-            dockerfile: containers/Dockerfile.matensemble.frontier
+            dockerfile: containers/frontier/Dockerfile.matensemble
           - flavor: perlmutter
-            dockerfile: containers/Dockerfile.matensemble.perlmutter
+            dockerfile: containers/perlmutter/Dockerfile.matensemble
+          # - flavor: linux
+          #   dockerfile: containers/linux/Dockerfile.matensemble
 
     steps:
       - name: Checkout

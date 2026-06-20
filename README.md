@@ -4,7 +4,7 @@
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 
 <p align="center">
-  <img src="images/Logo-Matensemble.png" alt="MatEnsemble" width="720" />
+  <img src="media/Logo-Matensemble.png" alt="MatEnsemble" width="720" />
 </p>
 
 # MatEnsemble
@@ -22,11 +22,11 @@ An optional in-tree **dynopro** stack supports streaming dynamics and on-the-fly
 - **Observability**: `status.json`, `matensemble_workflow.log`, per-chore `stdout` / `stderr`, pickle and JSON result artifacts; optional **web dashboard**
 
 <p align="center">
-  <img src="images/Cap_1_adaptive_task_management.png" alt="Adaptive task management" width="620" />
+  <img src="media/Cap_1_adaptive_task_management.png" alt="Adaptive task management" width="620" />
 </p>
 
 <p align="center">
-  <img src="images/Cap_2_dynopro.png" alt="On-the-fly dynamics and analysis" width="620" />
+  <img src="media/Cap_2_dynopro.png" alt="On-the-fly dynamics and analysis" width="620" />
 </p>
 
 

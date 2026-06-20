@@ -7,6 +7,7 @@ from networkx import write_network_text
 from matensemble.manager import FluxManager
 from matensemble.chore import Chore, ChoreType
 from matensemble.model import Resources
+
 # from matensemble.dynopro.driver import online_dynamics
 
 
@@ -21,7 +22,7 @@ class EnsembleDynamicsRunner:
         tasks_per_job (int): Number of tasks per job.
         cores_per_task (int): Number of cores per task.
         gpus_per_task (int): Number of GPUs per task.
-        write_restart_freq (int): Frequency to write restart files.
+        write_restart_freq (int | None): Reserved for future restart support.
         buffer_time (float): Buffer time for task execution.
     """
 
@@ -33,7 +34,7 @@ class EnsembleDynamicsRunner:
         tasks_per_job=1,
         cores_per_task=1,
         gpus_per_task=0,
-        write_restart_freq=1000,
+        write_restart_freq=None,
         buffer_time=0.1,
         adaptive=False,
         nnodes=None,
@@ -73,6 +74,7 @@ class EnsembleDynamicsRunner:
                     num_tasks=self.tasks_per_job,
                     cores_per_task=self.cores_per_task,
                     gpus_per_task=self.gpus_per_task,
+                    mpi=True,
                 )
                 workdir = outdir / chore_id
 
@@ -85,6 +87,7 @@ class EnsembleDynamicsRunner:
                         chore_type=ChoreType.EXECUTABLE,
                         resources=resources,
                         workdir=workdir,
+                        nnodes=self.nnodes,
                     )
                 )
 
@@ -107,7 +110,7 @@ class EnsembleDynamicsRunner:
         fm = FluxManager(
             chore_list=chores,
             base_dir=basedir,
-            write_restart_freq=self.write_restart_freq,
+            # write_restart_freq=self.write_restart_freq, # leave this out for now until restarts are ready for use
         )
 
         # Execute the simulations

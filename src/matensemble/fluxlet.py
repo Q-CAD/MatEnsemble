@@ -26,7 +26,7 @@ class Fluxlet:
         handle: flux.Flux,
     ) -> None:
         self.handle = handle
-        self.gpus_per_node = self.get_gpus_per_node()
+        self.num_nodes, self.gpus_per_node = self.get_gpus_per_node()
 
     def get_gpus_per_node(self) -> tuple[int, int]:
         """
@@ -41,6 +41,9 @@ class Fluxlet:
         nnodes = len(resources.free.ranks)
         total_gpus = resources.free.ngpus
 
+        if nnodes == 0:
+            return 0, 0
+
         gpus_per_node = total_gpus // nnodes
         return nnodes, gpus_per_node
 
@@ -50,11 +53,10 @@ class Fluxlet:
         chore: Chore,
         set_cpu_affinity: bool | None = None,
         set_gpu_affinity: bool | None = None,
-        nnodes: int | None = None,
         dynopro: bool | None = None,
     ) -> flux.job.FluxExecutorFuture:
         """
-        Creates a :obj:`Jobspec` useing the a :obj:`Job`. Submits the :obj:`Jobspec`
+        Creates a :obj:`Jobspec` using a :obj:`Job`. Submits the :obj:`Jobspec`
         to flux and adds some metadata to the future object that is returned.
 
         Parameters
@@ -78,14 +80,17 @@ class Fluxlet:
         flux.job.FluxExecutorFuture
         """
 
+        # Dynopro splits jobs between the CPUs and GPUs. GPUs are used for
+        # the intensive jobs and then processing jobs are spawned into the CPUs
         if dynopro:
             jobspec = flux.job.JobspecV1.per_resource(
                 chore.command,
                 ncores=chore.resources.num_tasks,
-                nnodes=nnodes,
+                nnodes=chore.nnodes,
                 gpus_per_node=self.gpus_per_node,
                 per_resource_type="core",
                 per_resource_count=1,
+                exclusive=True,
             )
 
             chore.workdir.mkdir(parents=True, exist_ok=True)
@@ -105,8 +110,6 @@ class Fluxlet:
             base_env.update(chore.resources.env or {})
             base_env["SLURM_GPUS_PER_NODE"] = str(self.gpus_per_node)
             jobspec.environment = base_env
-
-            fut = executor.submit(jobspec)
 
             fut = executor.submit(jobspec)
             fut.chore_id = chore.id
@@ -149,10 +152,6 @@ class Fluxlet:
 
             # helpful for debugging
             chore._write_metadata()
-
-            # only set this if you truly want every chore to span a fixed node count
-            if nnodes is not None:
-                jobspec.num_nodes = nnodes
 
             fut = executor.submit(jobspec)
             fut.chore_id = chore.id

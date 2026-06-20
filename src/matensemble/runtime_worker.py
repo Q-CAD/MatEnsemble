@@ -9,7 +9,7 @@ something like:
 
 .. code-block:: bash
 
-    python -m matensemble.runtime_worker --chore-id <chore_id> --spec-file <path/to/chore.pkl>
+    python -m matensemble.runtime_worker --chore-id <chore_id> --spec-file <path/to/chore.pickle>
 
 When Flux starts that command on an allocated worker, this module:
 
@@ -40,7 +40,7 @@ When Flux starts that command on an allocated worker, this module:
    where ``args`` and ``kwargs`` are the fully resolved positional and
    keyword arguments from the ``Chore``.
 
-#. Serializes the returned result to ``result.pkl`` for downstream chores
+#. Serializes the returned result to ``result.pickle`` for downstream chores
    and also attempts to write a JSON-friendly version to ``result.json``
    for easier debugging and inspection.
 
@@ -79,9 +79,10 @@ def _load_dep_result(spec_file: Path, dep_id: str):
 
 def main():
     """
-    Takes in the command line arguements and uses them find the :obj:`Chore`, import
-    the module where the user defined the funciton, import it then run the funciton
-    with the arguments and key-word arguments. Then pickles the result into the outdir.
+    Takes in the command line arguments and uses them to find the :obj:`Chore`, loads
+    the chore object to find the name of the function to call, the arguments and
+    keyword arguments. Deserializes the function from the registry and calls the function
+    with the arguments and keyword arguments. Then pickles the result into the outdir.
     """
 
     parser = argparse.ArgumentParser()
@@ -106,7 +107,7 @@ def main():
         )
 
     # spec_file:
-    #   <source_root>/matensemble_workflow-.../out/<chore_id>/chore.pkl
+    #   <source_root>/matensemble_workflow-.../out/<chore_id>/chore.pickle
     # so source_root is four parents up from the spec file
     source_root = spec_file.parent.parent.parent.parent
     if str(source_root) not in sys.path:

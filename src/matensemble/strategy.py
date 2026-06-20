@@ -66,9 +66,8 @@ class AdaptiveStrategy(FutureProcessingStrategy):
 
         had_failure = False
         for fut in completed:
-            chore_id = fut.chore_id
-            chore = fut.chore_obj
-            chore_name = chore_id.removeprefix("chore-").rsplit("-", 1)[0]
+            chore_id = getattr(fut, "chore_id")
+            chore = getattr(fut, "chore_obj")
             self.manager._running_chores.remove(chore_id)
 
             try:
@@ -97,7 +96,11 @@ class AdaptiveStrategy(FutureProcessingStrategy):
                 had_failure = True
                 continue
 
-            if rc != 0:
+            # rc 134 is a double free or corruption error caused by lammps-symmetrix in the
+            # in the frontier image during lammps cleanup
+            # the function will still complete successfully and produce a result.pickle file
+            # so if we can safely ignore the return code
+            if rc != 0 and rc != 134:
                 append_text(
                     chore.workdir / "stderr",
                     f"\n\n===== MATENSEMBLE: NONZERO EXIT =====\nchore={chore_id} rc={rc}\n",
@@ -127,7 +130,10 @@ class AdaptiveStrategy(FutureProcessingStrategy):
                     self.manager._blocked.discard(dep_id)
 
             # adaptively submit another chore
-            self.manager._submit_until_ooresources(buffer_time=buffer_time)
+            self.manager._submit_until_ooresources(
+                buffer_time=buffer_time,
+                dynopro=getattr(self.manager, "_dynopro", False),
+            )
 
             if self.manager._write_restart_freq and (
                 len(self.manager._completed_chores) % self.manager._write_restart_freq
@@ -155,8 +161,8 @@ class NonAdaptiveStrategy(FutureProcessingStrategy):
 
         had_failure = False
         for fut in completed:
-            chore_id = fut.chore_id
-            chore = fut.chore_obj
+            chore_id = getattr(fut, "chore_id")
+            chore = getattr(fut, "chore_obj")
             self.manager._running_chores.remove(chore_id)
 
             try:
@@ -185,7 +191,11 @@ class NonAdaptiveStrategy(FutureProcessingStrategy):
                 had_failure = True
                 continue
 
-            if rc != 0:
+            # rc 134 is a double free or corruption error caused by lammps-symmetrix in the
+            # in the frontier image during lammps cleanup
+            # the function will still complete successfully and produce a result.pickle file
+            # so if we can safely ignore the return code
+            if rc != 0 and rc != 134:
                 append_text(
                     chore.workdir / "stderr",
                     f"\n\n===== MATENSEMBLE: NONZERO EXIT =====\nchore={chore_id} rc={rc}\n",
@@ -224,14 +234,14 @@ class NonAdaptiveStrategy(FutureProcessingStrategy):
             return
 
 
-# TODO: Make the strategy look through the bolo list and spawn a new chore with the output of another
-#       and then make sure that the chore that is acting as a processing strat is a on the bolo list
-#       and if that is done then you need to get the results and spawn a new chore from the ChoreSpec
 class UserStrategy(FutureProcessingStrategy):
-    def __init__(self, manager, pipeline, processing_chore, bolo_list) -> None:
+    def __init__(
+        self, manager, pipeline, processing_chore, processing_chore_resources, bolo_list
+    ) -> None:
         super().__init__(manager)
         self.pipeline = pipeline
         self.proc_chore = processing_chore
+        self.proc_chore_res = processing_chore_resources
         self.bolo_list = set(bolo_list)
 
         # if not isinstance(chore, Callable[..., Chore]):
@@ -246,8 +256,8 @@ class UserStrategy(FutureProcessingStrategy):
 
         had_failure = False
         for fut in completed:
-            chore_id = fut.chore_id
-            chore = fut.chore_obj
+            chore_id = getattr(fut, "chore_id")
+            chore = getattr(fut, "chore_obj")
             chore_name = chore_id.removeprefix("chore-").rsplit("-", 1)[0]
             self.manager._running_chores.remove(chore_id)
 
@@ -277,7 +287,11 @@ class UserStrategy(FutureProcessingStrategy):
                 had_failure = True
                 continue
 
-            if rc != 0:
+            # rc 134 is a double free or corruption error caused by lammps-symmetrix in the
+            # in the frontier image during lammps cleanup
+            # the function will still complete successfully and produce a result.pickle file
+            # so if we can safely ignore the return code
+            if rc != 0 and rc != 134:
                 append_text(
                     chore.workdir / "stderr",
                     f"\n\n===== MATENSEMBLE: NONZERO EXIT =====\nchore={chore_id} rc={rc}\n",
@@ -307,19 +321,20 @@ class UserStrategy(FutureProcessingStrategy):
                     self.manager._blocked.discard(dep_id)
 
             # --- Processing the chore and spawning the new one ---
-            if self.proc_chore == chore_name:
+            if chore_name == self.proc_chore:
                 try:
                     # Trust boundary: result.pickle is written by matensemble.runtime_worker
                     # in this workflow's chore workdir only—do not load pickles from
                     # untrusted paths or third-party producers.
                     with (chore.workdir / "result.pickle").open("rb") as f:
                         chore_spec = pickle.load(f)
-                    new_chore, new_out = self.pipeline._spawn_chore_from_spec(
-                        chore_spec
-                    )
-                    self.pipeline._admit_spawned_chore(
-                        new_chore, new_out, self.manager
-                    )
+                    if chore_spec:
+                        new_chore, new_out = self.pipeline._spawn_chore_from_spec(
+                            chore_spec
+                        )
+                        self.pipeline._admit_spawned_chore(
+                            new_chore, new_out, self.manager
+                        )
                 except Exception as e:
                     self.manager._logger.exception(
                         f"FAILED TO SPAWN CHORE: chore={self.proc_chore} | due the following Exception ->\n{e}"
@@ -330,7 +345,7 @@ class UserStrategy(FutureProcessingStrategy):
                         try:
                             out_ref = OutputReference(chore_id, chore.workdir)
                             new_chore, new_out = self.pipeline._spawn_chore_from_name(
-                                self.proc_chore, dependent=out_ref
+                                self.proc_chore, self.proc_chore_res, dependent=out_ref
                             )
                             self.pipeline._admit_spawned_chore(
                                 new_chore, new_out, self.manager
@@ -340,6 +355,12 @@ class UserStrategy(FutureProcessingStrategy):
                                 f"FAILED TO SPAWN CHORE: proc_chore={self.proc_chore} "
                                 f"bolo_match={chore_name} | due the following Exception ->\n{e}"
                             )
+
+            # adaptively submit another chore
+            self.manager._submit_until_ooresources(
+                buffer_time=buffer_time,
+                dynopro=getattr(self.manager, "_dynopro", False),
+            )
 
             if self.manager._write_restart_freq and (
                 len(self.manager._completed_chores) % self.manager._write_restart_freq

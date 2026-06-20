@@ -2,9 +2,33 @@
 Overview
 ========
 
+<<<<<<< HEAD
 MatEnsemble is a framework to build, orchestrate, and asynchronously manage scalable **adaptive-learning** workflows, especially targeted for compute-intensive AI-driven materials modeling simulations (e.g., atomistic modeling, Phase-Field, etc.) as efficiently as possible.
 Apart from standard automated high-throughput computations, the core of MatEnsemble is designed to support "user-defined" acquisition strategies to dynamically steer workflows based on intermediate results, which is a common pattern in active learning and other autonomous workflows at scale.
 To enable scalable parametric sweeps and bypass standard scheduler bottlenecks, typically encountered in leadership computing platforms, MatEnsemble uses a single large allocation and an internal scheduler to manage arbitrarily large workloads. The library is built on top of the Flux resource manager, and implements an efficient and **user-defined-strategy** based task orchestration protocol, making it well-suited for high-throughput autonomous computing scenarios.
+=======
+MatEnsemble is a **workflow manager** for running many :class:`~matensemble.chore.Chore` instances on a
+supercomputer as efficiently as possible.
+
+MatEnsemble is a framework to build, orchestrate, and asynchronously manage scalable adaptive-learning
+workflows, especially targeted for compute-intensive AI-driven materials modeling simulations
+(e.g., atomistic modeling, Phase-Field, etc.) as efficiently as possible. Apart from standard automated high-throughput
+computations, the core of MatEnsemble is designed to support "user-defined" acquisition strategies to
+dynamically steer workflows based on intermediate results, which is a common pattern in active learning
+and other autonomous workflows at scale. To enable scalable parametric sweeps and bypass standard scheduler
+bottlenecks, typically encountered in leadership computing platforms, MatEnsemble uses a single large
+allocation and an internal scheduler to manage arbitrarily large workloads. The library is built on top
+of the Flux resource manager, and implements an efficient and user-defined-strategy based task orchestration
+protocol, making it well-suited for high-throughput autonomous computing scenarios.
+
+MatEnsemble [bagchi2025matensemble]_ benefits from the native Python executor interface of **Flux**
+[ahn2020flux]_, and the concurrent asynchronous programming model of core Python through
+``concurrent.futures`` objects [quinlan2009futures]_.
+
+You build a directed acyclic graph (DAG) of :class:`~matensemble.chore.Chore`
+objects in Python; MatEnsemble submits work to **Flux**, tracks completions, records logs, and keeps hardware busy
+while tasks finish at different rates.
+>>>>>>> pr/FredDude2004/4
 
 MatEnsemble [bagchi2025matensemble]_ benefits from the native Python executor interface of **Flux** [ahn2020flux]_,
 and the concurrent asynchronous programming model of core Python through ``concurrent.futures`` objects [quinlan2009futures]_.
@@ -38,9 +62,14 @@ up, keeping the allocation saturated until all work is done.
 What MatEnsemble does
 =====================
 
+<<<<<<< HEAD
 MatEnsemble continuously: (1) tracks available computing resources, (2) submits ready DAG
 nodes to the queue, (3) processes completed Flux jobs, (4) unblocks dependents, and (5) repeats until no
 ready, running, or blocked work remains, and/or spawns new DAGs depending on user-defined strategies.
+=======
+**Inside your Flux session**, MatEnsemble repeatedly: (1) reads free CPU/GPU counts, (2) submits ready chores,
+(3) processes completed chores, (4) unblocks dependents, and (5) repeats until no ready, running, or blocked work remains.
+>>>>>>> pr/FredDude2004/4
 
 See :doc:`design` for the exact loop, artifacts, and environment assumptions.
 
@@ -48,16 +77,25 @@ Core concepts
 =============
 
 :class:`~matensemble.pipeline.Pipeline`
+<<<<<<< HEAD
     User-facing builder. Decorated Python functions turn into delayed function calls;
     :meth:`~matensemble.pipeline.Pipeline.exec` adds argv-style work.
+=======
+    User-facing builder. Python functions decorated with :meth:`~matensemble.pipeline.Pipeline.chore` turn into delayed function calls; :meth:`~matensemble.pipeline.Pipeline.exec`
+    adds argv-style work to the :obj:`matensemble.pipeline.Pipeline`.
+>>>>>>> pr/FredDude2004/4
 
 :class:`~matensemble.model.OutputReference`
     Placeholder returned from a delayed function call. Passing it into another chore encodes a **dependency edge**
     and ensures upstream results are unpickled before the downstream function runs.
 
 :class:`~matensemble.chore.Chore`
+<<<<<<< HEAD
     Single Flux submission record — command, resources, working directory, and (for Python chores) pointers back
     to the source module.
+=======
+    Single Flux submission record—command, resources, working directory, and for PYTHON chores, the qualified name of the function you want to call.
+>>>>>>> pr/FredDude2004/4
 
 :class:`~matensemble.manager.FluxManager`
     Runtime coordinator created when :meth:`~matensemble.pipeline.Pipeline.submit` is called.
@@ -69,8 +107,7 @@ Core concepts
 Logging and on-disk layout
 ==========================
 
-Every run creates a **timestamped workflow directory** under your chosen base path (by default the current
-working directory):
+Every run creates a **timestamped workflow directory** under your chosen base path (by default the current working directory):
 
 .. code-block:: text
 
@@ -79,16 +116,22 @@ working directory):
        ├── status.json              # atomically updated for the dashboard / monitoring
        ├── matensemble_workflow.log # detailed text log from the ``matensemble`` logger
        └── out/
-           ├── registry/            # pickled chore callables
+           ├── registry/            # serialized chore callables
            │   ├── Callable name
            │   ├── Callable name
            │   └── ...
            └── <chore_id>/
                ├── stdout
                ├── stderr
+<<<<<<< HEAD
                ├── chore.pickle     # pickled chore object
                ├── metadata.json    # metadata of the chore in JSON for debugging
                └── result.pickle    # Python chore return value (pickle)
+=======
+               ├── chore.pickle     # serialized chore object
+               ├── metadata.json    # metadata of the chore in JSON for debugging
+               └── result.pickle    # serialized python chore return value
+>>>>>>> pr/FredDude2004/4
 
 The driver prints a short hint to stderr with absolute paths to ``status.json``, the log file, and the ``out``
 tree when logging initializes.
@@ -104,22 +147,95 @@ In **non-adaptive** mode, the manager only submits during the initial "fill unti
 completion handling updates the DAG but **does not** proactively pull additional ready chores until the next
 outer-loop scheduling opportunity — use this when tighter control or simpler resource snapshots are desired.
 
+<<<<<<< HEAD
 User-defined strategies
+=======
+.. image:: ../../media/chain_v_adaptive_scheduling.png
+   :alt: Diagram contrasting static batching with adaptive back-filling of tasks
+
+User Defined Strategies
+>>>>>>> pr/FredDude2004/4
 =======================
 
 MatEnsemble uses the *strategy pattern* when processing :class:`flux.job.FluxExecutorFuture` completions:
 
+Users can define their own strategies to be injected into the processing loop. Say for instance you wanted to
+spawn more :class:`~matensemble.chore.Chore` objects dynamically (while the workflow is already running) based on the
+results of a certain :class:`~matensemble.chore.Chore`. You can define a function that takes the results of a
+:class:`~matensemble.chore.Chore` and performs your processing on it and returns a :class:`~matensemble.chore.ChoreSpec`
+which will be dynamically added to the submissions queue. Here is an example of adding a strategy to a chore
+
 .. code-block:: python
 
-   class FutureProcessingStrategy(ABC):
-       @abstractmethod
-       def process_futures(self, buffer_time) -> None:
-           ...
+    import random
 
+<<<<<<< HEAD
 Users can define their own strategies and inject them into the processing loop. For example, a strategy can
 inspect the result of a completed :class:`~matensemble.chore.Chore`, create one or more new
 :class:`~matensemble.chore.ChoreSpec` objects, and add those chores to the submission queue while the workflow
 is still running.
+=======
+    from matensemble.chore import ChoreSpec
+    from matensemble.model import Resources
+    from matensemble.pipeline import Pipeline
+
+    pipe = Pipeline()
+
+    @pipe.chore()
+    def generate_num():
+        return random.randint(1, 1000)
+
+    @pipe.chore()
+    def fizz(n):
+        print(f"{n} is divisible by 3")
+        print("fizz")
+
+    @pipe.chore()
+    def buzz(n):
+        print(f"{n} is divisible by 5")
+        print("buzz")
+
+    @pipe.chore()
+    def fizzbuzz(n):
+        print(f"{n} is divisible by 3 and 5")
+        print("fizzbuzz")
+
+    @pipe.strategy(bolo_list=["generate_num"])
+    def proc_strat(results_of_finished_chore):
+        if results_of_finished_chore % 15 == 0:
+            return ChoreSpec(
+                        args=(results_of_finished_chore,),
+                        kwargs=None,
+                        resources=Resources(),
+                        qualname="fizzbuzz"
+                    )
+        elif results_of_finished_chore % 5 == 0:
+            return ChoreSpec(
+                        args=(results_of_finished_chore,),
+                        kwargs=None,
+                        resources=Resources(),
+                        qualname="buzz"
+                    )
+        elif results_of_finished_chore % 3 == 0:
+            return ChoreSpec(
+                        args=(results_of_finished_chore,),
+                        kwargs=None,
+                        resources=Resources(),
+                        qualname="fizz"
+                    )
+        else:
+            print(f"{results_of_finished_chore} is not divisible by 3 or 5")
+
+    for _ in range(10):
+        generate_num()
+
+    pipe.submit()
+
+The :obj:`bolo_list` is telling the manager which chores it should Be-On-the-LookOut for. So whenever the
+manager sees a *generate_num* chore instance complete then it will spawn the user defined strategy as a new
+chore. This strategy can optionally return a :obj:`matensemble.chore.ChoreSpec` which will spawn a new chore
+with the specified args kwargs and resources (cores, gpus, mpi, etc.).
+>>>>>>> pr/FredDude2004/4
 
 Roadmap and stability
 =====================
@@ -150,6 +266,10 @@ References
    resource-driven online ensemble sampling simulation framework." arXiv:2504.05539.
    https://doi.org/10.48550/arXiv.2504.05539
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> pr/FredDude2004/4
 Next steps
 ==========
 

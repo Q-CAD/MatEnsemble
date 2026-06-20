@@ -1,7 +1,4 @@
-import os
-import copy
 import time
-import pickle
 import threading
 
 import flux
@@ -43,7 +40,7 @@ class FluxManager:
     _running_chores : set
         A set of :obj:`Chore`'s that are currently running
     _completed_chores : list
-        A list of :obj:`Chore`'s that have completed succesfully
+        A list of :obj:`Chore`'s that have completed successfully
     _failed_chores : list
         A list of :obj:`Chore`'s that failed
     _futures : set
@@ -74,7 +71,7 @@ class FluxManager:
         self,
         chore_list: list[Chore] | None = None,
         base_dir: Path | None = None,
-        write_restart_freq: int | None = 100,
+        write_restart_freq: int | None = None,
         set_cpu_affinity: bool = True,
         set_gpu_affinity: bool = True,
         restart_file: str | None = None,
@@ -91,7 +88,7 @@ class FluxManager:
         set_cpu_affinity : bool, optional
             Whther affinity to the CPU should be set, defaults to True
         set_gpu_affinity : bool, optional
-            Whether affinity to the GPU should be set, defulat to True
+            Whether affinity to the GPU should be set, default to True
         restart_file : str
             The path to a restart file which will be loaded and restart the work-
             flow from the save point, default to None.
@@ -104,6 +101,11 @@ class FluxManager:
         if restart_file:
             self._load_restart(restart_file)
             return None
+        if write_restart_freq is not None:
+            raise NotImplementedError(
+                "MatEnsemble restart/checkpoint files are not supported yet. "
+                "Leave write_restart_freq=None."
+            )
         if not chore_list:
             raise Exception(
                 f"Error: expected chore_list to be a `list[Chore]` instead got {chore_list}"
@@ -116,7 +118,7 @@ class FluxManager:
         self._base_dir = Path(base_dir)
         self._base_dir.mkdir(parents=True, exist_ok=True)
 
-        # dictionary to referenece chore objects by their chore-id
+        # dictionary to reference chore objects by their chore-id
         self._chores_by_id = {chore.id: chore for chore in chore_list}
         self._dependents = {chore.id: [] for chore in chore_list}
         self._remaining_deps = {chore.id: len(chore.deps) for chore in chore_list}
@@ -144,7 +146,7 @@ class FluxManager:
         self._failed_chores = []
         self._futures = set()
 
-        # aquiring a flux handle
+        # acquiring a flux handle
         self._flux_handle = flux.Flux()
         self._fluxlet = Fluxlet(self._flux_handle)
 
@@ -169,14 +171,9 @@ class FluxManager:
         """
         Pickle the current state of the manager and dump it to a file
         """
-
-        fm = copy.deepcopy(self)
-        fm._ready.extendleft(fm._running_chores)
-        fm._running_chores = set()
-        fm._futures = set()
-
-        pickle.dump(fm, open(f"restart_{len(self._completed_chores)}.dat", "wb"))
-        self._logger.info("=== CREATING RESTART FILE ===")
+        raise NotImplementedError(
+            "MatEnsemble restart/checkpoint files are not supported yet."
+        )
 
     def _load_restart(self, path: str) -> None:
         """
@@ -188,44 +185,9 @@ class FluxManager:
             The path to the restart file.
         """
 
-        if path and os.path.exists(path):
-            try:
-                fm = pickle.load(open(path, "rb"))
-                self._base_dir = fm._base_dir
-                self._chores_by_id = fm._chores_by_id
-
-                self._dependents = fm._dependents
-                self._remaining_deps = fm._remaining_deps
-
-                self._ready = fm._ready
-                self._blocked = fm._blocked
-                self._running_chores = fm._running_chores
-                self._completed_chores = fm._completed_chores
-                self._failed_chores = fm._failed_chores
-                self._futures = fm._futures
-
-                self._flux_handle = flux.Flux()
-                self._fluxlet = Fluxlet(self._flux_handle)
-
-                self._write_restart_freq = fm._write_restart_freq
-                self._nnodes_on_allocation = fm._nnodes_on_allocation
-                self._cores_per_node = fm.cores_per_node
-                self._gpus_per_node = fm.gpus_per_node
-                self._set_cpu_affinity = fm.set_cpu_affinity
-                self._set_gpu_affinity = fm.set_gpu_affinity
-
-                self._logger = fm._logger
-                self._status_writer = fm._status_writer
-
-                self._start_time = fm._start_time
-            except Exception as e:
-                self._logger.error(e)
-                raise e
-
-        # TODO: Create a way to call the run method with all the previous
-        #       arguments or expose a function that users can call that
-        #       can restart a workflow with all of the args that they want
-        # self.run(buffer_time)
+        raise NotImplementedError(
+            "MatEnsemble restart/checkpoint files are not supported yet."
+        )
 
     def _log_progress(self) -> None:
         """
@@ -272,6 +234,26 @@ class FluxManager:
         gpus_per_node = total_gpus // nnodes
         return nnodes, cores_per_node, gpus_per_node
 
+    def _chore_resource_footprint(self, chore: Chore) -> tuple[int, int]:
+        """
+        Return ``(needed_cores, needed_gpus)`` for a chore.
+
+        For whole-node (dynopro) chores — those with ``chore.nnodes`` set — the
+        footprint is ``nnodes * cores_per_node`` and ``nnodes * gpus_per_node``
+        because ``per_resource`` allocates entire nodes and every core and GPU on
+        them becomes unavailable.  For ordinary chores the footprint is the
+        familiar ``num_tasks * cores_per_task`` / ``num_tasks * gpus_per_task``.
+        """
+
+        if chore.nnodes is not None:
+            needed_cores = chore.nnodes * self._cores_per_node
+            needed_gpus = chore.nnodes * self._gpus_per_node
+        else:
+            needed_cores = chore.resources.num_tasks * chore.resources.cores_per_task
+            needed_gpus = chore.resources.num_tasks * chore.resources.gpus_per_task
+
+        return needed_cores, needed_gpus
+
     def _chore_fits_allocation(self, chore: Chore) -> bool:
         """
         Checks whether the given chore is too big to be submitted
@@ -282,8 +264,7 @@ class FluxManager:
             The :obj:`Chore` to check if it will fit in the allocation
         """
 
-        needed_cores = chore.resources.num_tasks * chore.resources.cores_per_task
-        needed_gpus = chore.resources.num_tasks * chore.resources.gpus_per_task
+        needed_cores, needed_gpus = self._chore_resource_footprint(chore)
 
         total_cores = self._nnodes_on_allocation * self._cores_per_node
         total_gpus = self._nnodes_on_allocation * self._gpus_per_node
@@ -292,7 +273,7 @@ class FluxManager:
 
     def _validate_chores(self) -> None:
         """
-        Calls :method:`_chore_fits_allocation()` on each chore given to the manager to make sure
+        Calls :meth:`_chore_fits_allocation()` on each chore given to the manager to make sure
         that they all fit. If a given chore does not fit it will be discarded.
         """
 
@@ -334,8 +315,7 @@ class FluxManager:
         Checks to see if there are enough resources to submit the given :obj:`Chore`
         """
 
-        needed_cores = chore.resources.num_tasks * chore.resources.cores_per_task
-        needed_gpus = chore.resources.num_tasks * chore.resources.gpus_per_task
+        needed_cores, needed_gpus = self._chore_resource_footprint(chore)
         return self._free_cores >= needed_cores and self._free_gpus >= needed_gpus
 
     def _has_failed(self, chore_id: str) -> bool:
@@ -399,7 +379,9 @@ class FluxManager:
 
             self._fail_dependents(dep_id)
 
-    def _submit_one(self, chore_id: str, buffer_time: float) -> None:
+    def _submit_one(
+        self, chore_id: str, buffer_time: float, dynopro: bool = False
+    ) -> None:
         """
         Submits a :obj:`Chore` and does book-keeping all the queues and resources
         count
@@ -418,7 +400,7 @@ class FluxManager:
                 chore,
                 set_cpu_affinity=self._set_cpu_affinity,
                 set_gpu_affinity=self._set_gpu_affinity,
-                nnodes=None,
+                dynopro=dynopro,
             )
         except Exception as e:
             self._logger.exception("CHORE SUBMIT FAILED: chore=%s", chore_id)
@@ -437,11 +419,14 @@ class FluxManager:
         self._running_chores.add(chore_id)
         self._futures.add(fut)
 
-        self._free_cores -= chore.resources.num_tasks * chore.resources.cores_per_task
-        self._free_gpus -= chore.resources.num_tasks * chore.resources.gpus_per_task
+        needed_cores, needed_gpus = self._chore_resource_footprint(chore)
+        self._free_cores -= needed_cores
+        self._free_gpus -= needed_gpus
         time.sleep(buffer_time)
 
-    def _submit_until_ooresources(self, buffer_time: float) -> bool:
+    def _submit_until_ooresources(
+        self, buffer_time: float, dynopro: bool = False
+    ) -> bool:
         """
         Submit as many chores as possible until out-of-resources
 
@@ -459,7 +444,7 @@ class FluxManager:
             chore = self._chores_by_id[chore_id]
 
             if self._can_submit_now(chore):
-                self._submit_one(chore_id, buffer_time)
+                self._submit_one(chore_id, buffer_time, dynopro=dynopro)
                 submitted_any = True
             else:
                 deferred.append(chore_id)
@@ -577,7 +562,7 @@ class FluxManager:
         dashboard : bool
             Whether or not the dashboard should be started
         restarting : bool
-            Whether :method:`run` is being invoked for the first time or after a
+            Whether :meth:`run` is being invoked for the first time or after a
             restart file has been loaded
 
 
@@ -636,7 +621,7 @@ class FluxManager:
             )
             while not done:
                 self._check_resources()
-                self._submit_until_ooresources(buffer_time=buffer_time)
+                self._submit_until_ooresources(buffer_time=buffer_time, dynopro=dynopro)
                 proc_strat.process_futures(buffer_time=buffer_time)
 
                 done = (

@@ -14,6 +14,8 @@ Python driver process.
 
    overview
    installation
+   mcp_agent
+   examples
    tutorials
    design
    reference

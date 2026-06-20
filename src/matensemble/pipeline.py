@@ -38,7 +38,7 @@ def _registry_entry_filename(key: str) -> str:
 
 class Pipeline:
     """
-    Build and submit a MatEnsemble workflow as a directed acyclic graph (DAG)
+    Object to build and submit a MatEnsemble workflow as a directed acyclic graph (DAG)
     of delayed chores.
 
     A :obj:`Pipeline` is the main user-facing workflow builder in MatEnsemble.
@@ -61,7 +61,6 @@ class Pipeline:
     For Python chores, the pipeline records enough metadata to reproduce the
     original function call later, including:
 
-    - the module where the function is defined
     - the function's qualified name
     - the positional and keyword arguments
     - the chore's resource requirements
@@ -77,9 +76,9 @@ class Pipeline:
 
     For Python chores, the manager will submit a Flux job whose command runs
     ``matensemble.runtime_worker``. That worker loads the serialized ``Chore``
-    specification from disk, imports the recorded module, resolves the target
-    function by qualified name, replaces dependency references with their
-    concrete upstream results, and calls the function
+    specification from disk, deserializes the function from MatEnsemble's internal
+    function registry, replaces dependency references with their
+    concrete upstream results, and calls the function.
     """
 
     def __init__(self, basedir: str | None = None) -> None:
@@ -120,20 +119,20 @@ class Pipeline:
         inherit_env: bool = True,
     ) -> Callable[[Callable[..., Any]], Callable[..., OutputReference]]:
         """
-        Wrap a function to produce a :obj:`Chore` and returns a :obj: `OutputReference`
+        Wrap a function to produce a :obj:`Chore` and returns an
+        :class:`~matensemble.model.OutputReference`.
         which other chore definitions can use to define dependencies.
 
         :obj:`Chore` objects are delayed function calls that are put into the
-        :obj: `Pipeline` and are added into its graph when you run it.
-        A PYTHON :obj: `Chore` contains meta-data that is needed to reproduce a
-        function. The :obj: `FluxManager` will create a :obj: `Fluxlet` and
+        :obj:`Pipeline` and are added into its graph when you run it.
+        A PYTHON :obj:`Chore` contains metadata that is needed to reproduce a
+        function. The :obj:`FluxManager` will create a :obj:`Fluxlet` and
         submit the chore to flux which calls the module :py:mod: `matensemble.runtime_worker`.
         :py:mod: `matensemble.runtime_worker` takes in two command line
         arguments which are the :param: `chore_id` and :param: `spec_file` which
-        the module will use to find the *pickled* python object containing all
-        of the data on the chore, and it will use it to import the function and
-        call it with its respective arguments. The result will then be stored
-        in the flux KVS
+        the module will use to load the serialized function from MatEnsemble's
+        internal function registry, call the function with the given arguements
+        and key-word arguments and store the results in the chores respective directory.
 
         Parameters
         ----------
@@ -228,7 +227,87 @@ class Pipeline:
 
         return decorator
 
-    # def strategy_callback(self, ) -> Chore | None:
+    def strategy(
+        self,
+        bolo_list: list[str],
+        name: str | None = None,
+        num_tasks: int = 1,
+        cores_per_task: int = 1,
+        gpus_per_task: int = 0,
+        mpi: bool = False,
+        env: dict[str, str] | None = None,
+        inherit_env: bool = True,
+    ):
+        """
+        Creates a strategy, which is essentially a callback function to another chore.
+        The callback function itself is a chore. This function is expected to
+        return an :obj:`ChoreSpec` which will then dynamically spawn a new chore
+        into the queue based on the specification that is returned.
+
+        Parameters
+        ----------
+        bolo_list : list[str]
+            The names of the chores that you want this to callback on
+        name : str, optional
+            The name  that will be assigned to the chore_id, defaults to the
+            name of the function.
+        num_tasks : int, optional
+            The number of tasks that will be launched with flux, defaults to 1
+        cores_per_task : int, optional
+            The number of CPU cores that are required to submit the chore,
+            defaults to 1
+        gpus_per_task : int, optional
+            The number of GPUs that are required to submit the chore, defaults
+            to 0
+        mpi : bool, optional
+            When True, sets Flux shell option ``mpi=pmi2`` on the chorespec
+            (default False).
+        env : dict[str, str], optional
+            Extra environment variables for the task. For Python chores,
+            ``PYTHONPATH`` is merged to include the workflow parent directory.
+        inherit_env : bool
+            If True (default), the Flux jobspec starts from the submitting
+            process environment and applies ``env`` overrides.
+
+        Returns
+        -------
+        Callable
+            A dummy function that just prints a warning to the stdout. The
+            actual function is stored in the registry
+        """
+
+        def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
+            for chore in bolo_list:
+                if chore not in self._registry:
+                    raise Exception(
+                        f"Error: The chore '{chore}' was not found in the registry"
+                    )
+
+            registry_key = name or str(func.__qualname__)
+            self._registry[registry_key] = func
+
+            self._strategy_spec = {
+                "name": registry_key,
+                "resources": Resources(
+                    num_tasks=num_tasks,
+                    cores_per_task=cores_per_task,
+                    gpus_per_task=gpus_per_task,
+                    mpi=mpi,
+                    env=env,
+                    inherit_env=inherit_env,
+                ),
+                "bolo_list": bolo_list,
+            }
+
+            def disabled_wrapper(*args: Any, **kwargs: Any) -> None:
+                raise RuntimeError(
+                    f"Do not call '{registry_key}' directly. "
+                    "This strategy is managed internally by the workflow engine."
+                )
+
+            return disabled_wrapper
+
+        return decorator
 
     def exec(
         self,
@@ -242,7 +321,7 @@ class Pipeline:
         inherit_env: bool = True,
     ) -> Chore:
         """
-        Create a :obj:`Chore` with a path to an executable rather than a delayed
+        Create a :obj:`Chore` with an argv style command rather than a delayed
         python function call.
 
         Parameters
@@ -460,7 +539,7 @@ class Pipeline:
 
     def _submit(
         self,
-        write_restart_freq: int | None = 100,
+        write_restart_freq: int | None = None,
         buffer_time: float = 1.0,
         log_delay: float = 5.0,
         set_cpu_affinity: bool = True,
@@ -479,6 +558,11 @@ class Pipeline:
             The results of the workflow with each key being the chores ID and
             the value being the results of the chore.
         """
+        if write_restart_freq is not None:
+            raise NotImplementedError(
+                "MatEnsemble restart/checkpoint files are not supported yet. "
+                "Leave write_restart_freq=None."
+            )
 
         with self._submission_state_lock:
             self._finished = False
@@ -509,6 +593,7 @@ class Pipeline:
                     manager=manager,
                     pipeline=self,
                     processing_chore=self._strategy_spec["name"],
+                    processing_chore_resources=self._strategy_spec["resources"],
                     bolo_list=self._strategy_spec["bolo_list"],
                 )
             else:
@@ -532,9 +617,6 @@ class Pipeline:
                 self._finished = True
             return self._collect_results()
 
-    def add_user_strat(self, chore_name: str, bolo_list: list[str]):
-        self._strategy_spec = {"name": chore_name, "bolo_list": bolo_list}
-
     def graph(self) -> nx.DiGraph:
         return self._create_graph()
 
@@ -551,7 +633,7 @@ class Pipeline:
 
     def submit(
         self,
-        write_restart_freq: int | None = 100,
+        write_restart_freq: int | None = None,
         buffer_time: float = 1.0,
         log_delay: float = 5.0,
         set_cpu_affinity: bool = True,
@@ -568,10 +650,8 @@ class Pipeline:
         Parameters
         ----------
         write_restart_freq : int or None
-            If an integer *N*, the completion strategy tries to checkpoint after each *N*
-            successful chores. **Checkpointing is not implemented yet**; leave ``None`` (or
-            pass ``None`` explicitly) for production runs until restart files are supported.
-            The default remains ``100`` for historical reasons only.
+            Restart/checkpoint files are not supported yet. Leave this as
+            ``None``. Passing an integer raises :exc:`NotImplementedError`.
         buffer_time : float
             The amount of seconds that the :obj:`FluxManager` should wait between
             submission of chores, defaults to 1.0s.
@@ -591,7 +671,7 @@ class Pipeline:
             The strategy that should be used to process the future objects as :obj:`Chore`'s
             complete.
         dashboard : bool
-            Whether or not MatEnsemble will server a GUI Dashboard on port 8000
+            Whether MatEnsemble will serve a GUI dashboard on port 8000
             as the workflow runs. Defaults to False.
 
         Returns
@@ -634,7 +714,6 @@ class Pipeline:
             self._submission_future = fut
         return fut
 
-    # TODO: Add logic to make the funciton work with ChoreType.EXECUTABLE
     def results(self, timeout=100):
         """
         Returns a dictionary of each chore to its results

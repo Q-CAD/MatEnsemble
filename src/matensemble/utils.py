@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import threading
+from typing import Any
 
 from pathlib import Path
 from dataclasses import fields, is_dataclass, replace
@@ -10,6 +11,14 @@ from enum import Enum
 from collections.abc import Iterable, Mapping
 
 from matensemble.model import OutputReference
+
+
+def _dashboard_import_error() -> RuntimeError:
+    return RuntimeError(
+        "The MatEnsemble dashboard requires the optional dashboard dependencies. "
+        "Install `starlette` and `uvicorn` in the runtime environment before "
+        "calling submit(dashboard=True)."
+    )
 
 
 def _json_safe(value):
@@ -127,6 +136,10 @@ def _resolve_output_references(value, dep_results):
 
 def setup_dashboard(status_file: str) -> None:
     app = create_app(status_file)
+    try:
+        import uvicorn
+    except ImportError as exc:
+        raise _dashboard_import_error() from exc
 
     thread = threading.Thread(
         target=uvicorn.run,
@@ -138,9 +151,9 @@ def setup_dashboard(status_file: str) -> None:
     thread.start()
 
 
-def create_app(status_file: str) -> FastAPI:
+def create_app(status_file: str) -> Any:
     """
-    Create the FastAPI app that will run the web server which serves the status
+    Create the web app that will run the server which serves the status
     dashboard that users can view on port 8000. Since the workflows will be
     done on a cluster the user will need to ssh tunnel into the allocation
     and port forward port 8000 to their local machine in order to view the server
@@ -154,18 +167,22 @@ def create_app(status_file: str) -> FastAPI:
 
 
     """
-
-    app = FastAPI()
-    app.add_middleware(CORSMiddleware, allow_origins=["*"])
+    try:
+        from starlette.applications import Starlette
+        from starlette.middleware.cors import CORSMiddleware
+        from starlette.responses import JSONResponse
+        from starlette.routing import Mount, Route
+        from starlette.staticfiles import StaticFiles
+    except ImportError as exc:
+        raise _dashboard_import_error() from exc
 
     status_path = Path(status_file)
 
-    @app.get("/api/status")
-    def get_status():
+    async def get_status(_request):
         try:
-            return json.loads(status_path.read_text())
+            payload = json.loads(status_path.read_text())
         except FileNotFoundError:
-            return {
+            payload = {
                 "pending": 0,
                 "running": 0,
                 "completed": 0,
@@ -173,9 +190,21 @@ def create_app(status_file: str) -> FastAPI:
                 "freeCores": 0,
                 "freeGpus": 0,
             }
+        return JSONResponse(payload)
 
-    BASE_DIR = Path(__file__).resolve().parent
-    DIST_DIR = BASE_DIR / "dash"
-    app.mount("/", StaticFiles(directory=DIST_DIR, html=True), name="static")
+    base_dir = Path(__file__).resolve().parent
+    dist_dir = base_dir / "dash"
+    app = Starlette(
+        routes=[
+            Route("/api/status", get_status),
+            Mount("/", StaticFiles(directory=dist_dir, html=True), name="static"),
+        ]
+    )
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     return app

@@ -37,6 +37,14 @@ def test_submit_returns_before_background_work_finishes(monkeypatch, tmp_path: P
     assert fut.result(timeout=2) == {"ok": 1}
 
 
+def test_submit_rejects_restart_checkpointing(tmp_path: Path):
+    pipeline = Pipeline(basedir=str(tmp_path))
+
+    fut = pipeline.submit(write_restart_freq=1)
+
+    assert isinstance(fut.exception(timeout=2), NotImplementedError)
+
+
 def test_results_waits_for_finished_flag(tmp_path: Path):
     pipeline = Pipeline(basedir=str(tmp_path))
     pipeline._finished = False
