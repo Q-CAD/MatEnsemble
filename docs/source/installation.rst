@@ -15,6 +15,32 @@ Versions and compatibility
 * **Operating system:** Linux is assumed for HPC-style Flux workflows. macOS or Windows installs may work for editing
   workflows but are not the primary target for execution.
 
+Local dev containers and Flux
+=============================
+
+The repository dev container includes Flux for local smoke tests. A bare ``flux resource list`` fails unless
+you are already inside a Flux broker session:
+
+.. code-block:: bash
+
+   flux start flux resource list
+
+MatEnsemble drains broker rank ``0`` before measuring usable workflow resources. In a one-rank local Flux
+instance, that leaves no rank for chores, so examples may report that chores require more resources than the
+allocation can provide. Use a multi-rank test instance for local or laptop dev-container runs:
+
+.. code-block:: bash
+
+   flux start -s 2 python example_workflows/generic/dependencies/workflow.py
+
+The dev container sets ``MATENSEMBLE_FLUX_START`` to the recommended local launcher, so you can also run:
+
+.. code-block:: bash
+
+   $MATENSEMBLE_FLUX_START python example_workflows/generic/dependencies/workflow.py
+
+On production allocations, use the site launch pattern instead of ``-s 2``.
+
 Container images (recommended on clusters)
 ===========================================
 

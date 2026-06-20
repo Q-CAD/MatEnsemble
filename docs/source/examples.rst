@@ -24,6 +24,19 @@ to be adapted to Frontier, Perlmutter, Pathfinder, Linux containers, or another
 Flux-capable runtime by pairing them with the appropriate system-specific
 launch scripts, containers, scheduler flags, and dependency setup.
 
+When trying generic examples in the repository dev container or another
+single-node local Flux environment, launch them with at least two Flux broker
+ranks:
+
+.. code-block:: bash
+
+   flux start -s 2 python example_workflows/generic/dependencies/workflow.py
+
+MatEnsemble drains broker rank ``0`` before scheduling chores. A single-rank
+``flux start`` session is useful for checking Flux itself, but it leaves no
+usable rank for MatEnsemble chores in local smoke tests. The dev container
+sets ``MATENSEMBLE_FLUX_START`` to ``flux start -s 2`` for this reason.
+
 MCP loading behavior
 ====================
 
