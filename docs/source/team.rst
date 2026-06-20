@@ -1,6 +1,5 @@
-========
 Team behind MatEnsemble
-========
+=======================
 
 Our Team
 ========
@@ -18,4 +17,3 @@ Contact
 -------
 
 For inquiries about the project, please reach out to bagchis@ornl.gov
-

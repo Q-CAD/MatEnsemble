@@ -2,8 +2,7 @@
 Installation
 ============
 
-This guide covers the different methods of **installing** MatEnsemble. **what must be true** in your
-<<<<<<< HEAD
+This guide covers the different methods of **installing** MatEnsemble: **what must be true** in your
 environment and **copy-pastable patterns** for common HPC runtimes. Pair it with :doc:`tutorials`
 for code samples and with :doc:`design` if you need a mental model of the runtime.
 
@@ -15,9 +14,6 @@ Versions and compatibility
   for real runs. The PyPI extra ``flux`` installs the Python bindings; it does not install flux-core for you.
 * **Operating system:** Linux is assumed for HPC-style Flux workflows. macOS or Windows installs may work for editing
   workflows but are not the primary target for execution.
-=======
-environment.
->>>>>>> pr/FredDude2004/4
 
 Container images (recommended on clusters)
 ===========================================
@@ -170,6 +166,7 @@ You should make sure you are in your $SCRATCH space to make sure you have enough
 environment.
 
 .. code-block:: bash
+
     # Example of building a sandbox for Frontier
     apptainer build --sandbox matensemble_sandbox docker://ghcr.io/freddude2004/matensemble:frontier-vX.Y.Z
 
@@ -177,6 +174,7 @@ environment.
    If building a sandbox is taking too long you can split it into multiple stages to speed things up.
 
 .. code-block:: bash
+
    # first clean the cache to start fresh
    apptainer cache clean
    apptainer pull image.sif docker://ghcr.io/freddude2004/matensemble:frontier-vX.Y.Z
@@ -187,19 +185,21 @@ After building your container you can run your workflows interactively in flux q
 the MatEnsemble CLI tool to simplify the commands you need to run.
 
 .. code-block:: bash
+
     # install the CLI tool to /usr/bin/
     curl -fsSL https://raw.githubusercontent.com/FredDude2004/MatEnsemble/main/src/cli/install.sh | bash
 
 After getting a SLURM allocation you can run your workflows:
 
 .. code-block:: bash
+
    srun -N $SLURM_NNODES -n $SLURM_NNODES --external-launcher --mpi=pmi2 --pty apptainer exec matensemble.sif flux start
 
    # or with CLI tool
 
    matensemble set-image <path/to/sif_or_sandbox>
    matensemble shell                              # for an interactive session
-   matensemble run <script.py>                    # to run a script non-interacitvely
+   matensemble run <script.py>                    # to run a script non-interactively
 
 In the interactive sessions you can verify that flux started properly with
 
