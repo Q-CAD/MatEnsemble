@@ -16,6 +16,10 @@ allocation and an internal scheduler to manage arbitrarily large workloads. The 
 of the Flux resource manager, and implements an efficient and user-defined-strategy based task orchestration
 protocol, making it well-suited for high-throughput autonomous computing scenarios.
 
+MatEnsemble [bagchi2025matensemble]_ benefits from the native Python executor interface of **Flux**
+[ahn2020flux]_, and the concurrent asynchronous programming model of core Python through
+``concurrent.futures`` objects [quinlan2009futures]_.
+
 You build a directed acyclic graph (DAG) of :class:`~matensemble.chore.Chore`
 objects in Python; MatEnsemble submits work to **Flux**, tracks completions, records logs, and keeps hardware busy
 while tasks finish at different rates.
@@ -33,7 +37,7 @@ tasks, often modest in size. Sites frequently call this pattern **task farming**
 Farming through raw Slurm has costs:
 
 * Many short ``sbatch`` / ``srun`` invocations increase scheduler load and log volume.
-* Queue latency dominates when tasks are tiny relative to scheduler amounts.
+* Queue latency dominates when tasks are tiny relative to scheduler quanta.
 * Some centers cap how many job steps you may launch inside a single allocation.
 
 A common mitigation is **one large allocation** plus an **internal scheduler** that launches many child
@@ -107,7 +111,7 @@ In **non-adaptive** mode, the manager only submits during the initial “fill un
 completion handling updates the DAG but **does not** proactively pull additional ready chores until the next
 outer-loop scheduling opportunity—use this when you want tighter control or simpler resource snapshots.
 
-.. image:: ../../images/chain_v_adaptive_scheduling.png
+.. image:: ../../media/chain_v_adaptive_scheduling.png
    :alt: Diagram contrasting static batching with adaptive back-filling of tasks
 
 User Defined Strategies
@@ -122,6 +126,12 @@ results of a certain :class:`~matensemble.chore.Chore`. You can define a functio
 which will be dynamically added to the submissions queue. Here is an example of adding a strategy to a chore
 
 .. code-block:: python
+
+    import random
+
+    from matensemble.chore import ChoreSpec
+    from matensemble.model import Resources
+    from matensemble.pipeline import Pipeline
 
     pipe = Pipeline()
 
@@ -148,21 +158,21 @@ which will be dynamically added to the submissions queue. Here is an example of 
     def proc_strat(results_of_finished_chore):
         if results_of_finished_chore % 15 == 0:
             return ChoreSpec(
-                        args=results_of_finished_chore,
+                        args=(results_of_finished_chore,),
                         kwargs=None,
                         resources=Resources(),
                         qualname="fizzbuzz"
                     )
         elif results_of_finished_chore % 5 == 0:
             return ChoreSpec(
-                        args=results_of_finished_chore,
+                        args=(results_of_finished_chore,),
                         kwargs=None,
                         resources=Resources(),
                         qualname="buzz"
                     )
         elif results_of_finished_chore % 3 == 0:
             return ChoreSpec(
-                        args=results_of_finished_chore,
+                        args=(results_of_finished_chore,),
                         kwargs=None,
                         resources=Resources(),
                         qualname="fizz"
@@ -180,13 +190,18 @@ manager sees a *generate_num* chore instance complete then it will spawn the use
 chore. This strategy can optionally return a :obj:`matensemble.chore.ChoreSpec` which will spawn a new chore
 with the specified args kwargs and resources (cores, gpus, mpi, etc.).
 
-Disclaimer
-==========
+Roadmap and stability
+=====================
 
 .. note::
 
    The project is under active development; pre-1.0 APIs may still move. Track ``CHANGELOG`` / release notes
-   in the repository for breaking changes.
+   in the repository for breaking changes. The internal **dynopro** package (streaming dynamics and heavy
+   analysis) ships in-tree but is not yet part of the curated Sphinx API toctree.
+
+**Checkpointing:** ``write_restart_freq`` exists on :meth:`~matensemble.pipeline.Pipeline.submit`, but
+checkpoint serialization is **not yet implemented**. Long production runs should pass ``None`` until
+restart files are supported (:doc:`reference`).
 
 References
 ==========
