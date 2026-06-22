@@ -1,0 +1,35 @@
+{
+  "name": "MatEnsemble",
+  "image": "ghcr.io/freddude2004/matensemble-base:linux",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-toolsai.jupyter",
+        "ms-toolsai.jupyter-keymap",
+        "ms-toolsai.jupyter-renderers"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/opt/basic/bin/python",
+        "jupyter.jupyterServerType": "local"
+      }
+    }
+  },
+  "forwardPorts": [
+    8888
+  ],
+  "portsAttributes": {
+    "8888": {
+      "label": "Jupyter Notebook",
+      "onAutoForward": "notify"
+    }
+  },
+  "postCreateCommand": "uv pip install -e . && uv pip install jupyter",
+  "remoteEnv": {
+    "PATH": "/opt/basic/bin:${containerEnv:PATH}",
+    "MATENSEMBLE_FLUX_START": "flux start -s 2",
+    "VIRTUAL_ENV": "/opt/basic"
+  }
+}

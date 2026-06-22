@@ -1,5 +1,6 @@
 /logs
 /sphinx
+/tmp
 
 # Python bytecode files
 __pycache__/
@@ -28,15 +29,24 @@ env/
 # Sphinx / documentation
 docs/build/
 docs/_build/
-docs/source/api/        
+docs/source/api/
 *.doctree
 *.pickle
 *.inv
 
-# Logs 
+# Logs
 *.log
 *.out
 *.err
 core
 core.*
 *.core
+*.pem
+
+
+# MatEnsemble generated workflow output and large model artifacts
+matensemble_workflow-*/
+example_workflows/**/matensemble_workflow-*/
+example_workflows/**/lammps_mace_calculator/
+*.pt
+*.pth

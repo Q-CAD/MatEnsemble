@@ -1,0 +1,38 @@
+---
+config:
+  layout: elk
+---
+flowchart LR
+    A["Start FluxManager.run"] --> B{"Restarting?"}
+    B -- no --> C["- Setup Flux Broker
+    - Setup Flux Executor
+    - Refresh free CPUs/GPUs
+    - Start Logger"]
+    C --> F(("Loop Start"))
+    B -- yes --> F
+    F --> G{"Remaining Ready, Running or Blocked Chores?"}
+    G -- no --> Z["Stop"]
+    G -- yes --> H["Submit Chores Until Out of Resources"]
+    H --> I["Process Completed Chores with Processing Strategy"]
+    I L_I_J_0@--> J{"Chore succeeded?"}
+    J -- yes --> K["Update Dependents in Blocked Queue"]
+    J -- no --> M["Fail All Downstream Dependent Chores"]
+    M --> N["Log Errors"]
+    K --> L["Move Unblocked Chores to Ready Queue"]
+    L --> G
+    N --> G
+
+    style C text-align:left
+    style H text-align:left
+    style K text-align:left
+    style M text-align:left
+
+    L_I_J_0@{ curve: linear }
+
+
+
+
+
+
+
+

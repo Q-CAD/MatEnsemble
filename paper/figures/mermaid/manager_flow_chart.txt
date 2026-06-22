@@ -1,0 +1,19 @@
+flowchart TD
+    A[Start FluxManager.run] --> B[Refresh free CPUs/GPUs]
+    B --> C[Write status.json and logs]
+    C --> D[Submit ready chores that fit]
+    D --> E[Wait for completed Flux futures]
+    E --> F[FutureProcessingStrategy.process_futures]
+    F --> G{Chore succeeded?}
+    G -- yes --> H[Mark complete]
+    H --> I[Decrement dependent counts]
+    I --> J[Move newly unblocked chores to ready queue]
+    J --> K{Adaptive strategy?}
+    K -- yes --> D
+    K -- no --> L[Return to outer loop]
+    G -- no --> M[Record failure]
+    M --> N[Cascade dependency_failed to dependents]
+    N --> L
+    L --> O{Ready, running, or blocked chores remain?}
+    O -- yes --> B
+    O -- no --> P[Workflow complete]

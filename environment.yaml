@@ -1,10 +1,16 @@
 name: matensemble
 channels:
   - conda-forge
-  - defaults
+channel_priority: strict
+
 dependencies:
-  - python=3.11
-  - flux-core>=0.48.0
-  - flux-sched>=0.25.0
-  - cmake>=3.20
-  - compilers
+  - python=3.12
+  - pip
+  - flux-core
+  - flux-sched
+  - mpich
+  - mpi=*=mpich
+  - mpi4py
+  - lammps
+  - pip:
+      - matensemble

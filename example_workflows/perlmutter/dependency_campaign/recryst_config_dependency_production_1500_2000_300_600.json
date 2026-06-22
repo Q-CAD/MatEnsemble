@@ -1,0 +1,104 @@
+{
+  "model": "../model.model-mliap_lammps.pt",
+  "output_dir": "recryst_runs_dependency_dag_prod_1500_2000_300_600",
+  "tasks_per_chore": 1,
+  "cores_per_task": 32,
+  "gpus_per_task": 1,
+  "lammps_gpus_per_node": 1,
+  "defaults": {
+    "campaign_label": "dependency_dag_production_1500_2000_300_600",
+    "replicate": [1, 1, 1],
+    "timestep_ps": 0.001,
+    "thermo_every": 250,
+    "dump_every": 2500,
+    "melt_temperature_K": 2500.0,
+    "equil_temperature_K": 300.0,
+    "melt_steps": 20000,
+    "equil_steps": 50000,
+    "msd_steps": 50000,
+    "msd_sample_every": 100,
+    "fl_switch_steps": 50000,
+    "fl_equil_steps": 10000,
+    "fl_function": 2,
+    "rs_output_dirname": "reversible_scaling",
+    "rs_scale_method": "force_scale",
+    "rs_use_kokkos": true,
+    "rs_fix_adapt_pair_style": "mliap",
+    "rs_fix_adapt_parameter": "scale",
+    "rs_high_temperature_K": 600.0,
+    "rs_equil_steps": 10000,
+    "rs_high_equil_steps": 10000,
+    "rs_switch_steps": 50000,
+    "rs_sample_every": 10,
+    "rs_temperature_grid_K": [300.0, 375.0, 450.0, 525.0, 600.0],
+    "langevin_damp_ps": 0.1,
+    "melt_surface_wall_enabled": true,
+    "melt_surface_wall_side": "auto",
+    "melt_surface_wall_buffer_A": 3.0
+  },
+  "cases": [
+    {
+      "name": "Bi2Se3-Al2O3",
+      "structure": "../structures_from_vasp/Al2O3_Bi2Se3_unit.lmp",
+      "species": ["Al", "Bi", "Se", "O"],
+      "film_types": [2, 3],
+      "substrate_types": [1, 4],
+      "film_z_min": 11.5,
+      "settings": {
+        "replicate": [3, 3, 1]
+      },
+      "production_target_atoms": 1755
+    },
+    {
+      "name": "Bi2Se3-InP",
+      "structure": "../structures_from_vasp/InP_Bi2Se3_unit.lmp",
+      "species": ["In", "Bi", "P", "Se"],
+      "film_types": [2, 4],
+      "substrate_types": [1, 3],
+      "film_z_min": 16.2,
+      "settings": {
+        "replicate": [3, 3, 1]
+      },
+      "production_target_atoms": 1620
+    },
+    {
+      "name": "Bi2Se3-In2Se3",
+      "structure": "../structures_from_vasp/In2Se3_Bi2Se3_unit.lmp",
+      "species": ["In", "Bi", "Se"],
+      "film_types": [2, 3],
+      "substrate_types": [1, 3],
+      "film_z_min": 13.0,
+      "settings": {
+        "replicate": [3, 3, 1]
+      },
+      "production_target_atoms": 1755
+    },
+    {
+      "name": "Bi2Se3-NbSe2",
+      "structure": "../structures_from_vasp/NbSe2_Bi2Se3_unit.lmp",
+      "species": ["Nb", "Bi", "Se"],
+      "film_types": [2, 3],
+      "substrate_types": [1, 3],
+      "film_z_min": 15.0,
+      "settings": {
+        "replicate": [4, 5, 1]
+      },
+      "production_target_atoms": 1640
+    },
+    {
+      "name": "Bi2Se3-4L",
+      "structure": "../structures_from_vasp/Bi2Se3_4L_unit.lmp",
+      "species": ["Bi", "Se"],
+      "film_types": [1, 2],
+      "substrate_types": [1, 2],
+      "film_z_min": 24.9405852185,
+      "settings": {
+        "replicate": [9, 9, 1]
+      },
+      "production_target_atoms": 1620,
+      "notes": "4L Bi2Se3 slab split into upper 2 QLs and lower 2 QLs across the middle vdW gap."
+    }
+  ],
+  "seeds": [101, 202, 303],
+  "crystal_reference_seeds": [101]
+}
