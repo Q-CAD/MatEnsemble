@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -58,5 +59,33 @@ def test_inspect_outputs_and_tail_log(tmp_path):
     tailed = tail_log(str(workflow), lines=2, cwd=tmp_path)
 
     assert inspected["status"]["completed"] == 1
+    assert inspected["status_schema_version"] == 1
+    assert inspected["history_count"] == 0
     assert inspected["chore_count"] == 1
     assert tailed["text"] == "b\nc"
+
+
+def test_inspect_outputs_reads_v2_history(tmp_path):
+    workflow = tmp_path / "workflow"
+    workflow.mkdir()
+    (workflow / "status.json").write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "workflow": {"state": "completed"},
+                "current": {"completed": 1},
+                "history_file": "status_history.jsonl",
+            }
+        ),
+        encoding="utf-8",
+    )
+    (workflow / "status_history.jsonl").write_text(
+        '{"sequence":0,"state":"running"}\n'
+        '{"sequence":1,"state":"completed"}\n',
+        encoding="utf-8",
+    )
+
+    inspected = inspect_outputs(str(workflow), cwd=tmp_path)
+    assert inspected["status_schema_version"] == 2
+    assert inspected["history_count"] == 2
+    assert inspected["latest_history"]["state"] == "completed"

@@ -181,11 +181,25 @@ def inspect_outputs(workflow_dir: str, *, cwd: Path | None = None) -> dict[str, 
                 )
 
     status = None
+    status_schema_version = None
+    history_path = None
+    history = []
     if status_path.exists():
         try:
             import json
 
             status = json.loads(status_path.read_text(encoding="utf-8"))
+            status_schema_version = int(status.get("schema_version", 1))
+            history_name = status.get("history_file")
+            if status_schema_version == 2 and history_name:
+                candidate = root / history_name
+                if candidate.is_file():
+                    history_path = str(candidate)
+                    history = [
+                        json.loads(line)
+                        for line in candidate.read_text(encoding="utf-8").splitlines()
+                        if line.strip()
+                    ]
         except json.JSONDecodeError as exc:
             status = {"error": f"could not parse status.json: {exc}"}
 
@@ -193,6 +207,10 @@ def inspect_outputs(workflow_dir: str, *, cwd: Path | None = None) -> dict[str, 
         "workflow_dir": str(root),
         "status_path": str(status_path) if status_path.exists() else None,
         "status": status,
+        "status_schema_version": status_schema_version,
+        "history_path": history_path,
+        "history_count": len(history),
+        "latest_history": history[-1] if history else None,
         "log_path": str(log_path) if log_path.exists() else None,
         "chore_count": len(chores),
         "chores": chores,
@@ -231,4 +249,3 @@ def _validate_slurm_script(script_path: str, *, cwd: Path | None) -> Path:
 def _parse_job_id(stdout: str) -> str | None:
     match = JOB_ID_RE.search(stdout)
     return match.group(1) if match else None
-

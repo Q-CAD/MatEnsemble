@@ -25,6 +25,9 @@ dependencies = [
     "uvicorn>=0.42.0",
 ]
 
+[project.scripts]
+matensemble = "matensemble.cli:main"
+
 [project.optional-dependencies]
 flux = [
     "flux-python==0.66.0",

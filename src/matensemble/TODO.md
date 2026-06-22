@@ -219,7 +219,7 @@
     - [x] ???
 - [x] Test the server locally
 - [x] Test the server on an HPC cluster
-- [ ] Create documentation for setting it up
+- [x] Create documentation for setting it up
 
 ## --- Frontier Dynopro Fix ---
 
@@ -237,10 +237,16 @@
 - [ ] Dashboard connection
 - [ ] Creation of the environment
 
+## --- Dynopro Upgrades ---
+
+- [ ] Add things into the MatEnsemble API to allow users to define the two subprocesses
+- [ ] Split the jobs between the ranks
+- [ ] Define them as chores
+
 
 ## --- Reading List ---
-- [ ] [Agentic Orchestration of HPC Applications](https://vsoch.github.io/assets/posts/agentic-orchestration-hpc-workloads-cloud-sochat-milroy.pdf)
 - [x] [Container Training Slides](https://drive.google.com/drive/folders/1_mTBBc98TEX3XFpNp0rqoqj1VjN9TKoO)
-- [ ] [Containers as Jupyter Kernels](https://docs.nersc.gov/services/jupyter/how-to-guides/#how-to-use-a-container-to-run-a-jupyter-kernel)
+- [x] [Containers as Jupyter Kernels](https://docs.nersc.gov/services/jupyter/how-to-guides/#how-to-use-a-container-to-run-a-jupyter-kernel)
+- [x] [Using uv to package lammps and flux into pip install???](https://sgoel.dev/posts/building-cython-or-c-extensions-using-uv/)
+- [ ] [Agentic Orchestration of HPC Applications](https://vsoch.github.io/assets/posts/agentic-orchestration-hpc-workloads-cloud-sochat-milroy.pdf)
 - [ ] [Using SPIN to Run Persistent Containers](https://docs.nersc.gov/services/spin/)
-- [ ] [Using uv to package lammps and flux into pip install???](https://sgoel.dev/posts/building-cython-or-c-extensions-using-uv/)

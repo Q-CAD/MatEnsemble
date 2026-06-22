@@ -92,32 +92,38 @@ a Python chore if you need DAG edges.
 ``status.json`` schema
 ----------------------
 
-Written atomically (temp file + rename) by :class:`~matensemble.logger.StatusWriter`. Keys:
+Dashboard status uses schema version 2 and two files:
 
-.. list-table::
-   :widths: 28 72
-   :header-rows: 1
+``status.json``
+    A small summary atomically replaced by :class:`~matensemble.logger.StatusWriter`.
+    It contains ``workflow`` identity/timing/state, immutable ``allocation`` totals,
+    the latest ``current`` queue/resource counters, compact ``failures``, and the
+    associated history filename.
 
-   * - Key
-     - Meaning
-   * - ``nodes``
-     - Free Flux node count after draining broker rank 0.
-   * - ``coresPerNode``
-     - ``total_free_cores // nodes`` from Flux resource RPCs.
-   * - ``gpusPerNode``
-     - ``total_free_gpus // nodes`` (integer division).
-   * - ``pending``
-     - Chores waiting in ready + blocked queues (sum of not-yet-finished backlog).
-   * - ``running``
-     - Chores with active Flux futures.
-   * - ``completed``
-     - Successful chore IDs recorded in order.
-   * - ``failed``
-     - Count of failures recorded in the manager.
-   * - ``freeCores`` / ``freeGpus``
-     - Current free resources as reported by Flux at the last loop iteration.
+``status_history.jsonl``
+    Append-only snapshots written at workflow startup, every ``log_delay``, and at
+    termination. Each line is an independent JSON object containing a monotonically
+    increasing ``sequence``, UTC ``timestamp``, elapsed seconds, workflow state,
+    queue counts, and free resources.
 
-The dashboard’s ``GET /api/status`` returns the same object, or zeros if the file is missing.
+Workflow states are ``initializing``, ``running``, ``completed``, ``failed``, and
+``interrupted``. A completed manager loop is marked ``failed`` when one or more
+chores failed or were skipped due to an upstream dependency failure. Unexpected
+termination leaves the last state unchanged; the dashboard identifies it as stale
+or disconnected from the snapshot timestamps.
+
+``pending`` is always ``ready + blocked``. The total currently known workload is
+``pending + running + completed + failed``; this total may grow when an adaptive
+strategy adds chores.
+
+The dashboard endpoints are:
+
+* ``GET /api/status`` — normalized schema-v2 summary.
+* ``GET /api/history`` — history records in sequence order.
+* ``GET /api/artifacts/<chore-id>/stderr`` — failure stderr for dashboard links.
+
+Legacy flat status files are normalized as schema version 1 input and exposed as a
+schema-v2 workflow with one synthetic history snapshot.
 
 Per-chore artifacts
 -------------------

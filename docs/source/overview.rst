@@ -83,7 +83,8 @@ Every run creates a **timestamped workflow directory** under your chosen base pa
 
    <base>/
    └── matensemble_workflow-YYYYMMDD_HHMMSS/
-       ├── status.json              # atomically updated for the dashboard / monitoring
+       ├── status.json              # atomically updated workflow summary
+       ├── status_history.jsonl     # append-only dashboard history
        ├── matensemble_workflow.log # detailed text log from the ``matensemble`` logger
        └── out/
            ├── registry/            # serialized chore callables

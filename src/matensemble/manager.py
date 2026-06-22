@@ -196,11 +196,14 @@ class FluxManager:
         pending = len(self._ready) + len(self._blocked)
         self._status_writer.update(
             pending=pending,
+            ready=len(self._ready),
+            blocked=len(self._blocked),
             running=len(self._running_chores),
             completed=len(self._completed_chores),
             failed=len(self._failed_chores),
             free_cores=self._free_cores,
             free_gpus=self._free_gpus,
+            failures=self._failed_chores,
         )
 
         self._logger.info(

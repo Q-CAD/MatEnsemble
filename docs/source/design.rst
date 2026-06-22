@@ -58,7 +58,8 @@ chosen base directory (by default, the current working directory):
 
    <base>/
    └── matensemble_workflow-YYYYMMDD_HHMMSS/
-       ├── status.json              # atomically updated for the dashboard / monitoring
+       ├── status.json              # atomically updated workflow summary
+       ├── status_history.jsonl     # append-only dashboard history
        ├── matensemble_workflow.log # detailed text log from the ``matensemble`` logger
        └── out/
            ├── registry/            # pickled chore callables

@@ -19,7 +19,7 @@ An optional in-tree **dynopro** stack supports streaming dynamics and on-the-fly
 - **Adaptive scheduling** that back-fills the allocation as chores finish (with a non-adaptive available)
 - **Two chore types**: Python chores (remotely unpickled and executed by `matensemble.runtime_worker`) and argv-style **executable** chores
 - **Resource requests**: tasks, cores per task, GPUs per task, optional MPI (`pmi2`) via Flux
-- **Observability**: `status.json`, `matensemble_workflow.log`, per-chore `stdout` / `stderr`, pickle and JSON result artifacts; optional **web dashboard**
+- **Observability**: `status.json` summaries, append-only `status_history.jsonl`, `matensemble_workflow.log`, per-chore `stdout` / `stderr`, pickle and JSON result artifacts; optional **web dashboard**
 
 <p align="center">
   <img src="media/Cap_1_adaptive_task_management.png" alt="Adaptive task management" width="620" />
