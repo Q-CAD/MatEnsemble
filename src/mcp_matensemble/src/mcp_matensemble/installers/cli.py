@@ -5,6 +5,7 @@ import json
 import os
 import shutil
 import stat
+import tomllib
 from pathlib import Path
 
 from mcp_matensemble.systems import normalize_system
@@ -40,19 +41,32 @@ def main(argv: list[str] | None = None) -> None:
             / "matensemble"
         ),
     )
+    parser.add_argument(
+        "--codex-config",
+        default=str(Path.home() / ".codex" / "config.toml"),
+        help="Codex config.toml to update with the MatEnsemble MCP server",
+    )
+    parser.add_argument(
+        "--skip-codex-config",
+        action="store_true",
+        help="Do not update the Codex config.toml MCP server entry",
+    )
     ns = parser.parse_args(argv)
 
     system = normalize_system(ns.system)
     workspace = Path(ns.workspace or _default_workspace()).expanduser().resolve()
     scratch_workspace = Path(_default_workspace()).expanduser().resolve()
+    scratch_root = scratch_workspace.parent
     try:
         workspace.relative_to(scratch_workspace)
     except ValueError as exc:
         raise SystemExit(
-            f"workspace must be inside $SCRATCH/matensemble_campaigns: {scratch_workspace}"
+            "workspace must be inside $SCRATCH/matensemble_campaigns: "
+            f"{scratch_workspace}"
         ) from exc
     install_dir = Path(ns.install_dir).expanduser().resolve()
     config_dir = Path(ns.config_dir).expanduser().resolve()
+    codex_config = Path(ns.codex_config).expanduser().resolve()
 
     workspace.mkdir(parents=True, exist_ok=True)
     (workspace / ".vscode").mkdir(parents=True, exist_ok=True)
@@ -89,11 +103,22 @@ def main(argv: list[str] | None = None) -> None:
         encoding="utf-8",
     )
     (config_dir / "system").write_text(system + "\n", encoding="utf-8")
+    codex_config_changed = False
+    if not ns.skip_codex_config:
+        codex_config_changed = _write_codex_config(
+            codex_config,
+            wrapper=wrapper,
+            workspace=workspace,
+            scratch=scratch_root,
+        )
     _write_readme(workspace, system)
 
     print(f"Installed MatEnsemble MCP workspace for {system}")
     print(f"Workspace: {workspace}")
     print(f"VS Code MCP config: {workspace / '.vscode' / 'mcp.json'}")
+    if not ns.skip_codex_config:
+        state = "updated" if codex_config_changed else "already current"
+        print(f"Codex MCP config: {codex_config} ({state})")
     print(f"Wrapper: {wrapper} ({'updated' if wrapper_changed else 'already current'})")
     if site_cli is not None:
         print(
@@ -132,6 +157,99 @@ export PATH="{install_dir}:$PATH"
 cd "{repo}"
 exec "{uv}" run mcp-matensemble
 """
+
+
+def _write_codex_config(
+    path: Path,
+    *,
+    wrapper: Path,
+    workspace: Path,
+    scratch: Path,
+) -> bool:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    original = path.read_text(encoding="utf-8") if path.exists() else ""
+    block = _codex_mcp_server_block(
+        wrapper=wrapper,
+        workspace=workspace,
+        scratch=scratch,
+    )
+    updated = _replace_toml_table(
+        original,
+        "mcp_servers.matensemble",
+        block,
+    )
+    tomllib.loads(updated)
+    if updated == original:
+        return False
+    path.write_text(updated, encoding="utf-8")
+    path.chmod(0o600)
+    return True
+
+
+def _codex_mcp_server_block(
+    *,
+    wrapper: Path,
+    workspace: Path,
+    scratch: Path,
+) -> str:
+    return "\n".join(
+        [
+            "[mcp_servers.matensemble]",
+            f"command = {_toml_string(str(wrapper))}",
+            f"cwd = {_toml_string(str(workspace))}",
+            "startup_timeout_sec = 120",
+            "",
+            "[mcp_servers.matensemble.env]",
+            f"SCRATCH = {_toml_string(str(scratch))}",
+            "",
+        ]
+    )
+
+
+def _replace_toml_table(text: str, table: str, block: str) -> str:
+    lines = text.splitlines()
+    start = None
+    end = None
+    for index, line in enumerate(lines):
+        name = _toml_table_name(line)
+        if name == table:
+            start = index
+            end = len(lines)
+            for next_index in range(index + 1, len(lines)):
+                next_name = _toml_table_name(lines[next_index])
+                if next_name is None:
+                    continue
+                if next_name == table or next_name.startswith(f"{table}."):
+                    continue
+                end = next_index
+                break
+            break
+
+    block_lines = block.rstrip("\n").splitlines()
+    if start is None:
+        prefix = lines + ([""] if lines and lines[-1].strip() else [])
+        updated_lines = prefix + block_lines
+    else:
+        updated_lines = lines[:start] + block_lines + lines[end:]
+
+    return "\n".join(updated_lines).rstrip() + "\n"
+
+
+def _toml_table_name(line: str) -> str | None:
+    stripped = line.strip()
+    if not stripped.startswith("[") or stripped.startswith("[["):
+        return None
+    if "]" not in stripped:
+        return None
+    closing = stripped.find("]")
+    rest = stripped[closing + 1 :].strip()
+    if rest and not rest.startswith("#"):
+        return None
+    return stripped[1:closing].strip()
+
+
+def _toml_string(value: str) -> str:
+    return json.dumps(value)
 
 
 def _repo_root() -> Path:

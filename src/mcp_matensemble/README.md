@@ -5,8 +5,10 @@ This package provides a Model Context Protocol server for MatEnsemble.
 It is intentionally conservative:
 
 - exposes MatEnsemble API and example context to AI agents
-- generates campaign directories containing `workflow.py`, `LAUNCH.md`, and `manifest.json`
-- defaults execution-capable tools to dry-run mode unless `execute=true` is explicitly passed
+- generates campaign directories containing `workflow.py`, `LAUNCH.md`, and
+  `manifest.json`
+- defaults execution-capable tools to dry-run mode unless `execute=true` is
+  explicitly passed
 
 Run locally with:
 
@@ -15,6 +17,15 @@ uv run --package mcp-matensemble mcp-matensemble
 ```
 
 The primary tool is `create_campaign`.
+
+`matensemble-agent-install` writes both workspace-local VS Code MCP config and
+global Codex config:
+
+- `.vscode/mcp.json` inside the generated campaign workspace
+- `~/.codex/config.toml` with `[mcp_servers.matensemble]`
+
+Use `--skip-codex-config` to leave the Codex config untouched, or
+`--codex-config /path/to/config.toml` to target a different file.
 
 For development from any arbitrary workspace, point an MCP client at this package
 with an editable install while keeping the server working directory set to the
