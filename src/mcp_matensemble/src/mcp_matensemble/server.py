@@ -8,6 +8,12 @@ from mcp.server.fastmcp import FastMCP
 
 from mcp_matensemble import v1 as v1_tools
 from mcp_matensemble.contracts import wrap
+from mcp_matensemble.dashboard import (
+    get_dashboard_status,
+    plan_dashboard_access,
+    start_dashboard,
+    stop_dashboard,
+)
 from mcp_matensemble.environment import (
     get_version_info,
     plan_container_setup,
@@ -292,7 +298,9 @@ def prepare_launch_plan(
 def confirm_launch(launch_plan_id: str, timeout_seconds: int = 60) -> dict[str, Any]:
     """Execute a previously prepared launch plan by id."""
 
-    return wrap(v1_tools.confirm_launch, launch_plan_id, timeout_seconds=timeout_seconds)
+    return wrap(
+        v1_tools.confirm_launch, launch_plan_id, timeout_seconds=timeout_seconds
+    )
 
 
 @mcp.tool()
@@ -328,7 +336,9 @@ def prepare_container_pull_plan(
 def confirm_container_pull(plan_id: str, timeout_seconds: int = 1800) -> dict[str, Any]:
     """Execute a prepared container pull plan by id."""
 
-    return wrap(v1_tools.confirm_container_pull, plan_id, timeout_seconds=timeout_seconds)
+    return wrap(
+        v1_tools.confirm_container_pull, plan_id, timeout_seconds=timeout_seconds
+    )
 
 
 @mcp.tool()
@@ -361,7 +371,9 @@ def create_container_build_plan(
 ) -> dict[str, Any]:
     """Prepare a custom container build plan without executing it."""
 
-    return wrap(v1_tools.prepare_container_build_plan, campaign, system, backend=backend)
+    return wrap(
+        v1_tools.prepare_container_build_plan, campaign, system, backend=backend
+    )
 
 
 @mcp.tool()
@@ -372,14 +384,20 @@ def prepare_container_build_plan(
 ) -> dict[str, Any]:
     """Prepare a custom container build plan without executing it."""
 
-    return wrap(v1_tools.prepare_container_build_plan, campaign, system, backend=backend)
+    return wrap(
+        v1_tools.prepare_container_build_plan, campaign, system, backend=backend
+    )
 
 
 @mcp.tool()
-def confirm_container_build(plan_id: str, timeout_seconds: int = 3600) -> dict[str, Any]:
+def confirm_container_build(
+    plan_id: str, timeout_seconds: int = 3600
+) -> dict[str, Any]:
     """Execute a prepared container build plan by id."""
 
-    return wrap(v1_tools.confirm_container_build, plan_id, timeout_seconds=timeout_seconds)
+    return wrap(
+        v1_tools.confirm_container_build, plan_id, timeout_seconds=timeout_seconds
+    )
 
 
 @mcp.tool()
@@ -613,6 +631,57 @@ def tail_matensemble_log(workflow_dir: str, lines: int = 100) -> dict[str, Any]:
     """Tail the MatEnsemble workflow log from a generated workflow directory."""
 
     return tail_log(workflow_dir, lines=lines)
+
+
+@mcp.tool()
+def plan_matensemble_dashboard_access(
+    dashboard_root: str,
+    login_host: str | None = None,
+    login_user: str | None = None,
+    remote_port: int = 8000,
+    local_port: int = 8000,
+) -> dict[str, Any]:
+    """Return login-node dashboard start and SSH local-forward commands."""
+
+    return wrap(
+        plan_dashboard_access,
+        dashboard_root,
+        login_host=login_host,
+        login_user=login_user,
+        remote_port=remote_port,
+        local_port=local_port,
+    )
+
+
+@mcp.tool()
+def start_matensemble_dashboard(
+    dashboard_root: str,
+    port: int = 8000,
+    execute: bool = False,
+) -> dict[str, Any]:
+    """Start the dashboard on the MCP server host, dry-run by default."""
+
+    return wrap(start_dashboard, dashboard_root, port=port, execute=execute)
+
+
+@mcp.tool()
+def get_matensemble_dashboard_status(
+    dashboard_root: str,
+    port: int = 8000,
+) -> dict[str, Any]:
+    """Read the local dashboard PID file and report whether it is running."""
+
+    return wrap(get_dashboard_status, dashboard_root, port=port)
+
+
+@mcp.tool()
+def stop_matensemble_dashboard(
+    dashboard_root: str,
+    port: int = 8000,
+) -> dict[str, Any]:
+    """Stop a dashboard started by start_matensemble_dashboard."""
+
+    return wrap(stop_dashboard, dashboard_root, port=port)
 
 
 @mcp.tool()

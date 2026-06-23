@@ -6,7 +6,7 @@ It is intentionally conservative:
 
 - exposes MatEnsemble API and example context to AI agents
 - generates campaign directories containing `workflow.py`, `LAUNCH.md`, and `manifest.json`
-- does not execute generated scripts or submit jobs
+- defaults execution-capable tools to dry-run mode unless `execute=true` is explicitly passed
 
 Run locally with:
 
@@ -53,7 +53,22 @@ Useful tools:
 - `get_matensemble_version_info`
 - `plan_matensemble_container_setup`
 - `run_matensemble_container_setup`
+- `plan_matensemble_dashboard_access`
+- `start_matensemble_dashboard`
+- `get_matensemble_dashboard_status`
+- `stop_matensemble_dashboard`
 - `create_matensemble_campaign`
 
-`run_matensemble_container_setup` is dry-run by default. It returns the exact
-allowlisted command unless the caller explicitly passes `execute=true`.
+`run_matensemble_container_setup` and `start_matensemble_dashboard` are dry-run by
+default. They return the exact command unless the caller explicitly passes
+`execute=true`.
+
+For dashboard viewing on HPC systems, run the dashboard on the login node against
+the shared campaign directory and forward it from your laptop:
+
+```bash
+matensemble dashboard /path/to/matensemble_campaign --host 127.0.0.1 --port 8000
+ssh -N -L 8000:127.0.0.1:8000 <user>@<login.host>
+```
+
+Then open `http://localhost:8000`.

@@ -142,11 +142,32 @@ Dashboard (optional)
 --------------------
 
 Pass ``dashboard=True`` to :meth:`~matensemble.pipeline.Pipeline.submit`. A Starlette + uvicorn thread
-serves static assets and ``GET /api/status`` on **port 8000**. On a cluster you typically **SSH tunnel**
-from your laptop to the compute node running the driver—for example:
+serves static assets and ``GET /api/status`` on **port 8000**.
+
+For completed or running workflows on a shared HPC filesystem, the recommended remote viewing pattern is
+to start the dashboard on the **login node** and bind it to loopback only:
 
 .. code-block:: bash
 
-   ssh -L 8000:<nodelist>:8000 <user>@<login.host>
+   matensemble dashboard /path/to/matensemble_campaign --host 127.0.0.1 --port 8000
 
-Use the exact hostname of the node where your workflow process runs; the snippet above is only illustrative.
+Then, from your laptop, forward local port ``8000`` to the login node:
+
+.. code-block:: bash
+
+   ssh -N -L 8000:127.0.0.1:8000 <user>@<login.host>
+
+Open ``http://localhost:8000`` locally while the SSH command is running. This avoids exposing the
+dashboard on the cluster network and works because the login-node dashboard reads the workflow status
+files from the shared campaign directory.
+
+The MatEnsemble MCP server also exposes dashboard helpers:
+
+* ``plan_matensemble_dashboard_access`` returns the start command, SSH tunnel command, and local URL.
+* ``start_matensemble_dashboard`` starts the dashboard on the MCP server host; it is dry-run by default
+  and requires ``execute=True`` to launch a background process.
+* ``get_matensemble_dashboard_status`` and ``stop_matensemble_dashboard`` manage that background process.
+
+If you instead run the dashboard inside a compute allocation with ``dashboard=True``, make sure the tunnel
+targets the node and bind address where that server is reachable. Keeping the dashboard on the login node
+is usually simpler when the status files are on a shared filesystem.

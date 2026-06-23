@@ -185,7 +185,6 @@
 - [x] Make the figure for the user defined strategies flow chart
 - [x] Fix dynopro resources updating
 - [x] Update the CLI tool to be more user friendly
-- [ ] Add a util function to turn the DAG into a photo
 
 ## --- Create first draft for JOSS ---
 - [x] Read some example papers
@@ -231,6 +230,8 @@
 - [ ] Make sure that the Pathfinder CLI tool works
 
 ## --- Demo ---
+- [ ] Fix MCP install to include codex config
+- [ ] Add some tools to launch the dashboard for the MCP server
 - [ ] Video demonstrating the MCP server
 - [ ] DAG workflow based on active learning
 - [ ] Nice big fonts
@@ -242,6 +243,13 @@
 - [ ] Add things into the MatEnsemble API to allow users to define the two subprocesses
 - [ ] Split the jobs between the ranks
 - [ ] Define them as chores
+
+## --- June 22nd, 2026 ---
+
+- [ ] Add a util function to turn the DAG into a photo
+- [ ] Update the Figures in JOSS paper to be much bigger.
+
+
 
 
 ## --- Reading List ---
