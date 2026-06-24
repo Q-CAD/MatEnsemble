@@ -85,14 +85,12 @@ a Python chore if you need DAG edges.
     Supply your own :class:`~matensemble.strategy.FutureProcessingStrategy` to replace adaptive / non-adaptive
     selection entirely.
 
-``dashboard`` (default ``False``)
-    When true, starts a Starlette/uvicorn server on ``0.0.0.0:8000`` serving the packaged static UI
-    and JSON status (see :func:`matensemble.utils.setup_dashboard`).
-
 ``status.json`` schema
 ----------------------
 
-Dashboard status uses schema version 2 and two files:
+MatEnsemble writes dashboard status with schema version 2 and two files. Serve
+the browser UI separately with ``matensemble dashboard <campaign-root>`` or the
+MCP server's ``launch_dashboard`` helper.
 
 ``status.json``
     A small summary atomically replaced by :class:`~matensemble.logger.StatusWriter`.

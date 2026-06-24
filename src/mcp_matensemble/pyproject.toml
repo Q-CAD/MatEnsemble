@@ -1,7 +1,7 @@
 [project]
 name = "mcp-matensemble"
 version = "0.4.4"
-description = "Model Context Protocol server for generating MatEnsemble workflow campaigns."
+description = "Small Model Context Protocol server for MatEnsemble context and dashboard access."
 readme = "README.md"
 license = "BSD-3-Clause"
 authors = [
@@ -21,11 +21,9 @@ Issues = "https://github.com/FredDude2004/MatEnsemble/issues"
 
 [project.scripts]
 mcp-matensemble = "mcp_matensemble.server:main"
-matensemble-agent-install = "mcp_matensemble.installers.cli:main"
-matensemble-agent-doctor = "mcp_matensemble.installers.doctor:main"
 
 [build-system]
-requires = ["uv_build>=0.10.0,<0.11.0"]
+requires = ["uv_build>=0.10.0,<0.12.0"]
 build-backend = "uv_build"
 
 [tool.pytest.ini_options]

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import threading
 from typing import Any
 
 from pathlib import Path
@@ -17,7 +16,7 @@ def _dashboard_import_error() -> RuntimeError:
     return RuntimeError(
         "The MatEnsemble dashboard requires the optional dashboard dependencies. "
         "Install `starlette` and `uvicorn` in the runtime environment before "
-        "calling submit(dashboard=True)."
+        "running `matensemble dashboard`."
     )
 
 
@@ -134,38 +133,21 @@ def _resolve_output_references(value, dep_results):
     return value
 
 
-def setup_dashboard(status_file: str) -> None:
-    app = create_app(status_file)
-    try:
-        import uvicorn
-    except ImportError as exc:
-        raise _dashboard_import_error() from exc
-
-    thread = threading.Thread(
-        target=uvicorn.run,
-        args=(app,),
-        kwargs={"host": "127.0.0.1", "port": 8000, "log_level": "warning"},
-        daemon=True,
-    )
-
-    thread.start()
-
-
 def create_app(status_file: str) -> Any:
     """
-    Create the web app that will run the server which serves the status
-    dashboard that users can view on port 8000. Since the workflows will be
-    done on a cluster the user will need to ssh tunnel into the allocation
-    and port forward port 8000 to their local machine in order to view the server
+    Create the web app that serves a single workflow status file.
+
+    This helper is retained for tests and legacy single-workflow compatibility.
+    The supported user-facing dashboard entrypoint is the ``matensemble
+    dashboard`` CLI, which serves a campaign directory and can be launched on a
+    login node.
 
     Example
     -------
     .. code-block:: bash
 
-        # After launching the chore with dashboard=True note the node and run this command
-        ssh -L 8000:frontier00206:8000 kaleb@frontier.olcf.ornl.gov
-
-
+        matensemble dashboard /path/to/matensemble_campaign --host 127.0.0.1 --port 8000
+        ssh -N -L 8000:127.0.0.1:8000 <user>@<login.host>
     """
     status_path = Path(status_file)
     from matensemble.dashboard import WorkflowCatalog, create_dashboard_app

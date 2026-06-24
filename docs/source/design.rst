@@ -141,11 +141,11 @@ failure list. Check per-chore ``stderr`` for the detailed MatEnsemble annotation
 Dashboard (optional)
 --------------------
 
-Pass ``dashboard=True`` to :meth:`~matensemble.pipeline.Pipeline.submit`. A Starlette + uvicorn thread
-serves static assets and ``GET /api/status`` on **port 8000**.
-
-For completed or running workflows on a shared HPC filesystem, the recommended remote viewing pattern is
-to start the dashboard on the **login node** and bind it to loopback only:
+MatEnsemble writes dashboard-ready ``status.json`` and ``status_history.jsonl``
+files for every workflow. The dashboard server is launched separately from the
+workflow with the ``matensemble dashboard`` CLI. On HPC systems, the recommended
+remote viewing pattern is to start the dashboard on the **login node** and bind
+it to loopback only:
 
 .. code-block:: bash
 
@@ -163,11 +163,11 @@ files from the shared campaign directory.
 
 The MatEnsemble MCP server also exposes dashboard helpers:
 
-* ``plan_matensemble_dashboard_access`` returns the start command, SSH tunnel command, and local URL.
-* ``start_matensemble_dashboard`` starts the dashboard on the MCP server host; it is dry-run by default
-  and requires ``execute=True`` to launch a background process.
-* ``get_matensemble_dashboard_status`` and ``stop_matensemble_dashboard`` manage that background process.
+* ``launch_dashboard`` starts ``matensemble dashboard`` on the MCP server host.
+* ``get_dashboard_access`` returns the SSH tunnel command and local URL.
+* ``stop_dashboard`` stops a dashboard process started by the MCP server.
 
-If you instead run the dashboard inside a compute allocation with ``dashboard=True``, make sure the tunnel
-targets the node and bind address where that server is reachable. Keeping the dashboard on the login node
-is usually simpler when the status files are on a shared filesystem.
+The old ``Pipeline.submit(dashboard=True)`` in-allocation launch path has been
+removed. Keep workflow execution and dashboard process management separate; it
+is usually simpler and safer to serve the dashboard from the login node when the
+status files are on a shared filesystem.
