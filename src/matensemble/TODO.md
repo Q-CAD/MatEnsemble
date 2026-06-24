@@ -229,8 +229,16 @@
 - [x] Run the release script and do a PR
 - [x] Make sure that the Pathfinder CLI tool works
 
+## --- Documentation ---
+- [ ] Update documentation for installation of MCP server
+- [ ] Update tools in MCP server
+- [ ] Update the README to be minimal and link to the documentation
+- [ ] Put curl command in README for ease of access
+- [ ] Place the MPI hello example in README
+- [ ] Exescale stuff???
+
 ## --- Demo ---
-- [ ] Fix MCP install to include codex config
+- [x] Fix MCP install to include codex config
 - [x] Add MCP tools to launch, tunnel to, and stop the dashboard
 - [ ] Video demonstrating the MCP server
 - [ ] DAG workflow based on active learning
@@ -265,6 +273,8 @@ try:
 except json.JSONDecodeError:
     print("Failed to parse agent response as JSON")
 ```
+
+
 
 This would be how he could use the agents with MatEnsemble to launch more chores
 

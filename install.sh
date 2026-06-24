@@ -160,9 +160,11 @@ write_configs() {
 	local campaigns_dir="$3"
 	local system="$4"
 	local codex_dir="$campaigns_dir/.codex"
+	local copilot_dir="$campaigns_dir/.copilot"
+	local gemini_dir="$campaigns_dir/.gemini"
 	local vscode_dir="$campaigns_dir/.vscode"
 
-	mkdir -p "$codex_dir" "$vscode_dir"
+	mkdir -p "$codex_dir" "$copilot_dir" "$gemini_dir" "$vscode_dir"
 
 	cat >"$codex_dir/config.toml" <<EOF_CODEX
 [mcp_servers.matensemble]
@@ -201,6 +203,53 @@ EOF_CODEX
   }
 }
 EOF_CLAUDE
+
+	cat >"$copilot_dir/mcp-config.json" <<EOF_COPILOT
+{
+  "mcpServers": {
+    "matensemble": {
+      "type": "local",
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "$repo_dir",
+        "--package",
+        "mcp-matensemble",
+        "mcp-matensemble",
+        "--system",
+        "$system"
+      ],
+      "cwd": "$campaigns_dir",
+      "env": {},
+      "tools": ["*"]
+    }
+  }
+}
+EOF_COPILOT
+
+	cat >"$gemini_dir/settings.json" <<EOF_GEMINI
+{
+  "mcpServers": {
+    "matensemble": {
+      "command": "uv",
+      "args": [
+        "run",
+        "--directory",
+        "$repo_dir",
+        "--package",
+        "mcp-matensemble",
+        "mcp-matensemble",
+        "--system",
+        "$system"
+      ],
+      "cwd": "$campaigns_dir",
+      "env": {},
+      "timeout": 120000
+    }
+  }
+}
+EOF_GEMINI
 
 	cat >"$vscode_dir/mcp.json" <<EOF_VSCODE
 {

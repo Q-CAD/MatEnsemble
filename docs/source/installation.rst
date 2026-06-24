@@ -34,7 +34,7 @@ container runtimes, see our overview of supported container engines for a brief 
 users can skip ahead to the installation and usage instructions for their target system.
 
 Apptainer
----------
+=========
 
 Apptainer (formerly Singularity) was developed at Lawrence Berkeley National Laboratory and is currently maintained by
 The Linux Foundation. It is open source and is meant to be a container engine targeted
@@ -83,7 +83,7 @@ squash it into an immutable format:
 For more information on how to build and manage apptainer images see `Introduction to Apptainer/Singularity <https://hsf-training.github.io/hsf-training-singularity-webpage/>`_.
 
 Podman-HPC
-----------
+==========
 
 Podman-HPC is a wrapper around podman to allow it to be used on HPC systems. The NERSC Perlmutter system is
 currently migrating from Shifter to Podman-HPC. If you are at all familiar with Docker then Podman-HPC
@@ -122,7 +122,7 @@ You can also run an image in an interactive mode and install the packages and sa
 are complicated and hard to get straight especially on HPC systems where you may lose connection.
 
 Frontier (OLCF)
----------------
+===============
 
 The OLCF Frontier super computer has Apptainer available to its users. So you can follow the
 pattern for creating a container for Apptainer to create an environment to run MatEnsemble
@@ -204,7 +204,7 @@ You should see all of the resources ready to use. You are ready run one of your 
    python <script.py>
 
 Perlmutter (NERSC)
-------------------
+==================
 
 To get MatEnsemble to work on Perlmutter you need to bind in the environment variables and devices that
 allow the container to hook into the system's optimized network and MPI implementation manually. This can get ugly
@@ -244,7 +244,7 @@ script that you want to execute.
    matensemble run <script.py>
 
 Pathfinder (OLCF)
------------------
+=================
 
 OLCF Pathfinder comes with Apptainer available to its users. You can build a container with the same pattern
 as Frontier
@@ -302,7 +302,7 @@ You should see all of the resources ready to use and are ready run one of your m
 The curated Pathfinder smoke-test example lives under ``example_workflows/pathfinder/lammps_smoke``.
 
 Conda
------
+=====
 
 We provide an environment.yaml file with all of the dependencies needed to run MatEnsemble (without GPU support).
 If you have Anaconda or Miniconda installed and are on an x86_64 machine, then you can build an environment to
@@ -318,7 +318,7 @@ You can build a Conda environment with MatEnsemble and dependencies installed us
 For more information see the `Anaconda Documentation <https://www.anaconda.com/docs/main>`__.
 
 Dev Container
--------------
+=============
 
 There is a .devcontainer folder in the repository so if you have Docker Desktop installed you can
 simply clone out the repository and open it in VS Code with the devcontainer extension installed.
