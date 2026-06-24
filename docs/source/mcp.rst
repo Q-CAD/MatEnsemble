@@ -9,10 +9,10 @@ guidance, and dashboard helpers.
 Install on an HPC login node
 ============================
 
-Currently the MCP server is only targeted systems are Frontier, Pathfinder and
-Perlmutter. To install the server you can use our script. before running it make
-sure that the $SCRATCH environment variable is set before running the script.
-Otherwise navigate to a location that would like your workflows to live.
+Currently the MCP server is only targeted at the Frontier, Pathfinder and Perlmutter
+HPC systems. To install the server you can use our script. before running it make sure
+that the $SCRATCH environment variable is set before running the script. Otherwise
+navigate to a location that would like your workflows to live.
 
 .. code-block:: bash
 
