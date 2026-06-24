@@ -1,4 +1,10 @@
 #!/usr/bin/env bash
+if [ -z "${BASH_VERSION:-}" ] || [ "$(basename "${BASH:-sh}")" = "sh" ]; then
+	echo "install.sh: please run this installer with bash, for example:" >&2
+	echo "  curl -fsSL https://raw.githubusercontent.com/FredDude2004/MatEnsemble/refs/heads/mcp_refactor/install.sh | bash" >&2
+	exit 2
+fi
+
 set -euo pipefail
 
 REPO_URL="${MATENSEMBLE_REPO_URL:-https://github.com/FredDude2004/MatEnsemble.git}"
@@ -9,17 +15,27 @@ err() {
 	exit 1
 }
 
+prompt_read() {
+	local prompt="$1"
+	local value
+	if [[ ! -r /dev/tty ]]; then
+		err "interactive prompts require a terminal; run this script from an interactive shell"
+	fi
+	read -r -p "$prompt" value </dev/tty
+	printf '%s\n' "$value"
+}
+
 prompt_yes_no() {
 	local prompt="$1"
 	local default="$2"
 	local answer
 	while true; do
-		read -r -p "$prompt" answer
+		answer="$(prompt_read "$prompt")"
 		answer="${answer:-$default}"
 		case "$answer" in
 		y | Y | yes | YES) return 0 ;;
 		n | N | no | NO) return 1 ;;
-		*) echo "Please answer y or n." ;;
+		*) echo "Please answer y or n." >&2 ;;
 		esac
 	done
 }
@@ -35,11 +51,11 @@ expand_path() {
 
 choose_system() {
 	local choice
-	echo "Which system are you on?"
-	echo "  1. Frontier"
-	echo "  2. Perlmutter"
-	echo "  3. Pathfinder"
-	read -r -p "[1-3]: " choice
+	echo "Which system are you on?" >&2
+	echo "  1. Frontier" >&2
+	echo "  2. Perlmutter" >&2
+	echo "  3. Pathfinder" >&2
+	choice="$(prompt_read "[1-3]: ")"
 	case "$choice" in
 	1 | frontier | Frontier) echo "frontier" ;;
 	2 | perlmutter | Perlmutter) echo "perlmutter" ;;
@@ -62,7 +78,7 @@ choose_base() {
 		fi
 	fi
 
-	read -r -p "Provide path to install MatEnsemble: " path
+	path="$(prompt_read "Provide path to install MatEnsemble: ")"
 	[[ -n "$path" ]] || err "install path is required"
 	echo "$path"
 }
