@@ -39,6 +39,7 @@ The server exposes only:
 * ``get_api_overview``
 * ``get_containers_overview``
 * ``get_examples_for_system``
+* ``get_example_batch_scripts``
 * ``get_containerfiles``
 * ``get_container_build_command``
 * ``get_matensemble_core``
@@ -48,6 +49,15 @@ The server exposes only:
 * ``launch_dashboard``
 * ``get_dashboard_access``
 * ``stop_dashboard``
+
+Prompts
+=======
+
+The server includes a ``start_dashboard`` prompt:
+
+.. code-block:: text
+
+   start the dashboard in the matensemble_campaigns directory and provide me the command to ssh tunnel and port forward the dashboard to localhost.
 
 Container tags
 ==============

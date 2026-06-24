@@ -14,6 +14,16 @@ def test_examples_include_generic_and_selected_system():
     assert "example_workflows/perlmutter/lammps_smoke/workflow.py" in files
 
 
+def test_example_batch_scripts_include_selected_system_submit_files():
+    scripts = context.get_example_batch_scripts("perlmutter")
+
+    assert set(scripts) == {"lammps_mace", "lammps_ovito", "lammps_smoke"}
+    assert scripts["lammps_smoke"]["path"] == (
+        "example_workflows/perlmutter/lammps_smoke/submit.slurm"
+    )
+    assert "#SBATCH" in scripts["lammps_smoke"]["content"]
+
+
 def test_containerfiles_read_selected_system():
     files = context.get_containerfiles("frontier")
 
@@ -112,10 +122,21 @@ def test_file_tree_uses_fixed_directories(monkeypatch: pytest.MonkeyPatch, tmp_p
     (root / "example_workflows" / "frontier" / "workflow.py").write_text(
         "FRONTIER = True\n", encoding="utf-8"
     )
+    (root / "example_workflows" / "frontier" / "demo").mkdir()
+    (root / "example_workflows" / "frontier" / "demo" / "submit.slurm").write_text(
+        "#SBATCH -J demo\n", encoding="utf-8"
+    )
 
     monkeypatch.setattr(context, "repo_root", lambda: root)
 
     assert context.get_examples_for_system("frontier") == {
+        "example_workflows/frontier/demo/submit.slurm": "#SBATCH -J demo\n",
         "example_workflows/generic/workflow.py": "GENERIC = True\n",
         "example_workflows/frontier/workflow.py": "FRONTIER = True\n",
+    }
+    assert context.get_example_batch_scripts("frontier") == {
+        "demo": {
+            "path": "example_workflows/frontier/demo/submit.slurm",
+            "content": "#SBATCH -J demo\n",
+        }
     }

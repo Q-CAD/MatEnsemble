@@ -123,6 +123,23 @@ def get_examples_for_system(system: str | None = None) -> dict[str, str]:
     return files
 
 
+def get_example_batch_scripts(system: str | None = None) -> dict[str, dict[str, str]]:
+    key = normalize_system(system)
+    root = repo_root()
+    example_root = root / "example_workflows" / key
+    if not example_root.is_dir():
+        raise ValueError(f"directory not found: {example_root.relative_to(root)}")
+    scripts: dict[str, dict[str, str]] = {}
+    for workflow_dir in sorted(path for path in example_root.iterdir() if path.is_dir()):
+        script = workflow_dir / "submit.slurm"
+        if script.is_file() and not script.is_symlink():
+            scripts[workflow_dir.name] = {
+                "path": str(script.relative_to(root)),
+                "content": script.read_text(encoding="utf-8", errors="replace"),
+            }
+    return scripts
+
+
 def get_containerfiles(system: str | None = None) -> dict[str, str]:
     key = normalize_system(system)
     root = repo_root()

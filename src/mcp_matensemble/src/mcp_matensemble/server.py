@@ -9,7 +9,7 @@ from mcp.server.fastmcp import FastMCP
 from . import context
 from .dashboard import (
     get_dashboard_access as dashboard_access,
-    launch_dashboard as start_dashboard,
+    launch_dashboard as launch_dashboard_process,
     stop_dashboard as stop_dashboard_server,
 )
 
@@ -46,6 +46,14 @@ def create_server(default_system: str) -> FastMCP:
         """Return generic examples plus examples for the configured system."""
 
         return context.get_examples_for_system(system_override or system)
+
+    @mcp.tool()
+    def get_example_batch_scripts(
+        system_override: str | None = None,
+    ) -> dict[str, dict[str, str]]:
+        """Return example submit.slurm scripts for the configured system."""
+
+        return context.get_example_batch_scripts(system_override or system)
 
     @mcp.tool()
     def get_containerfiles(system_override: str | None = None) -> dict[str, str]:
@@ -87,7 +95,7 @@ def create_server(default_system: str) -> FastMCP:
     def launch_dashboard(campaign_root: str, port: int = 8000) -> dict[str, Any]:
         """Start the MatEnsemble dashboard in the background on this host."""
 
-        return start_dashboard(campaign_root, port=port)
+        return launch_dashboard_process(campaign_root, port=port)
 
     @mcp.tool()
     def get_dashboard_access(
@@ -123,6 +131,10 @@ def create_server(default_system: str) -> FastMCP:
     def examples_resource() -> str:
         return json.dumps(context.get_examples_for_system(system), indent=2)
 
+    @mcp.resource("matensemble://examples/batch-scripts")
+    def example_batch_scripts_resource() -> str:
+        return json.dumps(context.get_example_batch_scripts(system), indent=2)
+
     @mcp.resource("matensemble://containers/files")
     def containerfiles_resource() -> str:
         return json.dumps(context.get_containerfiles(system), indent=2)
@@ -142,6 +154,15 @@ def create_server(default_system: str) -> FastMCP:
     @mcp.resource("matensemble://containers/latest-tags")
     def latest_container_tags_resource() -> str:
         return json.dumps(context.get_latest_container_tags(), indent=2)
+
+    @mcp.prompt(name="start_dashboard")
+    def start_dashboard_prompt() -> str:
+        """Prompt an agent to start and tunnel the MatEnsemble dashboard."""
+
+        return (
+            "start the dashboard in the matensemble_campaigns directory and provide "
+            "me the command to ssh tunnel and port forward the dashboard to localhost."
+        )
 
     return mcp
 
