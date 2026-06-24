@@ -227,7 +227,7 @@
 - [x] Update the Base image or retag the one that I used to build this john
 - [x] The double free is likely from symmetrix so forget fixing it
 - [x] Run the release script and do a PR
-- [ ] Make sure that the Pathfinder CLI tool works
+- [x] Make sure that the Pathfinder CLI tool works
 
 ## --- Demo ---
 - [ ] Fix MCP install to include codex config
@@ -248,9 +248,25 @@
 
 - [ ] Add a util function to turn the DAG into a photo
 - [ ] Update the Figures in JOSS paper to be much bigger.
+- [ ] Talk to Soumendu about using adaptive workflow with codex:
 
+```python
+import subprocess
+import json
 
+# Request JSON output via prompt or flags
+command = ['codex', 'exec', '--json-experimental', 'Analyze my repository and count Python files. Return a JSON block.']
+result = subprocess.run(command, capture_output=True, text=True)
 
+# Parse the returned string into a standard Python dictionary
+try:
+    data = json.loads(result.stdout)
+    print(data["python_files_count"])
+except json.JSONDecodeError:
+    print("Failed to parse agent response as JSON")
+```
+
+This would be how he could use the agents with MatEnsemble to launch more chores
 
 ## --- Reading List ---
 - [x] [Container Training Slides](https://drive.google.com/drive/folders/1_mTBBc98TEX3XFpNp0rqoqj1VjN9TKoO)
