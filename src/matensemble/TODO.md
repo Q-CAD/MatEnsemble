@@ -88,8 +88,8 @@
 - [x] Write the Job objects specification to a file in their direcotry
 
 ## --- Status Dashboard ---
-- [x] Update the Pipeline.run() method to have a dashboard flag
-- [x] Add logic to launch the dashboard when the user runs the workflow
+- [x] Serve workflow status through the standalone `matensemble dashboard` command
+- [x] Remove the embedded `Pipeline.submit(dashboard=True)` launch path
 
 ## --- Science Example ---
 - [x] Test the science example that Soumendu provided
@@ -231,7 +231,7 @@
 
 ## --- Demo ---
 - [ ] Fix MCP install to include codex config
-- [ ] Add some tools to launch the dashboard for the MCP server
+- [x] Add MCP tools to launch, tunnel to, and stop the dashboard
 - [ ] Video demonstrating the MCP server
 - [ ] DAG workflow based on active learning
 - [ ] Nice big fonts

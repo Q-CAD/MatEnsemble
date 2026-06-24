@@ -2,57 +2,67 @@
 MatEnsemble MCP Agent
 =====================
 
-``mcp-matensemble`` is a separate Model Context Protocol server that helps AI
-agents create MatEnsemble workflow campaigns, plan site environments, and submit
-validated Slurm batch scripts.
+``mcp-matensemble`` is a small Model Context Protocol server for AI agents that
+need to use MatEnsemble. It provides repository context, deterministic container
+guidance, and dashboard lifecycle helpers.
+
+It intentionally does not generate campaigns, submit Slurm jobs, cancel jobs,
+write workflow files, or execute container setup plans. The agent should use the
+context returned by this server, then write and run ordinary files and commands
+itself.
 
 Install on an HPC login node
 ============================
 
-To install the mcp server for a system you first have to login to the cluster. The
-server is managed with uv so that also needs to be installed, then you can run our
-script to install the server.
+From the repository root, run:
 
 .. code-block:: bash
 
-    # install uv
-    curl -LsSf https://astral.sh/uv/install.sh | sh
+   ./install.sh
 
-    # clone out MatEnsemble
-    git clone https://github.com/freddude2004/MatEnsemble.git
-    cd MatEnsemble
+The installer prompts for Frontier, Perlmutter, or Pathfinder, chooses an install
+root, clones MatEnsemble into ``<root>/MatEnsemble/.matensemble``, creates
+``<root>/MatEnsemble/matensemble_campaigns``, optionally installs the site CLI,
+and writes MCP config files for Codex, Claude Code, VS Code, and Copilot.
 
-    uv run --package mcp-matensemble matensemble-agent-install --system <system>
+The generated MCP command has this shape:
 
-When you run the script it will create a directory $SCRATCH/matensemble_campaigns/
-which will have a configuration for vscode to be able to launch the MCP server. The
-script will also install the matensemble CLI tool for your system.
+.. code-block:: bash
 
-Tool safety model
-=================
+   uv run --directory <root>/MatEnsemble/.matensemble --package mcp-matensemble mcp-matensemble --system <system>
 
-The MCP server writes only under the configured workspace. Execution tools are
-dry-run by default.
+Tools
+=====
 
-Allowed setup commands are limited to known environment tools such as
-``apptainer``, ``podman-hpc``, ``docker``, ``podman``, ``conda``, and the
-MatEnsemble site CLI.
+The server exposes only:
 
-Slurm submission is available through a guarded ``sbatch`` tool. The script must
-be inside the workspace, end with ``.slurm``, contain ``#SBATCH`` directives, and
-appear to launch a MatEnsemble workflow.
+* ``get_api_overview``
+* ``get_containers_overview``
+* ``get_examples_for_system``
+* ``get_containerfiles``
+* ``get_container_build_command``
+* ``get_matensemble_core``
+* ``get_full_matensemble_code``
+* ``get_matensemble_version``
+* ``get_latest_container_tags``
+* ``launch_dashboard``
+* ``get_dashboard_access``
+* ``stop_dashboard``
 
-Starter prompts
-===============
+Container tags
+==============
+
+The server does not query GHCR. It derives the expected current image tags from
+the local MatEnsemble version:
 
 .. code-block:: text
 
-   I want to run a LAMMPS GPU smoke test with MatEnsemble on Frontier. Use the MatEnsemble MCP server to inspect examples, plan setup, and create workflow and launch scripts. Do not execute setup commands or submit jobs yet.
+   ghcr.io/freddude2004/matensemble:<system>-vX.Y.Z
 
-.. code-block:: text
+Dashboard
+=========
 
-   I want to run a LAMMPS/MACE campaign with MatEnsemble on Perlmutter. Use the Perlmutter examples as context, plan the Podman-HPC image setup, and create a smoke campaign with a batch script. Do not submit yet.
-
-.. code-block:: text
-
-   Review this generated campaign, validate the Slurm script, and dry-run the sbatch command.
+``launch_dashboard`` starts ``matensemble dashboard`` on the login node and
+writes PID/log files into the campaign root. ``get_dashboard_access`` returns the
+SSH tunnel command to run on a local machine, and ``stop_dashboard`` terminates a
+dashboard started by the MCP server.

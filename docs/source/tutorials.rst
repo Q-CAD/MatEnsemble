@@ -159,7 +159,7 @@ If you need extra wheels:
 Operational tips
 ================
 
-* Pass ``dashboard=True`` and tunnel port ``8000`` if you want the browser UI (:doc:`design`).
+* Start ``matensemble dashboard <campaign-root>`` and tunnel port ``8000`` if you want the browser UI (:doc:`design`).
 * Inspect ``matensemble_workflow.log`` for human-readable progress; parse ``status.json`` for machine consumption.
 * On failure, always read the chore’s ``stderr``—MatEnsemble annotates wrapper errors there.
 

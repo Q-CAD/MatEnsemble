@@ -66,7 +66,7 @@ Illustrative workflows live under [`example_workflows/`](https://github.com/Fred
 
 - A **Flux allocation** (or equivalent) on the machine where you call `Pipeline.submit()`
 - For MPI Python or executable chores: a coherent MPI/Flux setup (e.g. PMI2) as expected by your site
-- Optional: SSH port forwarding if you enable the dashboard on a compute node (see the design guide in the docs)
+- Optional: SSH port forwarding if you serve the dashboard from a login node with `matensemble dashboard` (see the design guide in the docs)
 
 ## Related links
 
