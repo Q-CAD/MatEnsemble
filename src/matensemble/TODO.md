@@ -221,7 +221,6 @@
 - [x] Create documentation for setting it up
 
 ## --- Frontier Dynopro Fix ---
-
 - [x] Fix the diff in Dynopro to use get_xrd_ovito()
 - [x] Patch MatEnsemble to ignore the double free error: 134 or 137 idk whichever one it is
 - [x] Update the Base image or retag the one that I used to build this john
@@ -230,30 +229,28 @@
 - [x] Make sure that the Pathfinder CLI tool works
 
 ## --- Documentation ---
-- [ ] Update documentation for installation of MCP server
-- [ ] Update tools in MCP server
-- [ ] Update the README to be minimal and link to the documentation
-- [ ] Put curl command in README for ease of access
+- [x] Update documentation for installation of MCP server
+- [x] Update tools in MCP server
+- [x] Update the README to be minimal and link to the documentation
+- [x] Put curl command in README for ease of access
 - [ ] Place the MPI hello example in README
 - [ ] Exescale stuff???
 
 ## --- Demo ---
 - [x] Fix MCP install to include codex config
 - [x] Add MCP tools to launch, tunnel to, and stop the dashboard
-- [ ] Video demonstrating the MCP server
+- [x] Video demonstrating the MCP server
+- [x] Nice big fonts
+- [x] Dashboard connection
+- [x] Creation of the environment
 - [ ] DAG workflow based on active learning
-- [ ] Nice big fonts
-- [ ] Dashboard connection
-- [ ] Creation of the environment
 
 ## --- Dynopro Upgrades ---
-
 - [ ] Add things into the MatEnsemble API to allow users to define the two subprocesses
 - [ ] Split the jobs between the ranks
 - [ ] Define them as chores
 
 ## --- June 22nd, 2026 ---
-
 - [ ] Add a util function to turn the DAG into a photo
 - [ ] Update the Figures in JOSS paper to be much bigger.
 - [ ] Talk to Soumendu about using adaptive workflow with codex:
@@ -273,8 +270,6 @@ try:
 except json.JSONDecodeError:
     print("Failed to parse agent response as JSON")
 ```
-
-
 
 This would be how he could use the agents with MatEnsemble to launch more chores
 
