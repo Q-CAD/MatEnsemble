@@ -31,7 +31,7 @@ To make use of the MCP server you can use whichever agent you perfer. The instal
 creates configurations for each of the frontier model's CLI tools
 
 * `Claude Code <https://code.claude.com/docs/en/overview>`_
-* `Codex <https://code.claude.com/docs/en/overview>`_
+* `Codex <https://developers.openai.com/codex/cli>`_
 * `Copilot <https://github.com/features/copilot/cli>`_
 * `Gemini <https://geminicli.com/docs/>`_
 
