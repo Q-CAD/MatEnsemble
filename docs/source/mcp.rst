@@ -88,15 +88,6 @@ The server exposes only:
 * ``get_dashboard_access``
 * ``stop_dashboard``
 
-Prompts
-=======
-
-The server includes a ``start_dashboard`` prompt:
-
-.. code-block:: text
-
-   start the dashboard in the matensemble_campaigns directory and provide me the command to ssh tunnel and port forward the dashboard to localhost.
-
 Dashboard
 =========
 
@@ -106,7 +97,7 @@ to launch the dashboard. Simply ask the agent:
 
 .. code-block:: txt
 
-   Can you use the MatEnsemble MCP's prompt to launch the dashboard?
+   Can you use the MatEnsemble MCP server to launch the dashboard and give me the command to access it from localhost?
 
 The agent will launch the dashboard on the login node and provide the command for you to
 forward the port to localhost so that you can view your workflows.

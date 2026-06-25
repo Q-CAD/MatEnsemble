@@ -3,32 +3,23 @@ Tutorials
 =========
 
 These examples assume you already have a **Flux session** and the ``matensemble`` package importable in
-that environment (:doc:`installation`).
+that environment in order to run (:doc:`installation`).
 
-Example repositories
-====================
+Here we will go over what chores are and how to create them, how to build a workflow, and some capabilities
+that MatEnsemble gives you.
 
-Reference implementations live under ``example_workflows/`` in the `MatEnsemble GitHub repository
-<https://github.com/FredDude2004/MatEnsemble/tree/main/example_workflows>`__. Paths worth opening first:
+Minimal executable workflow
+===========================
 
-.. list-table::
-   :widths: 32 68
-   :header-rows: 1
+MatEnsemble is structured around :class:`~matensemble.chore.Chore`s which are units of work for MatEnsemble
+to manage the state and execution of. There are two types of :class:`~matensemble.chore.Chore`s PYTHON and
+EXECUTABLE. EXECUTABLE chores are the simpler of the two and can be created with the :class:`~matensemble.pipeline.Pipeline`
 
-   * - Example
-     - What it demonstrates
-   * - ``generic_flux/mpi/workflow.py``
-     - Demonstrates how to construct a portable :class:`~matensemble.pipeline.Pipeline` and create an MPI-enabled Python chore.
-   * - ``generic_flux/chores/workflow.py``
-     - Demonstrates how to create a portable dependency chain and submit it.
-   * - ``generic_flux/strategy/workflow.py``
-     - Demonstrates how to create a portable user-defined strategy and attach it to another chore.
-
-Minimal executable (“exec”) workflow
-====================================
+The Pipeline object will create a Directed Acyclic Graph (DAG) of these chore objects and once you submit
+the graph to the manager it will sort the graph topologically and start the execution loop.
 
 ``Pipeline.exec`` records a :class:`~matensemble.chore.Chore`.
-The command is either a string (split with :mod:`shlex`) or an argv list.
+The command is either a string or an argv list.
 
 .. code-block:: python
    :linenos:
@@ -41,7 +32,7 @@ The command is either a string (split with :mod:`shlex`) or an argv list.
 
    pipe.submit()
 
-Nothing runs until :meth:`~matensemble.pipeline.Pipeline.submit`, which builds the DAG (trivial here),
+Nothing runs until :meth:`~matensemble.pipeline.Pipeline.submit`, which builds the DAG,
 instantiates :class:`~matensemble.manager.FluxManager`, and enters the scheduling loop.
 
 Parameters you will commonly set on :meth:`~matensemble.pipeline.Pipeline.exec`:
@@ -51,18 +42,21 @@ Parameters you will commonly set on :meth:`~matensemble.pipeline.Pipeline.exec`:
 * ``mpi=True`` — toggles ``mpi=pmi2`` on the Flux jobspec; your program must initialize MPI accordingly.
 * ``env`` / ``inherit_env`` — see :doc:`reference`.
 
-**Dependencies:** Executable chores created through :meth:`~matensemble.pipeline.Pipeline.exec` **do not**
-inspect :class:`~matensemble.model.OutputReference` objects; they are always treated as roots unless you wrap
-external commands inside a Python chore.
+PYTHON Chores and ``OutputReference``
+=====================================
 
-Python chores and ``OutputReference`` dependencies
-==================================================
+The other type of chores that you can create with MatEnsemble are PYTHON chores. These are still a unit
+of work for MatEnsemble to manage the state and execution, but rather than a call to an external executable,
+PYTHON chores are delayed function calls. You can define your own python functions and add those as chores
+for the manager to handle.
 
-Decorated functions are **not** executed immediately. Each call appends a Python :class:`~matensemble.chore.Chore`
-and returns a :class:`~matensemble.model.OutputReference` placeholder.
+The :class:`~matensemble.pipeline.Pipeline` has a decorator function that you can use to register a function.
+When you instantiate a function it does NOT add any chores the the :class:`~matensemble.pipeline.Pipeline` yet.
+Decorated functions are **not** executed immediately. When you call a PYTHON :class:`~matensemble.chore.Chore`
+it returns a :class:`~matensemble.model.OutputReference` placeholder.
 
-Defining chores (importable module — **not** ``__main__``)
-----------------------------------------------------------
+Defining chores
+---------------
 
 .. code-block:: python
    :linenos:
@@ -75,6 +69,7 @@ Defining chores (importable module — **not** ``__main__``)
    pipe = Pipeline()
 
 
+   # Next we register a function to MatEnsemble
    @pipe.chore(num_tasks=10, cores_per_task=1, gpus_per_task=0, mpi=True)
    def mpi_hello_world():
        size = MPI.COMM_WORLD.Get_size()
@@ -84,18 +79,21 @@ Defining chores (importable module — **not** ``__main__``)
        print(f"Hello World! I am process {rank} of {size} on {name}.")
 
 
-   # Then we add the chore to the workflow 10 separate times
+   # Then we create 10 Chore objects by calling the registered function
    for _ in range(10):
        mpi_hello_world()
 
-   # in 10 separate MPI jobs being executed through the matensemble workflow
-   # runtime and scheduler backend.
-
-
+   # Submit the workflow with the logger refreshing every second
    pipe.submit(log_delay=1)
 
-Chained dependencies (any acyclic DAG)
-======================================
+Chaingin PYTHON Chores
+======================
+
+:class:`~matensemble.model.OutputReference`
+objects can be treated as the results of a PYTHON chore and passed to other calls to PYTHON chores. When you pass
+an :class:`~matensemble.model.OutputReference` to another chore call MatEnsemble will create an edge between those
+two chores and when you submit the workflow MatEnsemble will see the downstream PYTHON chore as a dependent and will
+ensure that these jobs are submitted in the correct order.
 
 .. code-block:: python
 
@@ -123,7 +121,7 @@ Chained dependencies (any acyclic DAG)
    pipe.submit()
 
 :class:`~matensemble.manager.FluxManager` only schedules ``chore2`` after ``chore1`` finishes, and ``chore3`` after
-``chore2`` finishes. Internally, the worker unpickles ``../chore1/result.pickle`` before invoking ``chore2``.
+``chore2`` finishes. Internally, the worker deserializes ``../chore1/result.pickle`` before invoking ``chore2``.
 
 .. note::
 
@@ -133,9 +131,92 @@ Chained dependencies (any acyclic DAG)
 User Defined Strategies
 =======================
 
+MatEnsemble uses the strategy design pattern for the processing of chore completions. There are two
+internal strategies that are shipped automatically. :class:`~matensemble.strategy.AdaptiveStrategy`
+and :class:`~matensemble.strategy.NonAdaptiveStrategy`. The :class:`~matensemble.strategy.AdaptiveStrategy`
+Users can also define their own strategies to be injected into the manager at runtime. MatEnsemble
+provides another decorator to do this.
+
+.. code-block:: python
+
+    from matensemble.model import Resources
+    from matensemble.pipeline import Pipeline
+    from matensemble.chore import ChoreSpec
+    import random
+
+    pipe = Pipeline()
+
+
+    # Define a chore to simply guess a number between an upper and lower limit.
+    # This could be some science case trying to fit some parameters, etc.
+    @pipe.chore()
+    def guess(lower: int, upper: int, guess_num: int = 1) -> dict:
+        """Guesses a number between the bottom and top of the range"""
+
+        return {
+            "guess": ((lower + upper) // 2),
+            "low": lower,
+            "high": upper,
+            "num_guesses": guess_num,
+        }
+
+    # I'm thinking of a number between {a} and {b}.
+    a, b = 1, 100
+    answer = random.randint(a, b)
+
+    @pipe.strategy(bolo_list=["guess"])
+    def higher_or_lower(guess_result):
+        """
+        Takes the results of a 'guess' chore and spawns a new guess chore based on
+        the results
+        """
+
+        if guess_result["guess"] == answer:
+            print(
+                f"Godd Job! I was thinking of {answer},",
+                f"and you got it in {guess_result['num_guesses']}",
+            )
+        elif guess_result["guess"] < answer:
+            return ChoreSpec(
+                args=(
+                    guess_result["guess"] + 1,
+                    guess_result["high"],
+                    guess_result["num_guesses"] + 1,
+                ),
+                kwargs=None,
+                resources=Resources(),
+                qualname="guess",
+            )
+        else:
+            return ChoreSpec(
+                args=(
+                    guess_result["low"],
+                    guess_result["guess"] - 1,
+                    guess_result["num_guesses"] + 1,
+                ),
+                kwargs=None,
+                resources=Resources(),
+                qualname="guess",
+            )
+
+    guess(a, b)
+    future = pipe.submit(log_delay=1)
+    print(future.result())
+
+
+The :meth:`~matensemble.pipline.Pipeline.strategy` can be thought of as adding a callback to a
+:class:`~matensemble.chore.Chore` But this function has access to the internal
+:class:`~matensemble.manager.FluxManager` queue. If this strategy function returns a
+:class:`~matensemble.chore.ChoreSpec` then it will be added to the matensemble queue at runtime.
+This lets you create workflows that expand dynamically.
+
+The BOLO_list is a list of chores that you are telling the manager to Be On the Look-Out for. If
+one of these chores completes then the manager will see it and say "HEY! You're a wanted criminal"
+and spawn your strategy passing the results of the completed chore that was in the BOLO list to the
+strategy as an argument.
+
 User-defined strategies can observe completed chores and dynamically add more work by returning
-:class:`~matensemble.chore.ChoreSpec` objects. See ``example_workflows/generic_flux/strategy/workflow.py``
-for a compact runnable example.
+:class:`~matensemble.chore.ChoreSpec` objects.
 
 Nested arguments
 ================
@@ -155,13 +236,6 @@ If you need extra wheels:
 * **Containers:** extend the provided image (Apptainer ``%post`` snippet with ``uv pip install …``,
   :doc:`installation`).
 * **Virtualenv on NFS:** install once into the environment shared by all nodes.
-
-Operational tips
-================
-
-* Start ``matensemble dashboard <campaign-root>`` and tunnel port ``8000`` if you want the browser UI (:doc:`design`).
-* Inspect ``matensemble_workflow.log`` for human-readable progress; parse ``status.json`` for machine consumption.
-* On failure, always read the chore’s ``stderr``—MatEnsemble annotates wrapper errors there.
 
 Further reading
 ===============

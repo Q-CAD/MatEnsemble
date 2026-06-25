@@ -69,9 +69,9 @@ chosen base directory (by default, the current working directory):
            └── <chore_id>/
                ├── stdout
                ├── stderr
-               ├── chore.pickle     # Pickled chore object
-               ├── metadata.json    # Metadata of the chore in JSON for debugging
-               └── result.pickle    # Python chore return value (pickle)
+               ├── chore.pickle     # pickled chore object
+               ├── metadata.json    # metadata of the chore in JSON for debugging
+               └── result.pickle    # python chore return value
 
 The string ``<base>`` is :meth:`pathlib.Path.cwd` unless you pass ``basedir=`` to :class:`~matensemble.pipeline.Pipeline`.
 The workflow folder name uses a compact timestamp.
