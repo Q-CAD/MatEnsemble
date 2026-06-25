@@ -62,6 +62,30 @@ def test_dashboard_access_command():
     assert result["local_url"] == "http://localhost:9000"
 
 
+def test_frontier_dashboard_access_expands_login_host(monkeypatch):
+    monkeypatch.setenv("USER", "kaleb")
+
+    result = dashboard.get_dashboard_access(
+        login_host="login04",
+        system="frontier",
+    )
+
+    assert result["ssh_target"] == "kaleb@login04.frontier.olcf.ornl.gov"
+    assert result["command_text"] == (
+        "ssh -N -L 8000:127.0.0.1:8000 "
+        "kaleb@login04.frontier.olcf.ornl.gov"
+    )
+
+
+def test_frontier_dashboard_access_defaults_to_current_login_node(monkeypatch):
+    monkeypatch.setenv("USER", "kaleb")
+    monkeypatch.setattr(dashboard.socket, "gethostname", lambda: "login04")
+
+    result = dashboard.get_dashboard_access(system="frontier")
+
+    assert result["ssh_target"] == "kaleb@login04.frontier.olcf.ornl.gov"
+
+
 def test_stop_dashboard_terminates_pid(monkeypatch, tmp_path: Path):
     campaign = tmp_path / "campaign"
     campaign.mkdir()

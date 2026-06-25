@@ -122,6 +122,11 @@ run_workflow() {
   cat >"$container_script" <<SCRIPT_EOF
 #!/usr/bin/env bash
 set -euo pipefail
+export MATENSEMBLE_GPU_RANGE="${gpu_range}"
+export MATENSEMBLE_CORES_PER_NODE="${MATENSEMBLE_CORES_PER_NODE:-64}"
+SCRIPT_EOF
+
+  cat >>"$container_script" <<'SCRIPT_EOF'
 python3 << 'PYEOF' > /tmp/R.json
 import json
 import socket
@@ -145,11 +150,12 @@ def expand_nodelist(s):
             nodes.append(part)
     return nodes
 
-ncores = os.cpu_count()
+ncores = int(os.environ.get("MATENSEMBLE_CORES_PER_NODE", "64"))
+gpu_range = os.environ["MATENSEMBLE_GPU_RANGE"]
 nodelist_str = os.environ.get("SLURM_JOB_NODELIST", socket.gethostname())
 nodes = expand_nodelist(nodelist_str)
 r_lite = [
-    {"rank": str(i), "children": {"core": f"0-{ncores-1}", "gpu": "${gpu_range}"}}
+    {"rank": str(i), "children": {"core": f"0-{ncores-1}", "gpu": gpu_range}}
     for i in range(len(nodes))
 ]
 r = {
@@ -171,6 +177,9 @@ path = "/tmp/R.json"
 noverify = true
 TOML
 
+SCRIPT_EOF
+
+  cat >>"$container_script" <<SCRIPT_EOF
 FLUX_CONF_DIR=/tmp/fluxcfg flux start ${flux_cmd_quoted}
 SCRIPT_EOF
 

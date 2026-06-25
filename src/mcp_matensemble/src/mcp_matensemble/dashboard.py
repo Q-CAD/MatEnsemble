@@ -9,6 +9,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+from . import context
+
 
 def launch_dashboard(
     campaign_root: str,
@@ -73,12 +75,13 @@ def get_dashboard_access(
     *,
     login_host: str | None = None,
     login_user: str | None = None,
+    system: str | None = None,
     remote_port: int = 8000,
     local_port: int = 8000,
 ) -> dict[str, Any]:
     remote_port = _validate_port(remote_port)
     local_port = _validate_port(local_port)
-    target = _ssh_target(login_host, login_user)
+    target = _ssh_target(login_host, login_user, system)
     command = [
         "ssh",
         "-N",
@@ -181,10 +184,36 @@ def _validate_host(value: str) -> str:
     return host
 
 
-def _ssh_target(login_host: str | None, login_user: str | None) -> str:
-    host = login_host.strip() if login_host else "<login.host>"
-    user = login_user.strip() if login_user else ""
+def _ssh_target(
+    login_host: str | None,
+    login_user: str | None,
+    system: str | None = None,
+) -> str:
+    host = _normalize_login_host(login_host, system)
+    user = login_user.strip() if login_user else _default_login_user(system)
     return f"{user}@{host}" if user else host
+
+
+def _normalize_login_host(login_host: str | None, system: str | None) -> str:
+    host = login_host.strip() if login_host else socket.gethostname()
+    if not host:
+        return "<login.host>"
+    if system is None:
+        return host
+
+    normalized_system = context.normalize_system(system)
+    if normalized_system == "frontier":
+        if "." not in host:
+            return f"{host}.frontier.olcf.ornl.gov"
+        if host.endswith(".frontier"):
+            return f"{host}.olcf.ornl.gov"
+    return host
+
+
+def _default_login_user(system: str | None) -> str:
+    if system is None:
+        return ""
+    return os.environ.get("USER") or os.environ.get("LOGNAME") or ""
 
 
 def _quote(command: list[str]) -> str:

@@ -109,6 +109,7 @@ def create_server(default_system: str) -> FastMCP:
         return dashboard_access(
             login_host=login_host,
             login_user=login_user,
+            system=system,
             remote_port=remote_port,
             local_port=local_port,
         )
