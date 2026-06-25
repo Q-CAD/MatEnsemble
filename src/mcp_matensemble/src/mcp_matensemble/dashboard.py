@@ -195,19 +195,27 @@ def _ssh_target(
 
 
 def _normalize_login_host(login_host: str | None, system: str | None) -> str:
-    host = login_host.strip() if login_host else socket.gethostname()
+    normalized_system = context.normalize_system(system) if system is not None else None
+    host = login_host.strip() if login_host else _default_login_host(normalized_system)
     if not host:
         return "<login.host>"
-    if system is None:
+    if normalized_system is None:
         return host
 
-    normalized_system = context.normalize_system(system)
     if normalized_system == "frontier":
         if "." not in host:
             return f"{host}.frontier.olcf.ornl.gov"
         if host.endswith(".frontier"):
             return f"{host}.olcf.ornl.gov"
     return host
+
+
+def _default_login_host(normalized_system: str | None) -> str:
+    if normalized_system == "perlmutter":
+        return "perlmutter.nersc.gov"
+    if normalized_system == "pathfinder":
+        return "pflogin.ornl.gov"
+    return socket.gethostname()
 
 
 def _default_login_user(system: str | None) -> str:

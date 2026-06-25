@@ -86,6 +86,22 @@ def test_frontier_dashboard_access_defaults_to_current_login_node(monkeypatch):
     assert result["ssh_target"] == "kaleb@login04.frontier.olcf.ornl.gov"
 
 
+def test_perlmutter_dashboard_access_uses_site_default(monkeypatch):
+    monkeypatch.setenv("USER", "kaleb")
+
+    result = dashboard.get_dashboard_access(system="perlmutter")
+
+    assert result["ssh_target"] == "kaleb@perlmutter.nersc.gov"
+
+
+def test_pathfinder_dashboard_access_uses_site_default(monkeypatch):
+    monkeypatch.setenv("USER", "dkd")
+
+    result = dashboard.get_dashboard_access(system="pathfinder")
+
+    assert result["ssh_target"] == "dkd@pflogin.ornl.gov"
+
+
 def test_stop_dashboard_terminates_pid(monkeypatch, tmp_path: Path):
     campaign = tmp_path / "campaign"
     campaign.mkdir()
