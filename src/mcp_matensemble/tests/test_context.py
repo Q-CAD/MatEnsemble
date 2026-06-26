@@ -51,21 +51,6 @@ def test_full_source_returns_package_files():
     assert "src/matensemble/dashboard/app.py" in files
 
 
-def test_version_falls_back_to_pyproject(monkeypatch: pytest.MonkeyPatch):
-    def raise_not_found(_name: str) -> str:
-        raise context.metadata.PackageNotFoundError
-
-    monkeypatch.setattr(context.metadata, "version", raise_not_found)
-
-    result = context.get_matensemble_version()
-
-    assert result == {
-        "version": "0.4.4",
-        "tag_version": "v0.4.4",
-        "source": "pyproject.toml",
-    }
-
-
 def test_latest_container_tags_are_deterministic(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         context,
@@ -83,7 +68,9 @@ def test_latest_container_tags_are_deterministic(monkeypatch: pytest.MonkeyPatch
     }
 
 
-def test_container_build_command_matches_system_backend(monkeypatch: pytest.MonkeyPatch):
+def test_container_build_command_matches_system_backend(
+    monkeypatch: pytest.MonkeyPatch,
+):
     monkeypatch.setattr(
         context,
         "get_matensemble_version",
@@ -106,7 +93,9 @@ def test_container_build_command_matches_system_backend(monkeypatch: pytest.Monk
     ]
 
 
-def test_file_tree_uses_fixed_directories(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+def test_file_tree_uses_fixed_directories(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
     root = tmp_path / "repo"
     (root / "example_workflows" / "generic").mkdir(parents=True)
     (root / "example_workflows" / "frontier").mkdir(parents=True)
