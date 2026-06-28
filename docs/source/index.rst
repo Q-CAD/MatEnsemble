@@ -19,6 +19,9 @@ Python driver process.
    tutorials
    design
    reference
+   team
+
+.. _api-reference:
 
 .. toctree::
    :maxdepth: 3

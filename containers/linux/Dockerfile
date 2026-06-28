@@ -74,4 +74,3 @@ RUN wget https://github.com/lammps/lammps/archive/refs/tags/stable_22Jul2025_upd
 
 RUN python -m pip install --no-cache-dir flux-python==0.70.0
 ENV LD_LIBRARY_PATH=/usr/local/lib:${LD_LIBRARY_PATH:-}
-

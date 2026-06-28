@@ -75,7 +75,8 @@ a Python chore if you need DAG edges.
     only drains futures.
 
 ``dynopro``
-    Reserved for whole-node dynopro workflows. General users should leave this ``False``.
+    Reserved flag threaded through to :meth:`~matensemble.manager.FluxManager.run` for whole-node dynopro
+    workflows. General users should leave this ``False``.
 
     .. warning::
 
@@ -151,3 +152,10 @@ Recorded in :meth:`~matensemble.manager.FluxManager._record_failure` entries:
 * ``exception`` — future completion raised (wrapper or process error surfaced as an exception).
 * ``nonzero_exit:<rc>`` — future returned a non-zero integer exit code.
 * ``dependency_failed`` — cascaded skip because an upstream chore failed.
+
+Redis helper (optional)
+-----------------------
+
+``matensemble.redis.service.RedisService`` can launch ``redis-server`` under ``flux run`` for streaming /
+timeseries-style workflows. It is **orthogonal** to :class:`~matensemble.pipeline.Pipeline` and is mainly
+used from dynamics/analysis integrations. There is no requirement to run Redis for basic DAG workflows.
