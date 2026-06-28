@@ -2,9 +2,9 @@
 Repository Examples
 ===================
 
-Examples live under ``example_workflows/``. The MCP server discovers and reads
-the files directly from ``example_workflows/<system>/`` at request time, so
-changes to those files are immediately reflected in MCP responses.
+MatEnsemble is designed to be intuitive so if you are already familiar with HPC and
+want to get from 0 to 60 as fast as possible then take a look at the example workflows
+that we have in the repository. There are explanations for anything that may be confusing.
 
 Example directories
 ===================
@@ -38,7 +38,6 @@ usable rank for MatEnsemble chores in local smoke tests. The dev container
 sets ``MATENSEMBLE_FLUX_START`` to ``flux start -s 2`` for this reason.
 
 MCP loading behavior
-====================
 
 ``get_examples(system)`` always returns the portable files under
 ``example_workflows/generic`` followed by every file under the matching system

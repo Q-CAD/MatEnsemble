@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import threading
 from typing import Any
 
 from pathlib import Path
@@ -17,7 +16,7 @@ def _dashboard_import_error() -> RuntimeError:
     return RuntimeError(
         "The MatEnsemble dashboard requires the optional dashboard dependencies. "
         "Install `starlette` and `uvicorn` in the runtime environment before "
-        "calling submit(dashboard=True)."
+        "running `matensemble dashboard`."
     )
 
 
@@ -134,77 +133,95 @@ def _resolve_output_references(value, dep_results):
     return value
 
 
-def setup_dashboard(status_file: str) -> None:
-    app = create_app(status_file)
-    try:
-        import uvicorn
-    except ImportError as exc:
-        raise _dashboard_import_error() from exc
-
-    thread = threading.Thread(
-        target=uvicorn.run,
-        args=(app,),
-        kwargs={"host": "0.0.0.0", "port": 8000, "log_level": "warning"},
-        daemon=True,
-    )
-
-    thread.start()
-
-
 def create_app(status_file: str) -> Any:
     """
-    Create the web app that will run the server which serves the status
-    dashboard that users can view on port 8000. Since the workflows will be
-    done on a cluster the user will need to ssh tunnel into the allocation
-    and port forward port 8000 to their local machine in order to view the server
+    Create the web app that serves a single workflow status file.
+
+    This helper is retained for tests and legacy single-workflow compatibility.
+    The supported user-facing dashboard entrypoint is the ``matensemble
+    dashboard`` CLI, which serves a campaign directory and can be launched on a
+    login node.
 
     Example
     -------
     .. code-block:: bash
 
-        # After launching the chore with dashboard=True note the node and run this command
-        ssh -L 8000:frontier00206:8000 kaleb@frontier.olcf.ornl.gov
-
-
+        matensemble dashboard /path/to/matensemble_campaign --host 127.0.0.1 --port 8000
+        ssh -N -L 8000:127.0.0.1:8000 <user>@<login.host>
     """
+    status_path = Path(status_file)
+    from matensemble.dashboard import WorkflowCatalog, create_dashboard_app
+
+    relative = status_path.parent.name
+    if not relative.startswith("matensemble_workflow-"):
+        return _create_legacy_fallback_app(status_path)
+    root = status_path.parent.parent
+    catalog = WorkflowCatalog(root)
+    catalog.refresh()
+    identifier = next(
+        (
+            item["id"]
+            for item in catalog.catalog()["workflows"]
+            if (root / item["relative_path"]) == status_path.parent
+        ),
+        None,
+    )
+    if identifier is None:
+        return _create_legacy_fallback_app(status_path)
+    return create_dashboard_app(
+        root,
+        compatibility_workflow_id=identifier,
+    )
+
+
+def _create_legacy_fallback_app(status_path: Path) -> Any:
+    """Serve old single-workflow routes for non-stamped legacy directories."""
     try:
         from starlette.applications import Starlette
-        from starlette.middleware.cors import CORSMiddleware
-        from starlette.responses import JSONResponse
-        from starlette.routing import Mount, Route
-        from starlette.staticfiles import StaticFiles
+        from starlette.responses import FileResponse, JSONResponse
+        from starlette.routing import Route
     except ImportError as exc:
         raise _dashboard_import_error() from exc
 
-    status_path = Path(status_file)
-
     async def get_status(_request):
+        from matensemble.logger import normalize_status_payload, read_status
+
         try:
-            payload = json.loads(status_path.read_text())
+            return JSONResponse(read_status(status_path))
         except FileNotFoundError:
-            payload = {
-                "pending": 0,
-                "running": 0,
-                "completed": 0,
-                "failed": 0,
-                "freeCores": 0,
-                "freeGpus": 0,
-            }
+            return JSONResponse(
+                normalize_status_payload(
+                    {"state": "initializing"}, status_path=status_path
+                )
+            )
+
+    async def get_history(_request):
+        from matensemble.logger import read_status, read_status_history
+
+        try:
+            payload = read_status_history(status_path, read_status(status_path))
+        except FileNotFoundError:
+            payload = []
         return JSONResponse(payload)
 
-    base_dir = Path(__file__).resolve().parent
-    dist_dir = base_dir / "dash"
-    app = Starlette(
+    async def get_stderr(request):
+        chore_id = request.path_params["chore_id"]
+        if (
+            not chore_id.startswith("chore-")
+            or "/" in chore_id
+            or "\\" in chore_id
+            or chore_id in {".", ".."}
+        ):
+            return JSONResponse({"error": "invalid chore id"}, status_code=400)
+        path = status_path.parent / "out" / chore_id / "stderr"
+        if not path.is_file():
+            return JSONResponse({"error": "stderr not found"}, status_code=404)
+        return FileResponse(path, media_type="text/plain")
+
+    return Starlette(
         routes=[
             Route("/api/status", get_status),
-            Mount("/", StaticFiles(directory=dist_dir, html=True), name="static"),
+            Route("/api/history", get_history),
+            Route("/api/artifacts/{chore_id:str}/stderr", get_stderr),
         ]
     )
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-
-    return app

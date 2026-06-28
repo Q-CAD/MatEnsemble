@@ -1,10 +1,7 @@
-"""MCP server helpers for MatEnsemble."""
+"""Small MCP server for MatEnsemble context."""
 
-from importlib.metadata import PackageNotFoundError, version
+from __future__ import annotations
 
 __all__ = ["__version__"]
 
-try:
-    __version__ = version("mcp-matensemble")
-except PackageNotFoundError:
-    __version__ = "0+unknown"
+__version__ = "0.4.4"

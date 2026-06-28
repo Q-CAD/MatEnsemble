@@ -23,6 +23,7 @@ def test_record_failure_is_idempotent():
     manager._record_failure("a", "x")
     manager._record_failure("a", "x")
     assert len(manager._failed_chores) == 1
+    assert manager._failed_chores[0]["exception"] is None
 
 
 def test_fail_dependents_marks_children():

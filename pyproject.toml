@@ -1,6 +1,6 @@
 [project]
 name = "matensemble"
-version = "0.4.3"
+version = "0.5.1"
 description = "An adaptive and highly asynchronous ensemble simulation workflow manager MatEnsemble (https://github.com/Q-CAD/MatEnsemble) built jointly on top of the hierarchical graph based scheduler FLUX and concurrent-futures infrastructure of python"
 readme = "README.md"
 license-files = ["LICENSE"]
@@ -24,6 +24,9 @@ dependencies = [
     "starlette>=1.0.0",
     "uvicorn>=0.42.0",
 ]
+
+[project.scripts]
+matensemble = "matensemble.cli:main"
 
 [project.optional-dependencies]
 flux = [

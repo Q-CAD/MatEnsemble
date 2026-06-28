@@ -58,7 +58,8 @@ chosen base directory (by default, the current working directory):
 
    <base>/
    └── matensemble_workflow-YYYYMMDD_HHMMSS/
-       ├── status.json              # atomically updated for the dashboard / monitoring
+       ├── status.json              # atomically updated workflow summary
+       ├── status_history.jsonl     # append-only dashboard history
        ├── matensemble_workflow.log # detailed text log from the ``matensemble`` logger
        └── out/
            ├── registry/            # pickled chore callables
@@ -68,9 +69,9 @@ chosen base directory (by default, the current working directory):
            └── <chore_id>/
                ├── stdout
                ├── stderr
-               ├── chore.pickle     # Pickled chore object
-               ├── metadata.json    # Metadata of the chore in JSON for debugging
-               └── result.pickle    # Python chore return value (pickle)
+               ├── chore.pickle     # pickled chore object
+               ├── metadata.json    # metadata of the chore in JSON for debugging
+               └── result.pickle    # python chore return value
 
 The string ``<base>`` is :meth:`pathlib.Path.cwd` unless you pass ``basedir=`` to :class:`~matensemble.pipeline.Pipeline`.
 The workflow folder name uses a compact timestamp.
@@ -140,12 +141,33 @@ failure list. Check per-chore ``stderr`` for the detailed MatEnsemble annotation
 Dashboard (optional)
 --------------------
 
-Pass ``dashboard=True`` to :meth:`~matensemble.pipeline.Pipeline.submit`. A Starlette + uvicorn thread
-serves static assets and ``GET /api/status`` on **port 8000**. On a cluster you typically **SSH tunnel**
-from your laptop to the compute node running the driver—for example:
+MatEnsemble writes dashboard-ready ``status.json`` and ``status_history.jsonl``
+files for every workflow. The dashboard server is launched separately from the
+workflow with the ``matensemble dashboard`` CLI. On HPC systems, the recommended
+remote viewing pattern is to start the dashboard on the **login node** and bind
+it to loopback only:
 
 .. code-block:: bash
 
-   ssh -L 8000:<nodelist>:8000 <user>@<login.host>
+   matensemble dashboard /path/to/matensemble_campaign --host 127.0.0.1 --port 8000
 
-Use the exact hostname of the node where your workflow process runs; the snippet above is only illustrative.
+Then, from your laptop, forward local port ``8000`` to the login node:
+
+.. code-block:: bash
+
+   ssh -N -L 8000:127.0.0.1:8000 <user>@<login.host>
+
+Open ``http://localhost:8000`` locally while the SSH command is running. This avoids exposing the
+dashboard on the cluster network and works because the login-node dashboard reads the workflow status
+files from the shared campaign directory.
+
+The MatEnsemble MCP server also exposes dashboard helpers:
+
+* ``launch_dashboard`` starts ``matensemble dashboard`` on the MCP server host.
+* ``get_dashboard_access`` returns the SSH tunnel command and local URL.
+* ``stop_dashboard`` stops a dashboard process started by the MCP server.
+
+The old ``Pipeline.submit(dashboard=True)`` in-allocation launch path has been
+removed. Keep workflow execution and dashboard process management separate; it
+is usually simpler and safer to serve the dashboard from the login node when the
+status files are on a shared filesystem.

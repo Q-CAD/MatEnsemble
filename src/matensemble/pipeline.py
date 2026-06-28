@@ -547,7 +547,6 @@ class Pipeline:
         adaptive: bool = True,
         dynopro: bool = False,
         processing_strategy: FutureProcessingStrategy | None = None,
-        dashboard: bool = False,
     ):
         """
         The actual submit under the API hood
@@ -605,7 +604,6 @@ class Pipeline:
                 adaptive=adaptive,
                 dynopro=dynopro,
                 processing_strategy=strat,
-                dashboard=dashboard,
             )
         except Exception as exc:
             with self._submission_state_lock:
@@ -641,7 +639,6 @@ class Pipeline:
         adaptive: bool = True,
         dynopro: bool = False,
         processing_strategy: FutureProcessingStrategy | None = None,
-        dashboard: bool = False,
     ) -> Future:
         """
         Submit the current number of chores. Builds the graph, sorts the graph, and
@@ -670,9 +667,6 @@ class Pipeline:
         processing_strategy : FutureProcessingStrategy
             The strategy that should be used to process the future objects as :obj:`Chore`'s
             complete.
-        dashboard : bool
-            Whether MatEnsemble will serve a GUI dashboard on port 8000
-            as the workflow runs. Defaults to False.
 
         Returns
         -------
@@ -708,7 +702,6 @@ class Pipeline:
             adaptive=adaptive,
             dynopro=dynopro,
             processing_strategy=processing_strategy,
-            dashboard=dashboard,
         )
         with self._submission_state_lock:
             self._submission_future = fut

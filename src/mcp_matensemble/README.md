@@ -1,59 +1,19 @@
-# MatEnsemble MCP Server
+# mcp-matensemble
 
-This package provides a Model Context Protocol server for MatEnsemble.
+Small MCP server for MatEnsemble agents.
 
-It is intentionally conservative:
-
-- exposes MatEnsemble API and example context to AI agents
-- generates campaign directories containing `workflow.py`, `LAUNCH.md`, and `manifest.json`
-- does not execute generated scripts or submit jobs
-
-Run locally with:
+The server intentionally exposes only MatEnsemble context, deterministic
+container tag/build guidance, example batch-script context, and dashboard
+lifecycle helpers. It does not create campaigns, submit jobs, cancel jobs,
+execute container setup, or add a separate safety/guardrail layer.
 
 ```bash
-uv run --package mcp-matensemble mcp-matensemble
+uv run --package mcp-matensemble mcp-matensemble --system frontier
 ```
 
-The primary tool is `create_campaign`.
+Useful additions:
 
-For development from any arbitrary workspace, point an MCP client at this package
-with an editable install while keeping the server working directory set to the
-research project folder:
-
-```json
-{
-  "servers": {
-    "matensemble": {
-      "type": "stdio",
-      "command": "uv",
-      "args": [
-        "run",
-        "--with-editable",
-        "/path/to/MatEnsemble/src/mcp_matensemble",
-        "mcp-matensemble"
-      ],
-      "cwd": "${workspaceFolder}"
-    }
-  }
-}
-```
-
-Useful tools:
-
-- `get_examples`
-- `get_container_build_info`
-- `get_api_overview`
-- `list_matensemble_examples`
-- `get_matensemble_example`
-- `list_matensemble_systems`
-- `get_matensemble_system`
-- `get_matensemble_environment_setup`
-- `get_matensemble_container_contents`
-- `get_matensemble_container_install`
-- `get_matensemble_version_info`
-- `plan_matensemble_container_setup`
-- `run_matensemble_container_setup`
-- `create_matensemble_campaign`
-
-`run_matensemble_container_setup` is dry-run by default. It returns the exact
-allowlisted command unless the caller explicitly passes `execute=true`.
+- `get_example_batch_scripts`: returns `submit.slurm` files from
+  `example_workflows/<system>/<workflow>/submit.slurm`.
+- `start_dashboard` prompt: asks the agent to start the dashboard in
+  `matensemble_campaigns` and provide the SSH tunnel command for localhost.
