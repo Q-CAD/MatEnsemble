@@ -7,10 +7,17 @@ build:
   jobs:
     pre_build:
       - python -m sphinx.ext.apidoc -o docs/source/api -f --separate --module-first src/matensemble src/matensemble/dynopro src/matensemble/redis
+    build:
+      html:
+        - uv run --group dev make -C docs html
+        - mkdir -p "$READTHEDOCS_OUTPUT/html"
+        - cp -R docs/build/html/. "$READTHEDOCS_OUTPUT/html/"
 
 python:
   install:
-    - requirements: docs/requirements.txt
+    - method: uv
+      command: pip
+      requirements: docs/requirements.txt
 
 sphinx:
   configuration: docs/source/conf.py

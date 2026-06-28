@@ -15,7 +15,6 @@ from matensemble.strategy import (
     FutureProcessingStrategy,
 )
 from matensemble.fluxlet import Fluxlet
-from matensemble.utils import setup_dashboard
 
 
 class FluxManager:
@@ -152,7 +151,7 @@ class FluxManager:
 
         self._write_restart_freq = write_restart_freq
 
-        # setup logging to be able to communicate with dashboard
+        # setup logging
         self._nnodes_on_allocation, self._cores_per_node, self._gpus_per_node = (
             self._get_allocation_info()
         )
@@ -196,11 +195,14 @@ class FluxManager:
         pending = len(self._ready) + len(self._blocked)
         self._status_writer.update(
             pending=pending,
+            ready=len(self._ready),
+            blocked=len(self._blocked),
             running=len(self._running_chores),
             completed=len(self._completed_chores),
             failed=len(self._failed_chores),
             free_cores=self._free_cores,
             free_gpus=self._free_gpus,
+            failures=self._failed_chores,
         )
 
         self._logger.info(
@@ -540,7 +542,6 @@ class FluxManager:
         adaptive: bool = True,
         dynopro: bool = False,
         processing_strategy: FutureProcessingStrategy | None = None,
-        dashboard: bool = False,
         restarting: bool = False,
     ) -> None:
         """
@@ -559,8 +560,6 @@ class FluxManager:
         dynopro : bool
             Currently does nothing because I couldn't figure out what it did
             to begin with.
-        dashboard : bool
-            Whether or not the dashboard should be started
         restarting : bool
             Whether :meth:`run` is being invoked for the first time or after a
             restart file has been loaded
@@ -578,10 +577,6 @@ class FluxManager:
             * AdaptiveStrategy if adaptive=True
             * NonAdaptiveStrategy otherwise
         """
-
-        if dashboard:
-            status_file = self._base_dir / "status.json"
-            setup_dashboard(str(status_file))
 
         if processing_strategy:
             proc_strat = processing_strategy

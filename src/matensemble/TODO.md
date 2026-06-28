@@ -88,8 +88,8 @@
 - [x] Write the Job objects specification to a file in their direcotry
 
 ## --- Status Dashboard ---
-- [x] Update the Pipeline.run() method to have a dashboard flag
-- [x] Add logic to launch the dashboard when the user runs the workflow
+- [x] Serve workflow status through the standalone `matensemble dashboard` command
+- [x] Remove the embedded `Pipeline.submit(dashboard=True)` launch path
 
 ## --- Science Example ---
 - [x] Test the science example that Soumendu provided
@@ -185,7 +185,6 @@
 - [x] Make the figure for the user defined strategies flow chart
 - [x] Fix dynopro resources updating
 - [x] Update the CLI tool to be more user friendly
-- [ ] Add a util function to turn the DAG into a photo
 
 ## --- Create first draft for JOSS ---
 - [x] Read some example papers
@@ -219,28 +218,64 @@
     - [x] ???
 - [x] Test the server locally
 - [x] Test the server on an HPC cluster
-- [ ] Create documentation for setting it up
+- [x] Create documentation for setting it up
 
 ## --- Frontier Dynopro Fix ---
-
 - [x] Fix the diff in Dynopro to use get_xrd_ovito()
 - [x] Patch MatEnsemble to ignore the double free error: 134 or 137 idk whichever one it is
 - [x] Update the Base image or retag the one that I used to build this john
 - [x] The double free is likely from symmetrix so forget fixing it
 - [x] Run the release script and do a PR
-- [ ] Make sure that the Pathfinder CLI tool works
+- [x] Make sure that the Pathfinder CLI tool works
+
+## --- Documentation ---
+- [x] Update documentation for installation of MCP server
+- [x] Update tools in MCP server
+- [x] Update the README to be minimal and link to the documentation
+- [x] Put curl command in README for ease of access
+- [ ] Place the MPI hello example in README
+- [ ] Exescale stuff???
 
 ## --- Demo ---
-- [ ] Video demonstrating the MCP server
+- [x] Fix MCP install to include codex config
+- [x] Add MCP tools to launch, tunnel to, and stop the dashboard
+- [x] Video demonstrating the MCP server
+- [x] Nice big fonts
+- [x] Dashboard connection
+- [x] Creation of the environment
 - [ ] DAG workflow based on active learning
-- [ ] Nice big fonts
-- [ ] Dashboard connection
-- [ ] Creation of the environment
 
+## --- Dynopro Upgrades ---
+- [ ] Add things into the MatEnsemble API to allow users to define the two subprocesses
+- [ ] Split the jobs between the ranks
+- [ ] Define them as chores
+
+## --- June 22nd, 2026 ---
+- [ ] Add a util function to turn the DAG into a photo
+- [ ] Update the Figures in JOSS paper to be much bigger.
+- [ ] Talk to Soumendu about using adaptive workflow with codex:
+
+```python
+import subprocess
+import json
+
+# Request JSON output via prompt or flags
+command = ['codex', 'exec', '--json-experimental', 'Analyze my repository and count Python files. Return a JSON block.']
+result = subprocess.run(command, capture_output=True, text=True)
+
+# Parse the returned string into a standard Python dictionary
+try:
+    data = json.loads(result.stdout)
+    print(data["python_files_count"])
+except json.JSONDecodeError:
+    print("Failed to parse agent response as JSON")
+```
+
+This would be how he could use the agents with MatEnsemble to launch more chores
 
 ## --- Reading List ---
-- [ ] [Agentic Orchestration of HPC Applications](https://vsoch.github.io/assets/posts/agentic-orchestration-hpc-workloads-cloud-sochat-milroy.pdf)
 - [x] [Container Training Slides](https://drive.google.com/drive/folders/1_mTBBc98TEX3XFpNp0rqoqj1VjN9TKoO)
-- [ ] [Containers as Jupyter Kernels](https://docs.nersc.gov/services/jupyter/how-to-guides/#how-to-use-a-container-to-run-a-jupyter-kernel)
+- [x] [Containers as Jupyter Kernels](https://docs.nersc.gov/services/jupyter/how-to-guides/#how-to-use-a-container-to-run-a-jupyter-kernel)
+- [x] [Using uv to package lammps and flux into pip install???](https://sgoel.dev/posts/building-cython-or-c-extensions-using-uv/)
+- [ ] [Agentic Orchestration of HPC Applications](https://vsoch.github.io/assets/posts/agentic-orchestration-hpc-workloads-cloud-sochat-milroy.pdf)
 - [ ] [Using SPIN to Run Persistent Containers](https://docs.nersc.gov/services/spin/)
-- [ ] [Using uv to package lammps and flux into pip install???](https://sgoel.dev/posts/building-cython-or-c-extensions-using-uv/)

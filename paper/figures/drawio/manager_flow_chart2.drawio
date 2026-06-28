@@ -1,0 +1,28 @@
+<mxfile host="app.diagrams.net">
+  <diagram id="9gWMWUEGrmlhJQuv2-K5" name="Page-1">
+    <mxGraphModel dx="468" dy="649" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="Xm6w6Qa1p77yD8WPmoOz-5" connectable="0" parent="1" style="group" value="" vertex="1">
+          <mxGeometry height="80" width="200" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="Xm6w6Qa1p77yD8WPmoOz-4" parent="Xm6w6Qa1p77yD8WPmoOz-5" style="ellipse;whiteSpace=wrap;html=1;" value="" vertex="1">
+          <mxGeometry height="80" width="200" as="geometry" />
+        </mxCell>
+        <mxCell id="Xm6w6Qa1p77yD8WPmoOz-3" parent="Xm6w6Qa1p77yD8WPmoOz-5" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="&lt;font face=&quot;JetBrains Mono&quot; style=&quot;font-size: 14px;&quot;&gt;Fluxmanager.run()&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="100" x="50" y="25" as="geometry" />
+        </mxCell>
+        <mxCell id="Xm6w6Qa1p77yD8WPmoOz-7" parent="1" style="rhombus;whiteSpace=wrap;html=1;" value="&lt;font face=&quot;JetBrains Mono&quot; style=&quot;font-size: 14px;&quot;&gt;Restarting?&lt;/font&gt;" vertex="1">
+          <mxGeometry height="120" width="120" x="240" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="Xm6w6Qa1p77yD8WPmoOz-8" parent="1" style="rounded=0;whiteSpace=wrap;html=1;align=left;" value="&lt;ul&gt;&lt;li&gt;&lt;font face=&quot;JetBrains Mono&quot;&gt;Setup flux broker&lt;/font&gt;&lt;/li&gt;&lt;li&gt;&lt;font face=&quot;JetBrains Mono&quot;&gt;Setup flux executor&lt;/font&gt;&lt;/li&gt;&lt;li&gt;&lt;font face=&quot;JetBrains Mono&quot;&gt;Refresh CPUs/GPUs&lt;/font&gt;&lt;/li&gt;&lt;li&gt;&lt;font face=&quot;JetBrains Mono&quot;&gt;Start Logge&lt;/font&gt;&lt;/li&gt;&lt;/ul&gt;" vertex="1">
+          <mxGeometry height="80" width="190" x="400" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="Xm6w6Qa1p77yD8WPmoOz-9" parent="1" style="ellipse;whiteSpace=wrap;html=1;aspect=fixed;" value="&lt;font face=&quot;JetBrains Mono&quot;&gt;Loop Start&lt;/font&gt;" vertex="1">
+          <mxGeometry height="100" width="100" x="420" y="260" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -39,7 +39,6 @@ class EnsembleDynamicsRunner:
         adaptive=False,
         nnodes=None,
         gpus_per_node=None,
-        dashboard=False,
     ):
         self.sim_list = sim_list
         self.sim_args_list = sim_args_list
@@ -53,7 +52,6 @@ class EnsembleDynamicsRunner:
         self.buffer_time = buffer_time
         self.adaptive = adaptive
         self.sim_command = "python -m matensemble.dynopro.driver"
-        self.dashboard = dashboard
 
     def build_dynopro_chores(
         self,
@@ -118,5 +116,4 @@ class EnsembleDynamicsRunner:
             buffer_time=self.buffer_time,
             adaptive=self.adaptive,
             dynopro=True,
-            dashboard=self.dashboard,
         )

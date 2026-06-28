@@ -120,11 +120,9 @@ Internally, MatEnsemble transforms workflows such as this into a DAG of chores, 
 
 MatEnsemble separates workflow definition, scheduling, and execution into distinct components. Users construct workflows through the Pipeline API, which records delayed chores and dependency relationships. During submission, the workflow is validated, serialized, and handed to a FluxManager instance that coordinates execution through Flux.
 
-![Workflow Lifecycle](./figures/workflow_life_cycle.drawio.svg)
+![Workflow Lifecycle](./figures/workflow_lifecycle2.drawio.svg){width=100%}
 
 MatEnsemble’s architecture is centered on a separation between workflow definition, scheduling, and execution. The user process constructs a graph of delayed chores through the `Pipeline` API, while `FluxManager` owns runtime state such as blocked, ready, running, completed, and failed chore sets. Individual chores are submitted through Flux as independent jobs. For Python chores, this separation creates a reconstruction problem. Callables defined in the user’s Python process are not available by memory reference inside a fresh worker process launched by Flux.
-
-![Problem with Python Callables and Flux](./figures/flux_problem_chart.drawio.svg)
 
 MatEnsemble solves this by creating a registry where functions are serialized and stored by value. Each call to one of these registered functions then creates a specification that is placed into the output directory of the respective chore. MatEnsemble is then able to submit an internal module, `matensemble.runtime_worker`, as a Flux job which will reload the chore, resolve dependency outputs, execute the callable, and write a result artifact for downstream chores.
 
@@ -133,33 +131,34 @@ During workflow construction, `matensemble.pipeline.Pipeline.chore` records Pyth
 At runtime, MatEnsemble creates a dedicated directory for each chore to store outputs, logs, metadata, and results. The chore object itself is also serialized to allow the arguments to a function call be any python object rather than restricting it to JSON serializable objects. When the workflow is launched, a workflow directory is created that contains all of the files needed to execute, monitor, and debug the workflow.
 
 ```
-   <basedir or cwd>/
-   └── matensemble_workflow-YYYYMMDD_HHMMSS/
-       ├── status.json              # Atomically updated for the dashboard / monitoring
-       ├── matensemble_workflow.log # Detailed text log from the logger
-       └── out/
-           ├── registry/            # Pickled chore callables
-           │   ├── func_qualname_1
-           │   ├── ...
-           │   └── func_qualname_n
-           ├── <chore_id_1>/
-           │   ├── stdout
-           │   ├── stderr
-           │   ├── metadata.json    # Metadata of the chore in JSON for debugging
-           │   ├── chore.pickle     # Pickled chore object
-           │   └── result.pickle    # Python chore return value
-           ├── ...
-           └── <chore_id_n>/
-               └── ...
+<basedir>/
+└── matensemble_workflow-YYYYMMDD_HHMMSS/
+   ├── status.json              # updated for dashboard/monitoring
+   ├── status_history.jsonl     # updated for dashboard/monitoring
+   ├── matensemble_workflow.log # workflow log file
+   └── out/
+       ├── registry/            # serialized chore callables
+       │   ├── func_qualname_1
+       │   ├── ...
+       │   └── func_qualname_n
+       ├── <chore_id_1>/
+       │   ├── stdout
+       │   ├── stderr
+       │   ├── metadata.json    # chore metadata for debugging
+       │   ├── chore.pickle     # serialized chore object
+       │   └── result.pickle    # serialized chore return value
+       ├── ...
+       └── <chore_id_n>/
+           └── ...
 ```
 
 At runtime, `FluxManager` owns the ready, blocked, running, completed, and failed chore sets. The manager continuously monitors resource availability, submits ready chores that fit within the allocation, processes completed tasks, updates dependency information, and unblocks newly eligible work. This scheduling loop continues until no ready, running, or blocked chores remain.
 
-![Manager Loop](./figures/manager_flow_chart.drawio.svg)
+![Manager Loop](./figures/manager_flow_chart2.drawio.svg){width=100%}
 
 The scheduler uses the *strategy pattern* to separate completion handling logic from the core scheduling loop. A strategy determines how completed chores are processed and how newly available work is admitted into the workflow.
 
-![Strategy Pattern](./figures/strategy_pattern_chart.drawio.svg)
+![Strategy Pattern](./figures/strategy_pattern_chart2.drawio.svg){width=100%}
 
 The default adaptive strategy attempts to submit newly unblocked chores immediately as resources become available, helping maintain high utilization within a running allocation. The non-adaptive strategy provides a simpler wave-based execution model in which newly eligible chores are submitted during the next scheduling cycle.
 
@@ -181,21 +180,18 @@ def guess(lower: int, upper: int, guess_num: int = 1) -> dict:
         "num_guesses": guess_num,
     }
 
-
 answer = random.randint(1, 100)
-bolo_list = ["guess"]
 
+@pipe.strategy(bolo_list=["guess"])
+def higher_or_lower(guess_result):
 
-@pipe.strategy(bolo_list=bolo_list)
-def higher_or_lower(guess_result, ans=answer):
-
-    if guess_result["guess"] == ans:
+    if guess_result["guess"] == answer:
         print(
-            f"Good Job! I was thinking of {ans}, "
+            f"Good Job! I was thinking of {answer}, "
             f"and you got it in {guess_result['num_guesses']}"
         )
 
-    elif guess_result["guess"] < ans:
+    elif guess_result["guess"] < answer:
         return ChoreSpec(
             args=(
                 guess_result["guess"] + 1,

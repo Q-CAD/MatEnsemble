@@ -1,0 +1,430 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!DOCTYPE article PUBLIC "-//NLM//DTD JATS (Z39.96) Journal Publishing DTD v1.2 20190208//EN"
+                  "JATS-publishing1.dtd">
+<article xmlns:mml="http://www.w3.org/1998/Math/MathML" xmlns:xlink="http://www.w3.org/1999/xlink" dtd-version="1.2" article-type="other">
+<front>
+<journal-meta>
+<journal-id></journal-id>
+<journal-title-group>
+<journal-title>Journal of Open Source Software</journal-title>
+<abbrev-journal-title>JOSS</abbrev-journal-title>
+</journal-title-group>
+<issn publication-format="electronic">2475-9066</issn>
+<publisher>
+<publisher-name>Open Journals</publisher-name>
+</publisher>
+</journal-meta>
+<article-meta>
+<article-id pub-id-type="publisher-id">0</article-id>
+<article-id pub-id-type="doi">N/A</article-id>
+<title-group>
+<article-title>MatEnsemble: A Flux-native Python workflow manager for
+adaptive high-throughput computing on HPC systems</article-title>
+</title-group>
+<contrib-group>
+<contrib contrib-type="author">
+<contrib-id contrib-id-type="orcid">https://orcid.org/0000-0002-0391-9835</contrib-id>
+<name>
+<surname>Bagchi</surname>
+<given-names>Soumendu</given-names>
+</name>
+<xref ref-type="aff" rid="aff-1"/>
+</contrib>
+<contrib contrib-type="author">
+<contrib-id contrib-id-type="orcid">https://orcid.org/0009-0004-4387-686X</contrib-id>
+<name>
+<surname>Duchesneau</surname>
+<given-names>Kaleb</given-names>
+</name>
+<xref ref-type="aff" rid="aff-2"/>
+</contrib>
+<aff id="aff-1">
+<institution-wrap>
+<institution>Theory and Computation Section, Center for Nanophase
+Materials Sciences, Oak Ridge National Laboratory, Oak Ridge, TN 37831,
+USA</institution>
+</institution-wrap>
+</aff>
+<aff id="aff-2">
+<institution-wrap>
+<institution>Department of Computer Science, College of Engineering and
+Sciences, Purdue University Northwest, Hammond, IN 46323,
+USA</institution>
+</institution-wrap>
+</aff>
+</contrib-group>
+<pub-date date-type="pub" publication-format="electronic" iso-8601-date="2026-05-25">
+<day>25</day>
+<month>5</month>
+<year>2026</year>
+</pub-date>
+<volume>¿VOL?</volume>
+<issue>¿ISSUE?</issue>
+<fpage>¿PAGE?</fpage>
+<permissions>
+<copyright-statement>Authors of papers retain copyright and release the
+work under a Creative Commons Attribution 4.0 International License (CC
+BY 4.0)</copyright-statement>
+<copyright-year>1970</copyright-year>
+<copyright-holder>The article authors</copyright-holder>
+<license license-type="open-access" xlink:href="https://creativecommons.org/licenses/by/4.0/">
+<license-p>Authors of papers retain copyright and release the work under
+a Creative Commons Attribution 4.0 International License (CC BY
+4.0)</license-p>
+</license>
+</permissions>
+<kwd-group kwd-group-type="author">
+<kwd>Python</kwd>
+<kwd>high-performance computing</kwd>
+<kwd>high-throughput computing</kwd>
+<kwd>workflow management</kwd>
+<kwd>Flux</kwd>
+<kwd>ensemble simulation</kwd>
+<kwd>materials science</kwd>
+</kwd-group>
+</article-meta>
+</front>
+<body>
+<sec id="summary">
+  <title>Summary</title>
+  <p>MatEnsemble is a Python package for defining and running
+  high-throughput workflows on High-Performance Computing (HPC) systems.
+  Users construct a Directed Acyclic Graph (DAG) of
+  <italic>chores</italic>, where each chore is either a delayed python
+  function call or an executable command, each with explicit resource
+  requirements. MatEnsemble submits these chores through the Flux
+  resource manager, tracks completion, resolves dependencies through
+  serialized results, and records workflow state in a structured layout.
+  The package is designed for…</p>
+  <p>where launching one batch job per task would create excessive
+  scheduler overhead or leave resources idle.</p>
+</sec>
+<sec id="statement-of-need">
+  <title>Statement of need</title>
+  <p>Modern materials science workloads increasingly consist of large
+  ensembles of related simulations rather than a single monolithic
+  calculation. Examples include</p>
+  <p>These workloads may require thousands or even millions of
+  relatively small tasks whose execution patterns are difficult to
+  express efficiently using traditional batch schedulers.</p>
+  <p>Submitting large numbers of short-lived jobs directly to a system
+  scheduler such as SLURM can create significant scheduling overhead,
+  increase queue wait times, and place unnecessary load on shared
+  scheduling infrastructure. For this reason some systems restrict the
+  number of invocations of certain commands to reduce the strain that
+  could be placed on the scheduler. On the other hand, grouping work
+  into batches within a single allocation often leads to poor
+  utilization, as fast-running tasks complete early and leave resources
+  idle while longer-running tasks continue to execute. Researchers need
+  a mechanism that can efficiently manage large collections of
+  heterogeneous tasks while maintaining high utilization of expensive
+  HPC resources.</p>
+  <p>MatEnsemble addresses these challenges by combining a Python-native
+  workflow interface with the Flux resource manager. Rather than
+  submitting thousands of independent scheduler jobs, users acquire a
+  single allocation and allow MatEnsemble to manage task execution
+  within a user-space Flux instance. This hierarchical scheduling model
+  dramatically reduces scheduler overhead while enabling fine-grained
+  control over task placement and execution. MatEnsemble continuously
+  monitors available resources and adaptively backfills newly eligible
+  tasks as running work completes, maintaining high utilization even
+  when task runtimes vary significantly.</p>
+  <fig>
+    <caption><p>Adaptive Workflow Management</p></caption>
+    <graphic mimetype="image" mime-subtype="png" xlink:href="./figures/chain_v_adaptive_scheduling.png" />
+  </fig>
+  <p>Workflows may consist of Python functions, MPI applications, shell
+  commands, or combinations thereof. For example, a user may define an
+  MPI-enabled chore that launches multiple ranks through Flux while
+  still participating in the same dependency-aware workflow:</p>
+  <code language="python">from matensemble.pipeline import Pipeline
+from mpi4py import MPI
+
+pipe = Pipeline()
+
+@pipe.chore(num_tasks=10, cores_per_task=1, mpi=True)
+def mpi_helloworld():
+    size = MPI.COMM_WORLD.Get_size()
+    rank = MPI.COMM_WORLD.Get_rank()
+    name = MPI.Get_processor_name()
+
+    print(f&quot;Hello World! I am process {rank} of {size} on {name}.&quot;)
+
+for _ in range(10):
+    mpi_helloworld()
+
+pipe.submit()</code>
+  <p>Each invocation becomes an independent Flux job while remaining
+  under the control of the workflow manager and sharing the same
+  allocation.</p>
+  <p>Unlike many existing scientific workflow systems that rely on
+  external databases, centralized services, or privileged scheduler
+  interactions, MatEnsemble is designed as a lightweight Python library
+  that operates entirely within the user’s allocation. Workflows are
+  expressed as DAG of Python callables or executable tasks, with
+  declarative resource requirements attached to each task. The framework
+  leverages Flux’s scalable user-space scheduling architecture while
+  exposing a familiar Python programming model for workflow construction
+  and execution.</p>
+  <p>A distinguishing feature of MatEnsemble is its support for
+  user-defined scheduling strategies. In addition to the built-in
+  adaptive scheduler, users may inject custom workflow logic capable of
+  dynamically generating new tasks during execution based on
+  intermediate results. This enables the construction of dynamically
+  expanding scientific workflows and active-learning loops.</p>
+  <p>The target users are computational scientists and HPC developers
+  who need to compose ensembles of Python functions, MPI programs, shell
+  commands, and analysis steps without writing a custom scheduler. The
+  package also targets research software developers who want a
+  lightweight execution layer for Flux-enabled systems while retaining
+  human readable files for debugging and reproducibility. </p>
+</sec>
+<sec id="state-of-the-field">
+  <title>State of the field</title>
+  <p>Several mature Python workflow systems already support scientific
+  task graphs. Parsl provides a broad parallel scripting model for
+  Python functions and external applications across local, cluster,
+  cloud, and grid resources. Jobflow provides a Pythonic decorator-based
+  workflow model aimed at high-throughput computational workflows, with
+  strong adoption in materials science. libEnsemble focuses on dynamic
+  ensembles using a generator-simulator-allocator model, particularly
+  for adaptive sampling and optimization campaigns. These systems
+  demonstrate the value of Python-native workflows for computational
+  science, and MatEnsemble is complementary rather than a
+  replacement.</p>
+</sec>
+<sec id="example-workflow">
+  <title>Example workflow</title>
+  <p>The primary user interface in MatEnsemble is the
+  <monospace>Pipeline</monospace> object. Python functions decorated
+  with <monospace>@matensemble.pipeline.Pipeline.chore()</monospace>
+  become delayed function calls that return
+  <monospace>OutputReference</monospace> objects rather than executing
+  immediately. These references can be passed into later chores,
+  allowing MatEnsemble to infer dependencies automatically and construct
+  a DAG. The example below computes the factorial of 100 and then
+  computes the digit sum of the resulting value. The dependency between
+  the two chores is inferred from the
+  <monospace>OutputReference</monospace> returned by the first call.</p>
+  <code language="python">from matensemble.pipeline import Pipeline
+
+pipe = Pipeline()
+
+@pipe.chore()
+def factorial(n):
+    result = 1
+    for i in range(2, n + 1):
+        result *= i
+    return result
+
+@pipe.chore()
+def digit_sum(n):
+    return sum(int(x) for x in str(n))
+
+a = factorial(100)
+b = digit_sum(a)
+
+pipe.submit()</code>
+  <p>Internally, MatEnsemble transforms workflows such as this into a
+  DAG of chores, validates dependencies, serializes the workflow state,
+  and executes eligible tasks through Flux as resources become
+  available.</p>
+</sec>
+<sec id="software-design">
+  <title>Software design</title>
+  <p>MatEnsemble separates workflow definition, scheduling, and
+  execution into distinct components. Users construct workflows through
+  the Pipeline API, which records delayed chores and dependency
+  relationships. During submission, the workflow is validated,
+  serialized, and handed to a FluxManager instance that coordinates
+  execution through Flux.</p>
+  <fig>
+    <caption><p>Workflow Lifecycle</p></caption>
+    <graphic mimetype="image" mime-subtype="svg+xml" xlink:href="./figures/workflow_lifecycle2.drawio.svg" />
+  </fig>
+  <p>MatEnsemble’s architecture is centered on a separation between
+  workflow definition, scheduling, and execution. The user process
+  constructs a graph of delayed chores through the
+  <monospace>Pipeline</monospace> API, while
+  <monospace>FluxManager</monospace> owns runtime state such as blocked,
+  ready, running, completed, and failed chore sets. Individual chores
+  are submitted through Flux as independent jobs. For Python chores,
+  this separation creates a reconstruction problem. Callables defined in
+  the user’s Python process are not available by memory reference inside
+  a fresh worker process launched by Flux.</p>
+  <p>MatEnsemble solves this by creating a registry where functions are
+  serialized and stored by value. Each call to one of these registered
+  functions then creates a specification that is placed into the output
+  directory of the respective chore. MatEnsemble is then able to submit
+  an internal module, <monospace>matensemble.runtime_worker</monospace>,
+  as a Flux job which will reload the chore, resolve dependency outputs,
+  execute the callable, and write a result artifact for downstream
+  chores.</p>
+  <p>During workflow construction,
+  <monospace>matensemble.pipeline.Pipeline.chore</monospace> records
+  Python function calls and
+  <monospace>matensemble.pipeline.Pipeline.exec</monospace> records
+  executable commands. When one chore uses the output of another,
+  MatEnsemble automatically detects this relationship and creates a
+  dependency link between the two chores. Before execution begins,
+  MatEnsemble builds a DAG representing the workflow, verifies that all
+  dependencies are valid, and topologically sorts the graph to determine
+  the correct execution order.</p>
+  <p>At runtime, MatEnsemble creates a dedicated directory for each
+  chore to store outputs, logs, metadata, and results. The chore object
+  itself is also serialized to allow the arguments to a function call be
+  any python object rather than restricting it to JSON serializable
+  objects. When the workflow is launched, a workflow directory is
+  created that contains all of the files needed to execute, monitor, and
+  debug the workflow.</p>
+  <preformat>&lt;basedir&gt;/
+└── matensemble_workflow-YYYYMMDD_HHMMSS/
+   ├── status.json              # updated for dashboard/monitoring
+   ├── status_history.jsonl     # updated for dashboard/monitoring
+   ├── matensemble_workflow.log # workflow log file
+   └── out/
+       ├── registry/            # serialized chore callables
+       │   ├── func_qualname_1
+       │   ├── ...
+       │   └── func_qualname_n
+       ├── &lt;chore_id_1&gt;/
+       │   ├── stdout
+       │   ├── stderr
+       │   ├── metadata.json    # chore metadata for debugging
+       │   ├── chore.pickle     # serialized chore object
+       │   └── result.pickle    # serialized chore return value
+       ├── ...
+       └── &lt;chore_id_n&gt;/
+           └── ...</preformat>
+  <p>At runtime, <monospace>FluxManager</monospace> owns the ready,
+  blocked, running, completed, and failed chore sets. The manager
+  continuously monitors resource availability, submits ready chores that
+  fit within the allocation, processes completed tasks, updates
+  dependency information, and unblocks newly eligible work. This
+  scheduling loop continues until no ready, running, or blocked chores
+  remain.</p>
+  <fig>
+    <caption><p>Manager Loop</p></caption>
+    <graphic mimetype="image" mime-subtype="svg+xml" xlink:href="./figures/manager_flow_chart2.drawio.svg" />
+  </fig>
+  <p>The scheduler uses the <italic>strategy pattern</italic> to
+  separate completion handling logic from the core scheduling loop. A
+  strategy determines how completed chores are processed and how newly
+  available work is admitted into the workflow.</p>
+  <fig>
+    <caption><p>Strategy Pattern</p></caption>
+    <graphic mimetype="image" mime-subtype="svg+xml" xlink:href="./figures/strategy_pattern_chart2.drawio.svg" />
+  </fig>
+  <p>The default adaptive strategy attempts to submit newly unblocked
+  chores immediately as resources become available, helping maintain
+  high utilization within a running allocation. The non-adaptive
+  strategy provides a simpler wave-based execution model in which newly
+  eligible chores are submitted during the next scheduling cycle.</p>
+  <p>MatEnsemble also supports user-defined strategies. These strategies
+  can inspect the results of completed Python chores and dynamically
+  generate additional work during execution. This capability enables
+  adaptive parameter searches, active-learning workflows, iterative
+  optimization campaigns, and other data-driven scientific applications
+  where the total amount of work is not known in advance.</p>
+  <sec id="dynamic-workflow-expansion">
+    <title>Dynamic workflow expansion</title>
+    <p>User-defined strategies allow workflows to expand dynamically
+    during runtime. A strategy may inspect the result of a completed
+    chore and return a
+    <monospace>matensemble.chore.ChoreSpec</monospace> describing new
+    work to be added to the workflow. The new chore is validated,
+    inserted into the dependency graph, and scheduled like any other
+    task.</p>
+    <p>The example below implements a simple binary search. Each
+    completed <monospace>guess</monospace> chore produces a result that
+    is examined by a user-defined strategy. To attach chores to a
+    strategy by adding their name to the
+    <monospace>BOLO List</monospace>. This will tell the manager to Be
+    On the Look-Out (BOLO) for this chore, if it sees it then it will
+    spawn the strategy and pass the results from the chore to the
+    strategy. Based on that result, the strategy generates another
+    <monospace>guess</monospace> chore until the target value is
+    found.</p>
+    <code language="python">@pipe.chore()
+def guess(lower: int, upper: int, guess_num: int = 1) -&gt; dict:
+    return {
+        &quot;guess&quot;: ((lower + upper) // 2),
+        &quot;low&quot;: lower,
+        &quot;high&quot;: upper,
+        &quot;num_guesses&quot;: guess_num,
+    }
+
+answer = random.randint(1, 100)
+
+@pipe.strategy(bolo_list=[&quot;guess&quot;])
+def higher_or_lower(guess_result):
+
+    if guess_result[&quot;guess&quot;] == answer:
+        print(
+            f&quot;Good Job! I was thinking of {answer}, &quot;
+            f&quot;and you got it in {guess_result['num_guesses']}&quot;
+        )
+
+    elif guess_result[&quot;guess&quot;] &lt; answer:
+        return ChoreSpec(
+            args=(
+                guess_result[&quot;guess&quot;] + 1,
+                guess_result[&quot;high&quot;],
+                guess_result[&quot;num_guesses&quot;] + 1,
+            ),
+            kwargs=None,
+            resources=Resources(),
+            qualname=&quot;guess&quot;,
+        )
+
+    else:
+        return ChoreSpec(
+            args=(
+                guess_result[&quot;low&quot;],
+                guess_result[&quot;guess&quot;] - 1,
+                guess_result[&quot;num_guesses&quot;] + 1,
+            ),
+            kwargs=None,
+            resources=Resources(),
+            qualname=&quot;guess&quot;,
+        )</code>
+    <p>This mechanism allows MatEnsemble workflows to adapt their
+    execution path based on intermediate results rather than requiring
+    the entire workflow graph to be known before execution begins.</p>
+  </sec>
+</sec>
+<sec id="research-impact">
+  <title>Research impact</title>
+</sec>
+<sec id="ai-usage-disclosure">
+  <title>AI usage disclosure</title>
+  <p>The package and wrapping API design are that of the author’s and
+  are the result of incremental development and testing. However,
+  generative AI tools have been used during development: 1) Microsoft
+  Copilot integration in GitHub Pull Requests has been used for code
+  reviews to ensure correctness and catch any extra bugs; 2) OpenAI’s
+  ChatGPT 5.4 &amp; 5.5 has been used for “rubber duck debugging”,
+  general debugging, and for limited generation of boilerplate code,
+  some tests and documentation. After the initial skeleton was
+  established by the author’s many methods were used to take advantage
+  of the power of these models while ensuring consistency. Methods such
+  as “Spec Driven Development” and “Rubber Duck Debugging”. No AI
+  generated content has been accepted without review and testing, nor
+  does it constitute the majority of the work produced. For this paper,
+  ChatGPT was used to suggest edits for clarity and structure, but was
+  not used to generate the contents or sections, nor were the
+  suggestions implemented wholesale.</p>
+</sec>
+<sec id="acknowledgements">
+  <title>Acknowledgements</title>
+  <p><ext-link ext-link-type="uri" xlink:href="https://flux-framework.readthedocs.io/en/latest/">Flux
+  Documentation</ext-link>
+  <ext-link ext-link-type="uri" xlink:href="https://matgenix.github.io/jobflow-remote/index.html">JobFlow</ext-link>
+  <ext-link ext-link-type="uri" xlink:href="https://parsl-project.org/">Parsl</ext-link>
+  <ext-link ext-link-type="uri" xlink:href="https://libensemble.readthedocs.io/en/latest/">libEnsemble</ext-link>
+  </p>
+</sec>
+</body>
+<back>
+</back>
+</article>
