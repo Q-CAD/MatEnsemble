@@ -9,7 +9,7 @@
 
 # MatEnsemble
 
-MatEnsemble is a Python library for **high-throughput workflows** on HPC systems. You define a directed acyclic graph (DAG) of chores—**Python callables** or **executable commands**—and MatEnsemble submits work through **[Flux](https://flux-framework.readthedocs.io/)**, tracks completions, **adapts** scheduling to free CPUs and GPUs, and writes structured logs and per-chore output directories.
+MatEnsemble orchestrates large batches of Flux-scheduled tasks on HPC systems: Python callables, shell commands, explicit resource requests, and dependency-aware execution graphs from a single Python driver process.
 
 ## Installation
 
