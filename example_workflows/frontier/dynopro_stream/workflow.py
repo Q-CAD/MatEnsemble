@@ -8,8 +8,10 @@ Pipeline.dynopro() to run them as rank-colored subprocesses:
 - cpu_stream_consumer runs on the CPU-colored ranks and receives producer
   payloads over MPI.
 
-Frontier nodes expose 8 GPU devices as MI250X GCDs and 64 CPU cores. Override
-the defaults with MATENSEMBLE_DYNOPRO_NNODES, MATENSEMBLE_GPUS_PER_NODE, or
+Frontier nodes expose 8 GPU devices as MI250X GCDs and 64 CPU cores. The Flux
+broker uses one allocated node, so with ``#SBATCH -N 2`` this workflow requests
+one dynopro worker node by default. Override the defaults with
+MATENSEMBLE_DYNOPRO_NNODES, MATENSEMBLE_GPUS_PER_NODE, or
 MATENSEMBLE_CORES_PER_NODE if your allocation layout is different.
 """
 
@@ -22,12 +24,23 @@ from pathlib import Path
 from matensemble.pipeline import Pipeline
 
 
-NNODES = int(os.environ.get("MATENSEMBLE_DYNOPRO_NNODES", "1"))
 GPUS_PER_NODE = int(os.environ.get("MATENSEMBLE_GPUS_PER_NODE", "8"))
 CORES_PER_NODE = int(os.environ.get("MATENSEMBLE_CORES_PER_NODE", "64"))
 STREAM_TAG = 4100
 
 pipe = Pipeline()
+
+
+def _worker_nodes() -> int:
+    explicit = os.environ.get("MATENSEMBLE_DYNOPRO_NNODES")
+    if explicit is not None:
+        return int(explicit)
+
+    slurm_nodes = os.environ.get("SLURM_JOB_NUM_NODES")
+    if slurm_nodes is None:
+        return 1
+
+    return max(int(slurm_nodes) - 1, 1)
 
 
 def _local_rank(comm) -> tuple[int, int, int]:
@@ -105,7 +118,7 @@ def cpu_stream_consumer(comm=None, split=None, chore_dir: Path | None = None) ->
 pipe.dynopro(
     gpu_subprocess="gpu_stream_producer",
     cpu_subprocess="cpu_stream_consumer",
-    nnodes=NNODES,
+    nnodes=_worker_nodes(),
     gpus_per_node=GPUS_PER_NODE,
     cores_per_node=CORES_PER_NODE,
     name="frontier-dynopro-stream",

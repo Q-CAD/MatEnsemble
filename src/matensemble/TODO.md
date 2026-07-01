@@ -275,6 +275,10 @@ This would be how he could use the agents with MatEnsemble to launch more chores
 
 - [ ] Fix the MCP errors with launching the dashboard
 
+Also putting on a to-do (non-public) will be great before we forget:
+A cool thing to try is to see to where MatEnsemble can shine w.r.t parsl, joblfow, radical-pilot executorlib etc. (assuming some of this might have mcps) compared to a naive scheduler written by codex/llms from scratch (with no prior context on scheduling advancements, flux, futures etc.)
+
+
 
 ## --- Reading List ---
 - [x] [Container Training Slides](https://drive.google.com/drive/folders/1_mTBBc98TEX3XFpNp0rqoqj1VjN9TKoO)
