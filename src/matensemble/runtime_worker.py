@@ -54,7 +54,7 @@ import cloudpickle
 
 from pathlib import Path
 
-from matensemble.utils import _json_safe, _resolve_output_references
+from matensemble.utils import _resolve_output_references
 
 
 def _load_callable(chore_qualname: str, registry: Path):

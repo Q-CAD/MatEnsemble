@@ -60,8 +60,8 @@ def test_version_falls_back_to_pyproject(monkeypatch: pytest.MonkeyPatch):
     result = context.get_matensemble_version()
 
     assert result == {
-        "version": "0.4.4",
-        "tag_version": "v0.4.4",
+        "version": "0.5.0",
+        "tag_version": "v0.5.0",
         "source": "pyproject.toml",
     }
 
