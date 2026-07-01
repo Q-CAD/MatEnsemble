@@ -19,11 +19,17 @@ def launch_dashboard(
     port: int = 8000,
 ) -> dict[str, Any]:
     root = _resolve_root(campaign_root)
+    repo_root = context.repo_root()
+    launch_cwd = _launch_cwd(root)
     host = _validate_host(host)
     port = _validate_port(port)
     pid_path = _pid_path(root, port)
     log_path = _log_path(root, port)
     command = [
+        "uv",
+        "run",
+        "--project",
+        str(repo_root),
         "matensemble",
         "dashboard",
         str(root),
@@ -37,7 +43,7 @@ def launch_dashboard(
     try:
         process = subprocess.Popen(
             command,
-            cwd=str(root),
+            cwd=str(launch_cwd),
             stdout=log_file,
             stderr=subprocess.STDOUT,
             start_new_session=True,
@@ -58,6 +64,8 @@ def launch_dashboard(
         "returncode": returncode,
         "pid_path": str(pid_path),
         "log_path": str(log_path),
+        "cwd": str(launch_cwd),
+        "project_root": str(repo_root),
         "node": socket.gethostname(),
         "remote_url": f"http://{host}:{port}",
         "local_url": f"http://localhost:{port}",
@@ -142,6 +150,12 @@ def _resolve_root(path: str) -> Path:
     if not root.is_dir():
         raise ValueError(f"campaign_root does not exist or is not a directory: {root}")
     return root
+
+
+def _launch_cwd(root: Path) -> Path:
+    if root.name == "matensemble_campaigns":
+        return root
+    return root.parent
 
 
 def _pid_path(root: Path, port: int) -> Path:

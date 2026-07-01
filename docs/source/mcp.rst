@@ -101,3 +101,16 @@ to launch the dashboard. Simply ask the agent:
 
 The agent will launch the dashboard on the login node and provide the command for you to
 forward the port to localhost so that you can view your workflows.
+
+Dashboard launches from the MCP server intentionally run through the MatEnsemble source
+checkout with ``uv``:
+
+.. code-block:: bash
+
+   uv run --project /path/to/MatEnsemble matensemble dashboard /path/to/matensemble_campaigns --host 127.0.0.1 --port 8000
+
+The ``launch_dashboard`` response includes the exact command, working directory, project
+root, and log path. If a launch exits immediately, check that the reported working
+directory is the ``matensemble_campaigns`` directory and that the command starts with
+``uv run --project <MatEnsemble checkout>``. The source checkout is used for uv project
+resolution; the campaigns directory is used as the process working directory.

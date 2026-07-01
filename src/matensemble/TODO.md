@@ -233,8 +233,8 @@
 - [x] Update tools in MCP server
 - [x] Update the README to be minimal and link to the documentation
 - [x] Put curl command in README for ease of access
-- [ ] Place the MPI hello example in README
-- [ ] Exescale stuff???
+- [x] Place the MPI hello example in README
+- [x] Exescale stuff???
 
 ## --- Demo ---
 - [x] Fix MCP install to include codex config
@@ -254,6 +254,7 @@
 - [ ] Add a util function to turn the DAG into a photo
 - [ ] Update the Figures in JOSS paper to be much bigger.
 - [ ] Talk to Soumendu about using adaptive workflow with codex:
+- [ ] Make a demo comparing the other workflow managers to MatEnsemble (JobFlow, Parsl, libEnsemble, RADICAL-plot, scheduler from scratch)
 
 ```python
 import subprocess
@@ -270,8 +271,14 @@ try:
 except json.JSONDecodeError:
     print("Failed to parse agent response as JSON")
 ```
-
 This would be how he could use the agents with MatEnsemble to launch more chores
+
+- [ ] Fix the MCP errors with launching the dashboard
+
+Also putting on a to-do (non-public) will be great before we forget:
+A cool thing to try is to see to where MatEnsemble can shine w.r.t parsl, joblfow, radical-pilot executorlib etc. (assuming some of this might have mcps) compared to a naive scheduler written by codex/llms from scratch (with no prior context on scheduling advancements, flux, futures etc.)
+
+
 
 ## --- Reading List ---
 - [x] [Container Training Slides](https://drive.google.com/drive/folders/1_mTBBc98TEX3XFpNp0rqoqj1VjN9TKoO)

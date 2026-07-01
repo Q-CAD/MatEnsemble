@@ -380,6 +380,88 @@ class Pipeline:
         self._chore_list.append(chore)
         return chore
 
+    # TODO: So this needs to call the driver, and the driver will split it into two groups
+    #       one group on the gpus and one on the cpus, but I need to read the code to figure
+    #       out where it is actually splitting to, so like does each GPU get a cpu? or how
+    #       does that work, and we need to make a way to then add thi sto the piplien as
+    #       its own chore, which should be simple. but we also need a way to standardize
+    #       the functions so that they have a communicator and I need to figure out how
+    #       important it is that we give them that.
+    def dynopro(
+        self,
+        gpu_subprocess: str,
+        cpu_subprocess: str,
+        nnodes: int,
+        gpus_per_node: int,
+        cores_per_node: int,
+        name: str | None = None,
+        num_tasks: int | None = None,
+        cores_per_task: int = 1,
+        gpus_per_task: int = 0,
+        env: dict[str, str] | None = None,
+        inherit_env: bool = True,
+        subprocess_args: tuple[Any, ...] = (),
+        subprocess_kwargs: dict[str, Any] | None = None,
+    ) -> Chore:
+        for subprocess_name in (gpu_subprocess, cpu_subprocess):
+            if subprocess_name not in self._registry:
+                raise ValueError(
+                    f"dynopro subprocess {subprocess_name!r} is not registered. "
+                    "Register it first with Pipeline.chore(...)."
+                )
+
+        if not isinstance(nnodes, int) or nnodes < 1:
+            raise ValueError("nnodes must be an integer >= 1")
+        if not isinstance(gpus_per_node, int) or gpus_per_node < 1:
+            raise ValueError("gpus_per_node must be an integer >= 1")
+        if not isinstance(cores_per_node, int) or cores_per_node < 1:
+            raise ValueError("cores_per_node must be an integer >= 1")
+        if gpus_per_node > cores_per_node:
+            raise ValueError("gpus_per_node cannot exceed cores_per_node")
+
+        res = Resources(
+            num_tasks=num_tasks if num_tasks is not None else nnodes * cores_per_node,
+            cores_per_task=cores_per_task,
+            gpus_per_task=gpus_per_task,
+            mpi=True,
+            env=env,
+            inherit_env=inherit_env,
+        )
+
+        self._counter += 1
+        chore_id = (
+            f"chore-{name}-{self._counter:04d}"
+            if name
+            else f"chore-exec-{self._counter:04d}"
+        )
+        workdir = self._out_dir / chore_id
+
+        subprocess_kwargs = {} if subprocess_kwargs is None else subprocess_kwargs
+        deps = _collect_dep_ids(subprocess_args, subprocess_kwargs)
+
+        chore = Chore(
+            id=chore_id,
+            workdir=workdir,
+            command=[
+                sys.executable,
+                "-m",
+                "matensemble.dynopro.driver",
+                f"--gpus-per-node={gpus_per_node}",
+                f"--cores-per-node={cores_per_node}",
+                f"--gpu-subprocess={gpu_subprocess}",
+                f"--cpu-subprocess={cpu_subprocess}",
+                f"--chore-dir={workdir}",
+            ],
+            chore_type=ChoreType.EXECUTABLE,
+            resources=res,
+            deps=deps,
+            args=copy.deepcopy(subprocess_args),
+            kwargs=copy.deepcopy(subprocess_kwargs),
+            nnodes=nnodes,
+        )
+        self._chore_list.append(chore)
+        return chore
+
     def _create_graph(self) -> nx.DiGraph:
         """
         Build the graph to of :obj:`Chore`'s with edges representing dependencies

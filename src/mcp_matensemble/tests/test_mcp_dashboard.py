@@ -14,14 +14,18 @@ class FakeProcess:
 
 def test_launch_dashboard_starts_background_process(monkeypatch, tmp_path: Path):
     calls = {}
-    campaign = tmp_path / "campaign"
-    campaign.mkdir()
+    campaigns = tmp_path / "matensemble_campaigns"
+    campaign = campaigns / "campaign"
+    campaign.mkdir(parents=True)
+    repo = tmp_path / "checkout"
+    repo.mkdir()
 
     def fake_popen(command, **kwargs):
         calls["command"] = command
         calls["kwargs"] = kwargs
         return FakeProcess()
 
+    monkeypatch.setattr(dashboard.context, "repo_root", lambda: repo)
     monkeypatch.setattr(dashboard.subprocess, "Popen", fake_popen)
     monkeypatch.setattr(dashboard.time, "sleep", lambda _seconds: None)
     monkeypatch.setattr(dashboard.socket, "gethostname", lambda: "login001")
@@ -29,6 +33,10 @@ def test_launch_dashboard_starts_background_process(monkeypatch, tmp_path: Path)
     result = dashboard.launch_dashboard(str(campaign), port=8123)
 
     assert calls["command"] == [
+        "uv",
+        "run",
+        "--project",
+        str(repo),
         "matensemble",
         "dashboard",
         str(campaign),
@@ -37,11 +45,34 @@ def test_launch_dashboard_starts_background_process(monkeypatch, tmp_path: Path)
         "--port",
         "8123",
     ]
-    assert calls["kwargs"]["cwd"] == str(campaign)
+    assert calls["kwargs"]["cwd"] == str(campaigns)
     assert result["running"] is True
     assert result["pid"] == 4242
+    assert result["cwd"] == str(campaigns)
+    assert result["project_root"] == str(repo)
     assert result["node"] == "login001"
     assert (campaign / "matensemble-dashboard-8123.pid").read_text() == "4242\n"
+
+
+def test_launch_dashboard_uses_campaigns_directory_as_cwd(monkeypatch, tmp_path: Path):
+    calls = {}
+    campaigns = tmp_path / "matensemble_campaigns"
+    campaigns.mkdir()
+    repo = tmp_path / "checkout"
+    repo.mkdir()
+
+    def fake_popen(command, **kwargs):
+        calls["kwargs"] = kwargs
+        return FakeProcess()
+
+    monkeypatch.setattr(dashboard.context, "repo_root", lambda: repo)
+    monkeypatch.setattr(dashboard.subprocess, "Popen", fake_popen)
+    monkeypatch.setattr(dashboard.time, "sleep", lambda _seconds: None)
+
+    result = dashboard.launch_dashboard(str(campaigns), port=8124)
+
+    assert calls["kwargs"]["cwd"] == str(campaigns)
+    assert result["cwd"] == str(campaigns)
 
 
 def test_dashboard_access_command():
