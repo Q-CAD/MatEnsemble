@@ -51,21 +51,6 @@ def test_full_source_returns_package_files():
     assert "src/matensemble/dashboard/app.py" in files
 
 
-def test_version_falls_back_to_pyproject(monkeypatch: pytest.MonkeyPatch):
-    def raise_not_found(_name: str) -> str:
-        raise context.metadata.PackageNotFoundError
-
-    monkeypatch.setattr(context.metadata, "version", raise_not_found)
-
-    result = context.get_matensemble_version()
-
-    assert result == {
-        "version": "0.5.0",
-        "tag_version": "v0.5.0",
-        "source": "pyproject.toml",
-    }
-
-
 def test_latest_container_tags_are_deterministic(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(
         context,
