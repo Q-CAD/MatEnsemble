@@ -389,11 +389,15 @@ class Pipeline:
     #       important it is that we give them that.
     def dynopro(
         self,
-        gpu_subprocess: str,
-        cpu_subprocess: str,
         nnodes: int,
         gpus_per_node: int,
         cores_per_node: int,
+        gpu_subprocess: str,
+        cpu_subprocess: str,
+        gpu_args: tuple[Any, ...] = (),
+        gpu_kwargs: dict[str, Any] | None = None,
+        cpu_args: tuple[Any, ...] = (),
+        cpu_kwargs: dict[str, Any] | None = None,
         name: str | None = None,
         num_tasks: int | None = None,
         cores_per_task: int = 1,
@@ -402,10 +406,6 @@ class Pipeline:
         inherit_env: bool = True,
         subprocess_args: tuple[Any, ...] = (),
         subprocess_kwargs: dict[str, Any] | None = None,
-        gpu_args: tuple[Any, ...] = (),
-        gpu_kwargs: dict[str, Any] | None = None,
-        cpu_args: tuple[Any, ...] = (),
-        cpu_kwargs: dict[str, Any] | None = None,
     ) -> Chore:
         """
         Register a dynopro wrapper chore that runs GPU and CPU subprocess chores.
@@ -453,10 +453,7 @@ class Pipeline:
         subprocess_kwargs = {} if subprocess_kwargs is None else subprocess_kwargs
         shared_payload_provided = bool(subprocess_args) or bool(subprocess_kwargs)
         per_chore_payload_provided = (
-            bool(gpu_args)
-            or bool(cpu_args)
-            or bool(gpu_kwargs)
-            or bool(cpu_kwargs)
+            bool(gpu_args) or bool(cpu_args) or bool(gpu_kwargs) or bool(cpu_kwargs)
         )
         if shared_payload_provided and per_chore_payload_provided:
             raise ValueError(
