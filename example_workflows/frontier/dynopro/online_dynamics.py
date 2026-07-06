@@ -58,16 +58,22 @@ def onlineMD(candidate_parameters, initial_parameters_file=None):
         namespace = f"{candidate['Temp_K']}_K"
         input_params_json = json.dumps(input_params)
 
+        # Dynopro's current driver interprets these two values as MPI rank
+        # split boundaries. Keep them aligned with MDSubprocess/AnalysisSubprocess:
+        # ranks 0..md_procs-1 run MD and the remaining ranks run analysis.
+        md_rank_count = input_params["md_procs"]
+        total_rank_count = input_params["total_procs"]
+
         pipe.dynopro(
             nnodes=input_params["nnodes"],
-            gpus_per_node=input_params["md_procs"],
-            cores_per_node=input_params["total_procs"],
+            gpus_per_node=md_rank_count,
+            cores_per_node=total_rank_count,
             gpu_subprocess="md_subprocess",
             cpu_subprocess="analysis_subprocess",
             gpu_args=(input_params_json,),
             cpu_args=(input_params_json,),
             name=namespace,
-            num_tasks=input_params["total_procs"],
+            num_tasks=total_rank_count,
         )
 
     future = pipe.submit(buffer_time=0.5, adaptive=True, dynopro=True)
