@@ -246,9 +246,10 @@
 - [ ] DAG workflow based on active learning
 
 ## --- Dynopro Upgrades ---
-- [ ] Add things into the MatEnsemble API to allow users to define the two subprocesses
-- [ ] Split the jobs between the ranks
-- [ ] Define them as chores
+- [x] Add things into the MatEnsemble API to allow users to define the two subprocesses
+- [x] Split the jobs between the ranks
+- [x] Define them as chores
+- [ ] Test the online dynamics and see if it works the same
 
 ## --- June 22nd, 2026 ---
 - [ ] Add a util function to turn the DAG into a photo
