@@ -402,7 +402,21 @@ class Pipeline:
         inherit_env: bool = True,
         subprocess_args: tuple[Any, ...] = (),
         subprocess_kwargs: dict[str, Any] | None = None,
+        gpu_args: tuple[Any, ...] = (),
+        gpu_kwargs: dict[str, Any] | None = None,
+        cpu_args: tuple[Any, ...] = (),
+        cpu_kwargs: dict[str, Any] | None = None,
     ) -> Chore:
+        """
+        Register a dynopro wrapper chore that runs GPU and CPU subprocess chores.
+
+        Prefer ``gpu_args`` / ``gpu_kwargs`` and ``cpu_args`` / ``cpu_kwargs`` to
+        pass arguments to each registered subprocess independently. The legacy
+        ``subprocess_args`` / ``subprocess_kwargs`` parameters still apply the
+        same payload to both subprocesses, but cannot be mixed with per-chore
+        payloads.
+        """
+
         for subprocess_name in (gpu_subprocess, cpu_subprocess):
             if subprocess_name not in self._registry:
                 raise ValueError(
@@ -437,7 +451,47 @@ class Pipeline:
         workdir = self._out_dir / chore_id
 
         subprocess_kwargs = {} if subprocess_kwargs is None else subprocess_kwargs
-        deps = _collect_dep_ids(subprocess_args, subprocess_kwargs)
+        shared_payload_provided = bool(subprocess_args) or bool(subprocess_kwargs)
+        per_chore_payload_provided = (
+            bool(gpu_args)
+            or bool(cpu_args)
+            or bool(gpu_kwargs)
+            or bool(cpu_kwargs)
+        )
+        if shared_payload_provided and per_chore_payload_provided:
+            raise ValueError(
+                "dynopro shared subprocess_args/subprocess_kwargs cannot be mixed "
+                "with gpu_args/gpu_kwargs or cpu_args/cpu_kwargs"
+            )
+        if gpu_subprocess == cpu_subprocess and per_chore_payload_provided:
+            raise ValueError(
+                "dynopro per-chore arguments require distinct gpu_subprocess "
+                "and cpu_subprocess names"
+            )
+
+        gpu_kwargs = {} if gpu_kwargs is None else gpu_kwargs
+        cpu_kwargs = {} if cpu_kwargs is None else cpu_kwargs
+
+        if shared_payload_provided:
+            dynopro_args = {
+                gpu_subprocess: subprocess_args,
+                cpu_subprocess: subprocess_args,
+            }
+            dynopro_kwargs = {
+                gpu_subprocess: subprocess_kwargs,
+                cpu_subprocess: subprocess_kwargs,
+            }
+        else:
+            dynopro_args = {
+                gpu_subprocess: gpu_args,
+                cpu_subprocess: cpu_args,
+            }
+            dynopro_kwargs = {
+                gpu_subprocess: gpu_kwargs,
+                cpu_subprocess: cpu_kwargs,
+            }
+
+        deps = _collect_dep_ids(dynopro_args, dynopro_kwargs)
 
         chore = Chore(
             id=chore_id,
@@ -457,6 +511,8 @@ class Pipeline:
             deps=deps,
             args=copy.deepcopy(subprocess_args),
             kwargs=copy.deepcopy(subprocess_kwargs),
+            dynopro_args=copy.deepcopy(dynopro_args),
+            dynopro_kwargs=copy.deepcopy(dynopro_kwargs),
             nnodes=nnodes,
         )
         self._chore_list.append(chore)

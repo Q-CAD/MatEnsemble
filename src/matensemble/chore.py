@@ -53,6 +53,8 @@ class Chore:
         deps: tuple[str, ...] = (),
         args: tuple = (),
         kwargs: dict | None = None,
+        dynopro_args: dict[str, tuple] | None = None,
+        dynopro_kwargs: dict[str, dict] | None = None,
         nnodes: int | None = None,
     ) -> None:
         """
@@ -85,6 +87,10 @@ class Chore:
             The arguments to give the function if type is PYTHON
         kwargs : dict
             The keyword arguments to give the function if flavor is PYTHON
+        dynopro_args : dict, optional
+            Per-registered-subprocess positional arguments for dynopro chores.
+        dynopro_kwargs : dict, optional
+            Per-registered-subprocess keyword arguments for dynopro chores.
         nnodes : int, optional
             When set, this chore will be scheduled via ``per_resource`` and will
             occupy *nnodes* whole nodes (all cores and all GPUs on each node).
@@ -107,6 +113,8 @@ class Chore:
         self.deps = deps
         self.args = args
         self.kwargs = {} if kwargs is None else kwargs
+        self.dynopro_args = {} if dynopro_args is None else dynopro_args
+        self.dynopro_kwargs = {} if dynopro_kwargs is None else dynopro_kwargs
         self.nnodes = nnodes
 
     def graph(self) -> nx.DiGraph:
@@ -129,6 +137,8 @@ class Chore:
             "deps": list(self.deps),
             "args": _json_safe(self.args),
             "kwargs": _json_safe(self.kwargs),
+            "dynopro_args": _json_safe(self.dynopro_args),
+            "dynopro_kwargs": _json_safe(self.dynopro_kwargs),
             "nnodes": self.nnodes,
         }
 

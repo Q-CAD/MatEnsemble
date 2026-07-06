@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 import cloudpickle
+import pytest
 
 from matensemble.chore import Chore
 from matensemble.dynopro.driver import _run_chore
@@ -55,6 +56,106 @@ def test_pipeline_dynopro_builds_registered_subprocess_chore(tmp_path: Path):
     assert chore.nnodes == 2
     assert chore.args == ("payload",)
     assert chore.kwargs == {"scale": 2}
+    assert chore.dynopro_args == {
+        "gpu-work": ("payload",),
+        "cpu-work": ("payload",),
+    }
+    assert chore.dynopro_kwargs == {
+        "gpu-work": {"scale": 2},
+        "cpu-work": {"scale": 2},
+    }
+
+
+def test_pipeline_dynopro_accepts_per_subprocess_args_and_collects_deps(
+    tmp_path: Path,
+):
+    pipe = Pipeline(basedir=tmp_path)
+
+    @pipe.chore(name="upstream-gpu")
+    def upstream_gpu():
+        return "gpu-ref"
+
+    @pipe.chore(name="upstream-cpu")
+    def upstream_cpu():
+        return "cpu-ref"
+
+    @pipe.chore(name="gpu-work")
+    def gpu_work():
+        return "gpu"
+
+    @pipe.chore(name="cpu-work")
+    def cpu_work():
+        return "cpu"
+
+    gpu_ref = upstream_gpu()
+    cpu_ref = upstream_cpu()
+
+    chore = pipe.dynopro(
+        "gpu-work",
+        "cpu-work",
+        nnodes=1,
+        gpus_per_node=2,
+        cores_per_node=4,
+        gpu_args=("gpu-payload", gpu_ref),
+        gpu_kwargs={"scale": 2},
+        cpu_args=("cpu-payload",),
+        cpu_kwargs={"source": cpu_ref},
+    )
+
+    assert chore.dynopro_args == {
+        "gpu-work": ("gpu-payload", gpu_ref),
+        "cpu-work": ("cpu-payload",),
+    }
+    assert chore.dynopro_kwargs == {
+        "gpu-work": {"scale": 2},
+        "cpu-work": {"source": cpu_ref},
+    }
+    assert chore.deps == (gpu_ref.chore_id, cpu_ref.chore_id)
+
+
+def test_pipeline_dynopro_rejects_mixed_shared_and_per_subprocess_args(
+    tmp_path: Path,
+):
+    pipe = Pipeline(basedir=tmp_path)
+
+    @pipe.chore(name="gpu-work")
+    def gpu_work():
+        return "gpu"
+
+    @pipe.chore(name="cpu-work")
+    def cpu_work():
+        return "cpu"
+
+    with pytest.raises(ValueError, match="cannot be mixed"):
+        pipe.dynopro(
+            "gpu-work",
+            "cpu-work",
+            nnodes=1,
+            gpus_per_node=1,
+            cores_per_node=2,
+            subprocess_args=("shared",),
+            gpu_args=("gpu-only",),
+        )
+
+
+def test_pipeline_dynopro_rejects_per_subprocess_args_for_same_registered_name(
+    tmp_path: Path,
+):
+    pipe = Pipeline(basedir=tmp_path)
+
+    @pipe.chore(name="work")
+    def work():
+        return "work"
+
+    with pytest.raises(ValueError, match="require distinct"):
+        pipe.dynopro(
+            "work",
+            "work",
+            nnodes=1,
+            gpus_per_node=1,
+            cores_per_node=2,
+            gpu_args=("gpu-only",),
+        )
 
 
 def test_pipeline_dynopro_rejects_unregistered_subprocess(tmp_path: Path):
@@ -120,7 +221,9 @@ def test_fluxlet_writes_dynopro_spec_in_per_resource_branch(monkeypatch, tmp_pat
     assert fake_jobspec.shell_opts["mpi"] == "pmi2"
 
 
-def test_dynopro_driver_runs_registered_callable_with_runtime_kwargs(tmp_path: Path):
+def test_dynopro_driver_runs_registered_callables_with_per_subprocess_args(
+    tmp_path: Path,
+):
     out_dir = tmp_path / "wf" / "out"
     registry = out_dir / "registry"
     chore_dir = out_dir / "chore-dynopro-0001"
@@ -129,6 +232,7 @@ def test_dynopro_driver_runs_registered_callable_with_runtime_kwargs(tmp_path: P
 
     def gpu_func(payload, *, scale, comm, split, rank_color, chore_dir):
         return {
+            "kind": "gpu",
             "payload": payload,
             "scale": scale,
             "rank": comm.Get_rank(),
@@ -137,8 +241,21 @@ def test_dynopro_driver_runs_registered_callable_with_runtime_kwargs(tmp_path: P
             "chore_dir": chore_dir.name,
         }
 
+    def cpu_func(payload, *, mode, comm, split, rank_color, chore_dir):
+        return {
+            "kind": "cpu",
+            "payload": payload,
+            "mode": mode,
+            "rank": comm.Get_rank(),
+            "split": split.name,
+            "color": rank_color,
+            "chore_dir": chore_dir.name,
+        }
+
     with (registry / "gpu").open("wb") as f:
         cloudpickle.dump(gpu_func, f)
+    with (registry / "cpu").open("wb") as f:
+        cloudpickle.dump(cpu_func, f)
 
     chore = Chore(
         id="chore-dynopro-0001",
@@ -146,8 +263,14 @@ def test_dynopro_driver_runs_registered_callable_with_runtime_kwargs(tmp_path: P
         command=["python"],
         chore_type=ChoreType.EXECUTABLE,
         resources=Resources(),
-        args=("abc",),
-        kwargs={"scale": 3},
+        dynopro_args={
+            "gpu": ("gpu-abc",),
+            "cpu": ("cpu-xyz",),
+        },
+        dynopro_kwargs={
+            "gpu": {"scale": 3},
+            "cpu": {"mode": "analysis"},
+        },
         nnodes=1,
     )
     with (chore_dir / "chore.pickle").open("wb") as f:
@@ -160,13 +283,24 @@ def test_dynopro_driver_runs_registered_callable_with_runtime_kwargs(tmp_path: P
     class _Split:
         name = "gpu-split"
 
-    result = _run_chore("gpu", chore_dir, split=_Split(), comm=_Comm(), color=0)
+    gpu_result = _run_chore("gpu", chore_dir, split=_Split(), comm=_Comm(), color=0)
+    cpu_result = _run_chore("cpu", chore_dir, split=_Split(), comm=_Comm(), color=1)
 
-    assert result == {
-        "payload": "abc",
+    assert gpu_result == {
+        "kind": "gpu",
+        "payload": "gpu-abc",
         "scale": 3,
         "rank": 7,
         "split": "gpu-split",
         "color": 0,
+        "chore_dir": "chore-dynopro-0001",
+    }
+    assert cpu_result == {
+        "kind": "cpu",
+        "payload": "cpu-xyz",
+        "mode": "analysis",
+        "rank": 7,
+        "split": "gpu-split",
+        "color": 1,
         "chore_dir": "chore-dynopro-0001",
     }

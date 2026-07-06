@@ -61,8 +61,12 @@ def _run_chore(
         metadata = pickle.load(f)
 
     dep_results = {dep: _load_dep_result(chore_dir, dep) for dep in metadata.deps}
-    args = _resolve_output_references(metadata.args, dep_results)
-    kwargs = _resolve_output_references(metadata.kwargs, dep_results)
+    dynopro_args = getattr(metadata, "dynopro_args", {})
+    dynopro_kwargs = getattr(metadata, "dynopro_kwargs", {})
+    args = dynopro_args.get(chore_name, metadata.args)
+    kwargs = dynopro_kwargs.get(chore_name, metadata.kwargs)
+    args = _resolve_output_references(args, dep_results)
+    kwargs = _resolve_output_references(kwargs, dep_results)
 
     _maybe_add_kwarg(func, kwargs, "split", split)
     _maybe_add_kwarg(func, kwargs, "comm", comm)
@@ -100,7 +104,8 @@ def online_dynamics(
 
     Ranks with local rank ``0 <= local_rank < gpus_per_node`` run
     ``gpu_subprocess``. The remaining ranks run ``cpu_subprocess``. Registered
-    callables receive the dynopro chore's serialized args/kwargs. If they declare
+    callables receive their own serialized dynopro args/kwargs when present, or
+    the legacy shared chore args/kwargs for older metadata. If they declare
     ``split``, ``comm``, ``world_comm``, ``rank_color``, or ``chore_dir`` keyword
     parameters, those runtime values are injected.
     """
