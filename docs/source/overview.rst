@@ -125,11 +125,11 @@ inspect the result of a completed :class:`~matensemble.chore.Chore`, create one 
 :class:`~matensemble.chore.ChoreSpec` objects, and add those chores to the submission queue while the workflow
 is still running.
 
-Here is an example of adding a strategy to a chore:
+Here is an example of adding a strategy to a materials campaign. The first simulation and analysis form a
+normal DAG edge through :class:`~matensemble.model.OutputReference`; the strategy then decides whether to add
+another simulation while the workflow is still running.
 
 .. code-block:: python
-
-    import random
 
     from matensemble.chore import ChoreSpec
     from matensemble.model import Resources
@@ -137,59 +137,45 @@ Here is an example of adding a strategy to a chore:
 
     pipe = Pipeline()
 
-    @pipe.chore()
-    def generate_num():
-        return random.randint(1, 1000)
+    md_resources = dict(num_tasks=128, cores_per_task=1, gpus_per_task=4, mpi=True)
+    analysis_resources = dict(num_tasks=1, cores_per_task=8)
 
-    @pipe.chore()
-    def fizz(n):
-        print(f"{n} is divisible by 3")
-        print("fizz")
+    @pipe.chore(name="run_md", **md_resources)
+    def run_md(candidate):
+        # Launch LAMMPS, DFT, phase-field, or another science code here.
+        return {"candidate": candidate, "trajectory": "trajectory.dump"}
 
-    @pipe.chore()
-    def buzz(n):
-        print(f"{n} is divisible by 5")
-        print("buzz")
+    @pipe.chore(name="analyze_structure", **analysis_resources)
+    def analyze_structure(simulation):
+        # Compute descriptors, uncertainty, stability, diffraction, etc.
+        return {
+            "candidate": simulation["candidate"],
+            "uncertainty": 0.18,
+            "next_candidate": {"temperature": 1750, "composition": "SiO2"},
+        }
 
-    @pipe.chore()
-    def fizzbuzz(n):
-        print(f"{n} is divisible by 3 and 5")
-        print("fizzbuzz")
+    @pipe.strategy(bolo_list=["analyze_structure"], **analysis_resources)
+    def refine_campaign(report):
+        if report["uncertainty"] < 0.05:
+            return None
 
-    @pipe.strategy(bolo_list=["generate_num"])
-    def proc_strat(results_of_finished_chore):
-        if results_of_finished_chore % 15 == 0:
-            return ChoreSpec(
-                args=(results_of_finished_chore,),
-                kwargs=None,
-                resources=Resources(),
-                qualname="fizzbuzz",
-            )
-        if results_of_finished_chore % 5 == 0:
-            return ChoreSpec(
-                args=(results_of_finished_chore,),
-                kwargs=None,
-                resources=Resources(),
-                qualname="buzz",
-            )
-        if results_of_finished_chore % 3 == 0:
-            return ChoreSpec(
-                args=(results_of_finished_chore,),
-                kwargs=None,
-                resources=Resources(),
-                qualname="fizz",
-            )
-        print(f"{results_of_finished_chore} is not divisible by 3 or 5")
+        return ChoreSpec(
+            args=(report["next_candidate"],),
+            kwargs={},
+            resources=Resources(**md_resources),
+            qualname="run_md",
+        )
 
-    for _ in range(10):
-        generate_num()
+    seed = {"temperature": 1600, "composition": "SiO2"}
+    trajectory = run_md(seed)
+    analyze_structure(trajectory)
 
     pipe.submit()
 
-The :obj:`bolo_list` tells the manager which chores it should be on the lookout for. Whenever the manager sees a
-``generate_num`` chore instance complete, it can spawn the user-defined strategy as a new chore. This strategy can
-optionally return a :obj:`matensemble.chore.ChoreSpec`, which will spawn a new chore with the specified args,
-kwargs, and resources (cores, GPUs, MPI, etc.).
+The :obj:`bolo_list` tells the manager which chores it should monitor for strategy callbacks. Whenever an
+``analyze_structure`` chore instance completes, MatEnsemble can launch the user-defined strategy as a new chore.
+If that strategy returns a :obj:`matensemble.chore.ChoreSpec`, the specified callable, arguments, and resources
+(cores, GPUs, MPI, etc.) are added to the live queue.
 
 Roadmap and stability
 =====================

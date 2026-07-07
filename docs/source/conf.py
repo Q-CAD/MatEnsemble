@@ -50,6 +50,7 @@ napoleon_numpy_docstring = True
 autodoc_mock_imports = [
     "flux",
     "flux.job",
+    "flux.job.executor",
     "mpi4py",
     "mpi4py.MPI",
     "lammps",
