@@ -14,15 +14,7 @@ MatEnsemble is a framework to build, orchestrate, and asynchronously manage extr
 While it can in general run on your personal Mac/Linux workstation and orchestrate arbitrary python callables, shell commands with explicit resource and dependency-aware execution graphs from a single python workflow driver process,  MatEnsemble shines with ***user-defined autonomous strategic*** execution of large batches of adaptively and hierarchically-scheduled tasks on HPC systems, often on Peta and Exascale computing facilities, e.g., Perlmutter, Frontier, Aurora etc.
 
 ## Installation
-
-If you are trying to use MatEnsemble on the Frontier, Pathfinder or Perlmutter super
-computers then you can quickly install MatEnsemble with our install script:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/FredDude2004/MatEnsemble/refs/heads/main/install.sh | bash
-```
-
-For more general installation see our [documentation](https://matensemble.readthedocs.io/en/latest/)
+For general installation see our [documentation](https://matensemble.readthedocs.io/en/latest/)
 
 ## Publications
 1. Bagchi, Soumendu, et al. "Towards “on-demand” van der Waals epitaxy with adaptive ensemble sampling atomistic workflows." Digital Discovery (2026) https://doi.org/10.1039/d6dd00049e.
