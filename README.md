@@ -24,13 +24,6 @@ curl -fsSL https://raw.githubusercontent.com/FredDude2004/MatEnsemble/refs/heads
 
 For more general installation see our [documentation](https://matensemble.readthedocs.io/en/latest/)
 
-## Related
-
-- [Flux documentation](https://flux-framework.readthedocs.io/)
-- [Flux Python guide](https://flux-framework.readthedocs.io/projects/flux-core/en/latest/guide/start.html)
-- [Slurm documentation](https://slurm.schedmd.com/documentation.html) (common front-end to batch allocations)
-- [LAMMPS manual](https://docs.lammps.org/Manual.html) (often used alongside ensemble MD workflows)
-
-## License
-
-BSD 3-Clause. See [`LICENSE`](LICENSE).
+## Publications
+1. Bagchi, Soumendu, et al. "Towards “on-demand” van der Waals epitaxy with adaptive ensemble sampling atomistic workflows." Digital Discovery (2026) https://doi.org/10.1039/d6dd00049e.
+2. Morelock, Ryan, et al. "pyRMG: A framework for high-throughput, large-cell DFT calculations on supercomputers." The Journal of Chemical Physics 164.5 (2026).
