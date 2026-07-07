@@ -62,7 +62,7 @@ After it is configured you are free to use the agent to start building MatEnsemb
 workflows.
 
 Visual Studio Code
------------------
+------------------
 
 Along with the CLI configuartions there is a configuration for Visual Studio Code to launch the
 MCP server. You can launch it by from the Command Pallete, "MCP: Server List" and you should see
@@ -95,7 +95,7 @@ There is an interactive dashboard which allows you to veiw the status of all pas
 workflows in the campaign directory. There is a prompt which is provided by the MCP server
 to launch the dashboard. Simply ask the agent:
 
-.. code-block:: txt
+.. code-block:: text
 
    Can you use the MatEnsemble MCP server to launch the dashboard and give me the command to access it from localhost?
 

@@ -142,78 +142,66 @@ provides another decorator to do this.
     from matensemble.model import Resources
     from matensemble.pipeline import Pipeline
     from matensemble.chore import ChoreSpec
-    import random
 
     pipe = Pipeline()
 
+    screen_resources = dict(num_tasks=1, cores_per_task=1)
+    validation_resources = dict(num_tasks=1, cores_per_task=4)
 
-    # Define a chore to simply guess a number between an upper and lower limit.
-    # This could be some science case trying to fit some parameters, etc.
-    @pipe.chore()
-    def guess(lower: int, upper: int, guess_num: int = 1) -> dict:
-        """Guesses a number between the bottom and top of the range"""
-
+    @pipe.chore(name="screen_candidate", **screen_resources)
+    def screen_candidate(candidate):
+        """Cheap proxy for a simulation or surrogate-model evaluation."""
+        temperature = candidate["temperature"]
         return {
-            "guess": ((lower + upper) // 2),
-            "low": lower,
-            "high": upper,
-            "num_guesses": guess_num,
+            "candidate": candidate,
+            "formation_energy": ((temperature - 1500) ** 2) / 1_000_000,
         }
 
-    # I'm thinking of a number between {a} and {b}.
-    a, b = 1, 100
-    answer = random.randint(a, b)
+    @pipe.chore(name="analyze_screen", **screen_resources)
+    def analyze_screen(screen):
+        """Decide whether this candidate deserves a more expensive validation."""
+        energy = screen["formation_energy"]
+        return {
+            "candidate": screen["candidate"],
+            "formation_energy": energy,
+            "uncertainty": 0.12 if energy < 0.03 else 0.02,
+        }
 
-    @pipe.strategy(bolo_list=["guess"])
-    def higher_or_lower(guess_result):
-        """
-        Takes the results of a 'guess' chore and spawns a new guess chore based on
-        the results
-        """
+    @pipe.chore(name="validate_candidate", **validation_resources)
+    def validate_candidate(candidate):
+        """Placeholder for a larger MD, DFT, or phase-field validation run."""
+        return {"candidate": candidate, "validation_status": "submitted"}
 
-        if guess_result["guess"] == answer:
-            print(
-                f"Godd Job! I was thinking of {answer},",
-                f"and you got it in {guess_result['num_guesses']}",
-            )
-        elif guess_result["guess"] < answer:
-            return ChoreSpec(
-                args=(
-                    guess_result["guess"] + 1,
-                    guess_result["high"],
-                    guess_result["num_guesses"] + 1,
-                ),
-                kwargs=None,
-                resources=Resources(),
-                qualname="guess",
-            )
-        else:
-            return ChoreSpec(
-                args=(
-                    guess_result["low"],
-                    guess_result["guess"] - 1,
-                    guess_result["num_guesses"] + 1,
-                ),
-                kwargs=None,
-                resources=Resources(),
-                qualname="guess",
-            )
+    @pipe.strategy(bolo_list=["analyze_screen"], **screen_resources)
+    def request_validation(report):
+        """Spawn validation only for uncertain, high-value candidates."""
+        if report["uncertainty"] <= 0.05:
+            return None
 
-    guess(a, b)
+        return ChoreSpec(
+            args=(report["candidate"],),
+            kwargs={},
+            resources=Resources(**validation_resources),
+            qualname="validate_candidate",
+        )
+
+    for temperature in (1400, 1500, 1700):
+        candidate = {"composition": "SiO2", "temperature": temperature}
+        screen = screen_candidate(candidate)
+        analyze_screen(screen)
+
     future = pipe.submit(log_delay=1)
     print(future.result())
 
 
-The :meth:`~matensemble.pipline.Pipeline.strategy` can be thought of as adding a callback to a
-:class:`~matensemble.chore.Chore` But this function has access to the internal
+The :meth:`~matensemble.pipeline.Pipeline.strategy` can be thought of as adding a callback to a
+:class:`~matensemble.chore.Chore`. This function has access to the internal
 :class:`~matensemble.manager.FluxManager` queue. If this strategy function returns a
 :class:`~matensemble.chore.ChoreSpec` then it will be added to the matensemble queue at runtime.
 This lets you create workflows that expand dynamically.
 
-The BOLO_list is a list of chores that you are telling the manager to Be On the Look-Out for. If
-one of these chores completes then the manager will see it and say "HEY! You're a wanted criminal"
-and spawn your strategy passing the results of the completed chore that was in the BOLO list to the
-strategy as an argument.
+The ``bolo_list`` is the list of chore names that should trigger the strategy. If one of these chores completes,
+MatEnsemble launches the strategy and passes the completed chore result as an argument.
 
 User-defined strategies can observe completed chores and dynamically add more work by returning
 :class:`~matensemble.chore.ChoreSpec` objects.
