@@ -243,52 +243,32 @@
 - [x] Nice big fonts
 - [x] Dashboard connection
 - [x] Creation of the environment
-- [ ] DAG workflow based on active learning
+- [x] DAG workflow based on active learning
+
+## --- Reading List ---
+- [x] [Container Training Slides](https://drive.google.com/drive/folders/1_mTBBc98TEX3XFpNp0rqoqj1VjN9TKoO)
+- [x] [Containers as Jupyter Kernels](https://docs.nersc.gov/services/jupyter/how-to-guides/#how-to-use-a-container-to-run-a-jupyter-kernel)
+- [x] [Using uv to package lammps and flux into pip install???](https://sgoel.dev/posts/building-cython-or-c-extensions-using-uv/)
+- [x] [Agentic Orchestration of HPC Applications](https://vsoch.github.io/assets/posts/agentic-orchestration-hpc-workloads-cloud-sochat-milroy.pdf)
+- [x] [Using SPIN to Run Persistent Containers](https://docs.nersc.gov/services/spin/)
 
 ## --- Dynopro Upgrades ---
 - [x] Add things into the MatEnsemble API to allow users to define the two subprocesses
 - [x] Split the jobs between the ranks
 - [x] Define them as chores
 - [x] Test the online dynamics and see if it works the same
+- [ ] Wrap the funciton calls to send and recv with the split rather than putting that pressure on the user.
 
 ## --- June 22nd, 2026 ---
+- [x] Talk to Soumendu about using adaptive workflow with codex:
+- [x] Tell Soumendu about how we could use the chores and LLMs ~/Desktop/scratch/MatEnsemble/llm_example.md
 - [ ] Add a util function to turn the DAG into a photo
 - [ ] Update the Figures in JOSS paper to be much bigger.
-- [ ] Talk to Soumendu about using adaptive workflow with codex:
-
 - [ ] Make a demo comparing the other workflow managers to MatEnsemble (JobFlow, Parsl, libEnsemble, RADICAL-plot, scheduler from scratch)
-    - does it converge?
-    - how many workers did it use?
-    - how easy to build workflow
-    - how much did I need to guide the AI
-
-```python
-import subprocess
-import json
-
-# Request JSON output via prompt or flags
-command = ['codex', 'exec', '--json-experimental', 'Analyze my repository and count Python files. Return a JSON block.']
-result = subprocess.run(command, capture_output=True, text=True)
-
-# Parse the returned string into a standard Python dictionary
-try:
-    data = json.loads(result.stdout)
-    print(data["python_files_count"])
-except json.JSONDecodeError:
-    print("Failed to parse agent response as JSON")
-```
-This would be how he could use the agents with MatEnsemble to launch more chores
-
+      - does it converge?
+      - how many workers did it use?
+      - how easy to build workflow?
+      - how much did I need to guide the AI?
+      - Could I run the workflow? Use purley the AI
 - [ ] Fix the MCP errors with launching the dashboard
 
-Also putting on a to-do (non-public) will be great before we forget:
-A cool thing to try is to see to where MatEnsemble can shine w.r.t parsl, joblfow, radical-pilot executorlib etc. (assuming some of this might have mcps) compared to a naive scheduler written by codex/llms from scratch (with no prior context on scheduling advancements, flux, futures etc.)
-
-
-
-## --- Reading List ---
-- [x] [Container Training Slides](https://drive.google.com/drive/folders/1_mTBBc98TEX3XFpNp0rqoqj1VjN9TKoO)
-- [x] [Containers as Jupyter Kernels](https://docs.nersc.gov/services/jupyter/how-to-guides/#how-to-use-a-container-to-run-a-jupyter-kernel)
-- [x] [Using uv to package lammps and flux into pip install???](https://sgoel.dev/posts/building-cython-or-c-extensions-using-uv/)
-- [ ] [Agentic Orchestration of HPC Applications](https://vsoch.github.io/assets/posts/agentic-orchestration-hpc-workloads-cloud-sochat-milroy.pdf)
-- [ ] [Using SPIN to Run Persistent Containers](https://docs.nersc.gov/services/spin/)

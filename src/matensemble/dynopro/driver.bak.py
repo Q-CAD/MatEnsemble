@@ -64,6 +64,22 @@ def online_dynamics(input_params_source):
         AnalysisSubprocess(comm, input_params=input_params)
         print(f"shutting down rank: {comm.Get_rank()}")
 
+        # TODO: Branstorm some way to make this not have to have the split/comm maybe with decorators
+        # # Get rank details
+        # comm = MPI.COMM_WORLD
+        # me = comm.Get_rank()
+        #
+        # # Create two subcommunicators
+        # color = 0 if me < input_params["md_procs"] else 1
+        # split = comm.Split(color, key=0)
+        #
+        # # Run the tasks
+        # if color == 0:
+        #     MDSubprocess(split, comm, input_params=input_params)
+        # else:
+        #     AnalysisSubprocess(comm, input_params=input_params)
+        #     print(f"shutting down rank: {comm.Get_rank()}")
+
     # Shutdown
     comm.barrier()
     if me == 0:
