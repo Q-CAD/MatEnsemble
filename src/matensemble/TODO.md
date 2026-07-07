@@ -249,13 +249,18 @@
 - [x] Add things into the MatEnsemble API to allow users to define the two subprocesses
 - [x] Split the jobs between the ranks
 - [x] Define them as chores
-- [ ] Test the online dynamics and see if it works the same
+- [x] Test the online dynamics and see if it works the same
 
 ## --- June 22nd, 2026 ---
 - [ ] Add a util function to turn the DAG into a photo
 - [ ] Update the Figures in JOSS paper to be much bigger.
 - [ ] Talk to Soumendu about using adaptive workflow with codex:
+
 - [ ] Make a demo comparing the other workflow managers to MatEnsemble (JobFlow, Parsl, libEnsemble, RADICAL-plot, scheduler from scratch)
+    - does it converge?
+    - how many workers did it use?
+    - how easy to build workflow
+    - how much did I need to guide the AI
 
 ```python
 import subprocess

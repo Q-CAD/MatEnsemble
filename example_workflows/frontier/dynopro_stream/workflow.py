@@ -23,7 +23,6 @@ from pathlib import Path
 
 from matensemble.pipeline import Pipeline
 
-
 GPUS_PER_NODE = int(os.environ.get("MATENSEMBLE_GPUS_PER_NODE", "8"))
 CORES_PER_NODE = int(os.environ.get("MATENSEMBLE_CORES_PER_NODE", "64"))
 STREAM_TAG = 4100
