@@ -45,9 +45,9 @@ curl -fsSL https://raw.githubusercontent.com/Q-CAD/MatEnsemble/refs/heads/main/i
 
 For general installation see our [documentation](https://matensemble.readthedocs.io/en/latest/)
 
-<hr>
+---
 
-While it can in general run on your personal Mac/Linux workstation and orchestrate arbitrary python callables, shell commands with explicit resource and dependency-aware execution graphs from a single python workflow driver process,  MatEnsemble shines with ***user-defined autonomous strategic*** execution of large batches of adaptively and hierarchically-scheduled tasks on HPC systems, specifically on Peta and Exascale computing facilities (e.g., Perlmutter, Frontier, Aurora etc.)
+While MatEnsemble can operate on a personal macOS or Linux workstation, orchestrating arbitrary Python callables and shell commands through explicit, resource- and dependency-aware execution graphs from a single Python workflow driver, it is primarily designed for the autonomous execution of large batches of user-defined, adaptively and hierarchically scheduled tasks on HPC systems, especially petascale and exascale platforms such as Perlmutter, Frontier, and Aurora.
 
 ## Minimal Code Example
 
@@ -98,6 +98,7 @@ score(trajectory)  # OutputReference creates the simulate -> score DAG edge.
 
 future = pipe.submit(log_delay=10)
 results = future.result()
+```
 
 ## Publications
 
