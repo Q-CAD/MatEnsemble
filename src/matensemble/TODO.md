@@ -260,10 +260,11 @@
 
 ## --- June 22nd, 2026 ---
 - [x] Talk to Soumendu about using adaptive workflow with codex:
-- [x] Tell Soumendu about how we could use the chores and LLMs ~/Desktop/scratch/MatEnsemble/llm_example.md
+- [x] Tell Soumendu about how we could use the chores and LLMs `~/Desktop/scratch/MatEnsemble/llm_example.md`
 - [x] Add a util function to turn the DAG into a photo
 - [x] Fix the MCP errors with launching the dashboard
 - [ ] Update the Figures in JOSS paper to be much bigger.
+- [ ] Take a look at Maestro
 - [ ] Make a demo comparing the other workflow managers to MatEnsemble (JobFlow, Parsl, libEnsemble, RADICAL-plot, scheduler from scratch)
       - does it converge?
       - how many workers did it use?

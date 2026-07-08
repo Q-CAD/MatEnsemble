@@ -206,6 +206,29 @@ MatEnsemble launches the strategy and passes the completed chore result as an ar
 User-defined strategies can observe completed chores and dynamically add more work by returning
 :class:`~matensemble.chore.ChoreSpec` objects.
 
+matensemble.chore.ChoreSpec
+---------------------------
+
+:obj:`~matensemble.chore.ChoreSpec` objecs are a description of what chore will be spawned at runtime. It
+takes the name of a registered function to spawn along with the arguments, keyword arguments and resources
+that it will use when it runs. It also takes a `nice` value, which is its priority in the queue. Lower values
+mean that it has higher priority, and higher values means lower priority. Its like if someone is in line at
+a cofee shop, someone who is really nice will give up their spot, but somone who is really mean might budge to
+the front of the line.
+
+Custom Manager Strategies
+=========================
+
+If the user needs more fine grained control over the Manager then they can define their own custom
+:class:`~matensemble.strategy.FutureProcessingStrategy` which will give them access to the internal
+manager queue. Rather than using a Pipeline to build the workflow, you can instead register your
+python functions to MatEnsemble useing the :obj:`~matensemble.chore.ChoreRegistry` to decorate and
+register the functions as normal, and use the :meth:`~matensemble.pipeline.Pipeline.call` function
+to compose the DAG. Or you can create your own :obj:`~matensemble.chore.Chore` objects to submit to
+a :class:`~matensemble.manager.FluxManager`
+
+Later we will create an example for reference but it isn't recommended to use this approach.
+
 Nested arguments
 ================
 
