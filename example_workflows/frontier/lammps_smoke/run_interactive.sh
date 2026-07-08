@@ -2,7 +2,7 @@
 
 if ! command -v matensemble &>/dev/null; then
 	echo "Install the MatEnsemble CLI for Frontier"
-	echo "curl -fsSL https://raw.githubusercontent.com/FredDude2004/MatEnsemble/main/src/cli/install.sh | bash"
+	echo "curl -fsSL https://raw.githubusercontent.com/Q-CAD/MatEnsemble/main/src/cli/install.sh | bash"
 	exit 1
 fi
 

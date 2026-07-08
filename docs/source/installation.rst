@@ -46,7 +46,7 @@ Container images (recommended on clusters)
 
 Official images are published to GitHub Container Registry:
 
-`ghcr.io/freddude2004/matensemble <https://github.com/FredDude2004/MatEnsemble/pkgs/container/matensemble>`__
+`ghcr.io/q-cad/matensemble <https://github.com/Q-CAD/MatEnsemble/pkgs/container/matensemble>`__
 
 Tags follow the pattern ``<platform>-vX.Y.Z``:
 
@@ -152,7 +152,7 @@ the "podman-hpc push" command.
 If you want to add packages or compile other software into an image like you can with an apptainer
 sandbox, you can. Its not as nice as with apptainer but its still possible. The most straightforward way
 is to just edit our provided recipe to install whatever packages you want. You can find the recipe on
-the `MatEnsemble GitHub Repository <https://github.com/FredDude2004/MatEnsemble/tree/main/example_workflows>`_.
+the `MatEnsemble GitHub Repository <https://github.com/Q-CAD/MatEnsemble/tree/main/example_workflows>`_.
 
 You can also run an image in an interactive mode and install the packages and save the changes but the steps
 are complicated and hard to get straight especially on HPC systems where you may lose connection.
@@ -165,7 +165,7 @@ pattern for creating a container for Apptainer to create an environment to run M
 
 .. code-block:: bash
 
-    apptainer build matensemble.sif docker://ghcr.io/freddude2004/matensemble:frontier-vX.Y.Z
+    apptainer build matensemble.sif docker://ghcr.io/q-cad/matensemble:frontier-vX.Y.Z
 
 .. note::
    The Frontier image is quite large and squashing the image into the singularity image format
@@ -184,7 +184,7 @@ pattern for creating a container for Apptainer to create an environment to run M
    export no_proxy='localhost,127.0.0.0/8,*.ccs.ornl.gov'
 
    # build the container
-   apptainer build matensemble.sif docker://ghcr.io/freddude2004/matensemble:frontier-vX.Y.Z
+   apptainer build matensemble.sif docker://ghcr.io/q-cad/matensemble:frontier-vX.Y.Z
 
 Tagged releases such as ``frontier-vX.Y.Z`` are the recommended images for users. Development images, when
 published, may be more up to date but can be unstable. You can also build a sandbox in the same fashion.
@@ -194,7 +194,7 @@ environment.
 .. code-block:: bash
 
     # Example of building a sandbox for Frontier
-    apptainer build --sandbox matensemble_sandbox docker://ghcr.io/freddude2004/matensemble:frontier-vX.Y.Z
+    apptainer build --sandbox matensemble_sandbox docker://ghcr.io/q-cad/matensemble:frontier-vX.Y.Z
 
 .. note::
    If building a sandbox is taking too long you can split it into multiple stages to speed things up.
@@ -203,7 +203,7 @@ environment.
 
    # first clean the cache to start fresh
    apptainer cache clean
-   apptainer pull image.sif docker://ghcr.io/freddude2004/matensemble:frontier-vX.Y.Z
+   apptainer pull image.sif docker://ghcr.io/q-cad/matensemble:frontier-vX.Y.Z
    apptainer build ./matensemble_sand image.sif
 
 
@@ -213,7 +213,7 @@ the MatEnsemble CLI tool to simplify the commands you need to run.
 .. code-block:: bash
 
     # install the CLI tool to /usr/bin/
-    curl -fsSL https://raw.githubusercontent.com/FredDude2004/MatEnsemble/main/src/cli/install.sh | bash
+    curl -fsSL https://raw.githubusercontent.com/Q-CAD/MatEnsemble/main/src/cli/install.sh | bash
 
 After getting a SLURM allocation you can run your workflows:
 
@@ -245,14 +245,14 @@ Perlmutter (NERSC)
 To get MatEnsemble to work on Perlmutter you need to bind in the environment variables and devices that
 allow the container to hook into the system's optimized network and MPI implementation manually. This can get ugly
 quickly, especially when trying to work with Flux. So we provide a CLI tool to simplify this process for
-the user. See our `batch script <https://github.com/FredDude2004/MatEnsemble/blob/main/example_workflows/perlmutter/lammps_mace/run_batch.slurm>`_
+the user. See our `batch script <https://github.com/Q-CAD/MatEnsemble/blob/main/example_workflows/perlmutter/lammps_mace/run_batch.slurm>`_
 if you are curious.
 
 To install the CLI tool you can run our install script:
 
 .. code-block:: bash
 
-   curl -fsSL https://raw.githubusercontent.com/FredDude2004/MatEnsemble/main/src/cli/install.sh | bash
+   curl -fsSL https://raw.githubusercontent.com/Q-CAD/MatEnsemble/main/src/cli/install.sh | bash
 
 
 After installation you can pull an image from our registry and allocate some nodes.
@@ -260,7 +260,7 @@ After installation you can pull an image from our registry and allocate some nod
 .. code-block:: bash
 
    # pull one of the perlmutter images for matensemble
-   podman-hpc pull ghcr.io/freddude2004/matensemble:perlmutter-vX.Y.Z
+   podman-hpc pull ghcr.io/q-cad/matensemble:perlmutter-vX.Y.Z
 
    # allocate yourself some nodes
    salloc -A <account_id> \
@@ -276,7 +276,7 @@ script that you want to execute.
 
 .. code-block:: bash
 
-   matensemble set-image ghcr.io/freddude2004/matensemble:perlmutter-vX.Y.Z
+   matensemble set-image ghcr.io/q-cad/matensemble:perlmutter-vX.Y.Z
    matensemble run <script.py>
 
 Pathfinder (OLCF)
@@ -287,7 +287,7 @@ as Frontier
 
 .. code-block:: bash
 
-    apptainer build matensemble.sif docker://ghcr.io/freddude2004/matensemble:pathfinder-vX.Y.Z
+    apptainer build matensemble.sif docker://ghcr.io/q-cad/matensemble:pathfinder-vX.Y.Z
 
 .. note::
    It may be necessary to allocate yourself a compute node to speed up the build.
@@ -297,12 +297,12 @@ as Frontier
    salloc -A <project_id> -t 1:00:00 -N 1
 
    # build the container
-   apptainer build matensemble.sif docker://ghcr.io/freddude2004/matensemble:pathfinder-vX.Y.Z
+   apptainer build matensemble.sif docker://ghcr.io/q-cad/matensemble:pathfinder-vX.Y.Z
 
 .. code-block:: bash
 
     # Example of building a sandbox for Pathfinder
-    apptainer build --sandbox matensemble_sandbox docker://ghcr.io/freddude2004/matensemble:pathfinder-vX.Y.Z
+    apptainer build --sandbox matensemble_sandbox docker://ghcr.io/q-cad/matensemble:pathfinder-vX.Y.Z
 
 
 You can run your workflows interactively in flux quite simply. You can either type the command yourself or
@@ -310,7 +310,7 @@ install our CLI tool to simplify the process.
 
 .. code-block:: bash
 
-   curl -fsSL https://raw.githubusercontent.com/FredDude2004/MatEnsemble/main/src/cli/install.sh | bash
+   curl -fsSL https://raw.githubusercontent.com/Q-CAD/MatEnsemble/main/src/cli/install.sh | bash
 
 
 .. code-block:: bash

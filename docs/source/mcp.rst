@@ -16,7 +16,7 @@ that would like your workflows to live.
 
 .. code-block:: bash
 
-    curl -fsSL https://raw.githubusercontent.com/FredDude2004/MatEnsemble/refs/heads/main/install.sh | bash
+    curl -fsSL https://raw.githubusercontent.com/Q-CAD/MatEnsemble/refs/heads/main/install.sh | bash
 
 The installer will create a directory named MatEnsemble which is where most of the
 MCP configuration will live. It will install the MatEnsemble CLI tool to ~/.local/bin

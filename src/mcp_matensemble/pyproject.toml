@@ -14,10 +14,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/FredDude2004/MatEnsemble"
+Homepage = "https://github.com/Q-CAD/MatEnsemble"
 Documentation = "https://matensemble.readthedocs.io/"
-Repository = "https://github.com/FredDude2004/MatEnsemble"
-Issues = "https://github.com/FredDude2004/MatEnsemble/issues"
+Repository = "https://github.com/Q-CAD/MatEnsemble"
+Issues = "https://github.com/Q-CAD/MatEnsemble/issues"
 
 [project.scripts]
 mcp-matensemble = "mcp_matensemble.server:main"

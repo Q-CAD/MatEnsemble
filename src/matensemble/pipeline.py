@@ -779,8 +779,96 @@ class Pipeline:
                 self._finished = True
             return self._collect_results()
 
-    def graph(self) -> nx.DiGraph:
-        return self._create_graph()
+    def graph(
+        self,
+        output_path: str | Path | None = None,
+        *,
+        show: bool = False,
+        figsize: tuple[float, float] = (12.0, 7.0),
+    ) -> nx.DiGraph:
+        """
+        Return the workflow DAG, optionally rendering it as an image.
+
+        Calling ``graph()`` with no arguments preserves the historical behavior
+        and returns the :class:`networkx.DiGraph`. Passing ``output_path`` writes
+        a visual representation of the DAG using Matplotlib and still returns
+        the graph for further inspection.
+        """
+
+        dag = self._create_graph()
+        if output_path is None and not show:
+            return dag
+
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError as exc:
+            raise RuntimeError(
+                "Rendering a Pipeline graph requires matplotlib to be installed."
+            ) from exc
+
+        if dag.number_of_nodes() == 0:
+            pos = {}
+        else:
+            try:
+                layers = list(nx.topological_generations(dag))
+                for layer_index, layer in enumerate(layers):
+                    for node in layer:
+                        dag.nodes[node]["layer"] = layer_index
+                pos = nx.multipartite_layout(dag, subset_key="layer")
+            except Exception:
+                pos = nx.spring_layout(dag, seed=42)
+
+        labels = {}
+        for node_id, data in dag.nodes(data=True):
+            chore = data.get("chore")
+            if chore is None:
+                labels[node_id] = node_id
+                continue
+            chore_name = chore.chore_qualname or node_id
+            nice = getattr(chore, "nice", 0)
+            labels[node_id] = f"{node_id}\n{chore_name}\nnice={nice}"
+
+        fig, ax = plt.subplots(figsize=figsize)
+        ax.set_title("MatEnsemble Workflow DAG")
+        ax.axis("off")
+
+        nx.draw_networkx_edges(
+            dag,
+            pos,
+            ax=ax,
+            arrows=True,
+            arrowstyle="-|>",
+            arrowsize=18,
+            edge_color="#667085",
+            width=1.5,
+        )
+        nx.draw_networkx_nodes(
+            dag,
+            pos,
+            ax=ax,
+            node_color="#d9eafd",
+            edgecolors="#255f85",
+            linewidths=1.2,
+            node_size=2600,
+        )
+        nx.draw_networkx_labels(
+            dag,
+            pos,
+            labels=labels,
+            ax=ax,
+            font_size=8,
+            font_color="#111827",
+        )
+
+        fig.tight_layout()
+        if output_path is not None:
+            path = Path(output_path)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            fig.savefig(path, bbox_inches="tight", dpi=160)
+        if show:
+            plt.show()
+        plt.close(fig)
+        return dag
 
     def _collect_results(self) -> dict[str, Any]:
         results = {}

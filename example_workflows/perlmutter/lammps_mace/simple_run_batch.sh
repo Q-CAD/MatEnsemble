@@ -16,5 +16,5 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --gpus-per-node=4
 
-matensemble set-image ghcr.io/freddude2004/matensemble:perlmutter-v0.3.11
+matensemble set-image ghcr.io/q-cad/matensemble:perlmutter-v0.3.11
 matensemble run workflow.py

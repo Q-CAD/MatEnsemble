@@ -72,6 +72,47 @@ def test_spawn_chore_from_spec_copies_nice(tmp_path: Path):
     assert chore.nice == -10
 
 
+def test_pipeline_graph_returns_networkx_dag(tmp_path: Path):
+    pipeline = Pipeline(basedir=str(tmp_path))
+
+    @pipeline.chore(name="first")
+    def first():
+        return 1
+
+    @pipeline.chore(name="second")
+    def second(value):
+        return value + 1
+
+    first_ref = first()
+    second(first_ref)
+
+    dag = pipeline.graph()
+
+    assert list(dag.nodes) == [first_ref.chore_id, "chore-second-0002"]
+    assert list(dag.edges) == [(first_ref.chore_id, "chore-second-0002")]
+
+
+def test_pipeline_graph_can_render_image(tmp_path: Path):
+    pipeline = Pipeline(basedir=str(tmp_path))
+
+    @pipeline.chore(name="first")
+    def first():
+        return 1
+
+    @pipeline.chore(name="second")
+    def second(value):
+        return value + 1
+
+    second(first())
+    output_path = tmp_path / "dag.png"
+
+    dag = pipeline.graph(output_path)
+
+    assert output_path.exists()
+    assert output_path.stat().st_size > 0
+    assert dag.number_of_edges() == 1
+
+
 def test_submit_returns_before_background_work_finishes(monkeypatch, tmp_path: Path):
     pipeline = Pipeline(basedir=str(tmp_path))
 

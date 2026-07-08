@@ -40,7 +40,7 @@ If you are trying to use MatEnsemble on the Frontier, Pathfinder or Perlmutter s
 computers then you can quickly install MatEnsemble with our install script:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/FredDude2004/MatEnsemble/refs/heads/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Q-CAD/MatEnsemble/refs/heads/main/install.sh | bash
 ```
 
 For more general installation see our [documentation](https://matensemble.readthedocs.io/en/latest/)

@@ -31,7 +31,7 @@ Environment:
   MATENSEMBLE_CONFIG_DIR    Config directory, default ~/.config/matensemble
 
 Examples:
-  matensemble --profile perlmutter set-image ghcr.io/freddude2004/matensemble:perlmutter-vX.Y.Z
+  matensemble --profile perlmutter set-image ghcr.io/q-cad/matensemble:perlmutter-vX.Y.Z
   matensemble --profile perlmutter run run_workflow.py
 
   matensemble --profile frontier set-image /path/to/matensemble_frontier.sif

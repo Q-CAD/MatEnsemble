@@ -5,7 +5,7 @@ set -euo pipefail
 # Intended remote use:
 #   curl -fsSL https://raw.githubusercontent.com/<ORG>/<REPO>/main/cli/install.sh | bash
 
-REPO_RAW_BASE="${MATENSEMBLE_CLI_RAW_BASE:-https://raw.githubusercontent.com/FredDude2004/MatEnsemble/main/src/cli}"
+REPO_RAW_BASE="${MATENSEMBLE_CLI_RAW_BASE:-https://raw.githubusercontent.com/Q-CAD/MatEnsemble/main/src/cli}"
 INSTALL_DIR="${MATENSEMBLE_INSTALL_DIR:-$HOME/.local/bin}"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/matensemble"
 TARGET="$INSTALL_DIR/matensemble"
@@ -59,7 +59,7 @@ esac
 
 echo
 if [ "$SYSTEM" = "perlmutter" ]; then
-	echo "Next: matensemble set-image ghcr.io/freddude2004/matensemble:perlmutter-vX.Y.Z"
+	echo "Next: matensemble set-image ghcr.io/q-cad/matensemble:perlmutter-vX.Y.Z"
 else
 	echo "Next: matensemble set-image /path/to/matensemble.sif"
 fi

@@ -62,9 +62,9 @@ def test_latest_container_tags_are_deterministic(monkeypatch: pytest.MonkeyPatch
 
     assert tags["registry_probe_performed"] is False
     assert tags["tags"] == {
-        "frontier": "ghcr.io/freddude2004/matensemble:frontier-v1.2.3",
-        "perlmutter": "ghcr.io/freddude2004/matensemble:perlmutter-v1.2.3",
-        "pathfinder": "ghcr.io/freddude2004/matensemble:pathfinder-v1.2.3",
+        "frontier": "ghcr.io/q-cad/matensemble:frontier-v1.2.3",
+        "perlmutter": "ghcr.io/q-cad/matensemble:perlmutter-v1.2.3",
+        "pathfinder": "ghcr.io/q-cad/matensemble:pathfinder-v1.2.3",
     }
 
 
@@ -84,12 +84,12 @@ def test_container_build_command_matches_system_backend(
         "apptainer",
         "build",
         "containers/frontier/matensemble.sif",
-        "docker://ghcr.io/freddude2004/matensemble:frontier-v1.2.3",
+        "docker://ghcr.io/q-cad/matensemble:frontier-v1.2.3",
     ]
     assert perlmutter["command"] == [
         "podman-hpc",
         "pull",
-        "ghcr.io/freddude2004/matensemble:perlmutter-v1.2.3",
+        "ghcr.io/q-cad/matensemble:perlmutter-v1.2.3",
     ]
 
 
