@@ -204,7 +204,7 @@ environment.
    # first clean the cache to start fresh
    apptainer cache clean
    apptainer pull image.sif docker://ghcr.io/q-cad/matensemble:frontier-vX.Y.Z
-   apptainer build ./matensemble_sand image.sif
+   apptainer build --sandbox ./matensemble_sand image.sif
 
 
 After building your container you can run your workflows interactively in flux quite simply. You can optionally install
