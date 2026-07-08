@@ -11,6 +11,14 @@ Python workflow pattern here with that system's launch instructions and examples
 
 MatEnsemble workflows are centered around `Chores` which are delayed function calls that are serialized and later called on compute resources that MatEnsemble has control over
 
+Available examples:
+
+- `dependencies`: dependency-aware Python chores using `OutputReference`.
+- `executable`: external command chores through `Pipeline.exec`.
+- `mpi`: portable MPI-enabled Python chores.
+- `strategy`: adaptive `ChoreSpec` spawning.
+- `lammps_adaptive`: a tiny LAMMPS Python-module campaign with adaptive validation.
+
 ## Dev container and local Flux runs
 
 Inside the repository dev container, run these examples with a multi-rank Flux test instance:

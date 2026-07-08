@@ -1,0 +1,3 @@
+usage: ase [-h] [--version] [-T]
+           {help,info,test,gui,db,run,band-structure,build,dimensionality,eos,ulm,find,nebplot,convert,reciprocal,completion,diff,exec}
+           ...
