@@ -127,14 +127,14 @@ class FluxManager:
             for dep in chore.deps:
                 self._dependents[dep].append(chore.id)
 
+        self._ready_order = {}
+        self._ready_order_counter = 0
+
         # queue for chores that are ready for submission
-        self._ready = deque(
-            [
-                chore_id
-                for chore_id, num_deps in self._remaining_deps.items()
-                if num_deps == 0
-            ]
-        )
+        self._ready = deque()
+        for chore_id, num_deps in self._remaining_deps.items():
+            if num_deps == 0:
+                self._mark_ready(chore_id)
 
         # queue for chores that are waiting on their dependencies to finish
         self._blocked = set(self._chores_by_id.keys()) - set(self._ready)
@@ -165,6 +165,32 @@ class FluxManager:
             gpus_per_node=self._gpus_per_node,
         )
         self._logger = _setup_logger(self._base_dir)
+
+    def _next_ready_order(self) -> int:
+        order = getattr(self, "_ready_order_counter", 0)
+        self._ready_order_counter = order + 1
+        return order
+
+    def _ready_sort_key(self, chore_id: str) -> tuple[int, int]:
+        if not hasattr(self, "_ready_order"):
+            self._ready_order = {}
+        if chore_id not in self._ready_order:
+            self._ready_order[chore_id] = self._next_ready_order()
+        chore = self._chores_by_id[chore_id]
+        return (getattr(chore, "nice", 0), self._ready_order[chore_id])
+
+    def _sort_ready(self) -> None:
+        self._ready = deque(sorted(self._ready, key=self._ready_sort_key))
+
+    def _mark_ready(self, chore_id: str) -> None:
+        if chore_id in self._ready:
+            self._sort_ready()
+            return
+        if not hasattr(self, "_ready_order"):
+            self._ready_order = {}
+        self._ready_order[chore_id] = self._next_ready_order()
+        self._ready.append(chore_id)
+        self._sort_ready()
 
     def _make_restart(self) -> None:
         """
@@ -528,7 +554,7 @@ class FluxManager:
             self._dependents.setdefault(dep, []).append(chore.id)
 
         if remaining == 0:
-            self._ready.appendleft(chore.id)
+            self._mark_ready(chore.id)
             self._blocked.discard(chore.id)
         else:
             self._blocked.add(chore.id)

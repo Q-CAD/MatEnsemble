@@ -126,7 +126,7 @@ class AdaptiveStrategy(FutureProcessingStrategy):
             for dep_id in self.manager._dependents.get(chore_id, []):
                 self.manager._remaining_deps[dep_id] -= 1
                 if self.manager._remaining_deps[dep_id] == 0:
-                    self.manager._ready.append(dep_id)
+                    self.manager._mark_ready(dep_id)
                     self.manager._blocked.discard(dep_id)
 
             # adaptively submit another chore
@@ -221,7 +221,7 @@ class NonAdaptiveStrategy(FutureProcessingStrategy):
             for dep_id in self.manager._dependents.get(chore_id, []):
                 self.manager._remaining_deps[dep_id] -= 1
                 if self.manager._remaining_deps[dep_id] == 0:
-                    self.manager._ready.append(dep_id)
+                    self.manager._mark_ready(dep_id)
                     self.manager._blocked.discard(dep_id)
 
             if self.manager._write_restart_freq and (
@@ -317,7 +317,7 @@ class UserStrategy(FutureProcessingStrategy):
             for dep_id in self.manager._dependents.get(chore_id, []):
                 self.manager._remaining_deps[dep_id] -= 1
                 if self.manager._remaining_deps[dep_id] == 0:
-                    self.manager._ready.append(dep_id)
+                    self.manager._mark_ready(dep_id)
                     self.manager._blocked.discard(dep_id)
 
             # --- Processing the chore and spawning the new one ---

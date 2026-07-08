@@ -268,6 +268,7 @@
       - does it converge?
       - how many workers did it use?
       - how easy to build workflow?
+      - how long did it run?
       - how much did I need to guide the AI?
       - Could I run the workflow? Use purley the AI
 - [ ] Fix the MCP errors with launching the dashboard

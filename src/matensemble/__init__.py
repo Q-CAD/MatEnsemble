@@ -12,4 +12,5 @@ __package__ = "matensemble"
 
 # Re-export core data model types at the package root for convenience and for
 # backwards compatibility with code/tests that import from `matensemble`.
+from .chore import ChoreRegistry  # noqa: E402,F401
 from .model import OutputReference, Resources, ChoreType  # noqa: E402,F401

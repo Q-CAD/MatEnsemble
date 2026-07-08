@@ -2,7 +2,7 @@ import json
 
 from pathlib import Path
 
-from matensemble.chore import Chore
+from matensemble.chore import Chore, ChoreSpec
 from matensemble.model import ChoreType, Resources
 
 
@@ -25,7 +25,15 @@ def test_chore_write_metadata(tmp_path: Path):
         command=["echo", "ok"],
         chore_type=ChoreType.EXECUTABLE,
         resources=Resources(),
+        nice=-3,
     )
     chore._write_metadata()
     metadata = json.loads((tmp_path / "chore-2" / "metadata.json").read_text())
     assert metadata["id"] == "chore-2"
+    assert metadata["nice"] == -3
+
+
+def test_chore_spec_default_nice_is_zero():
+    spec = ChoreSpec(args=(), kwargs=None, qualname="work", resources=Resources())
+
+    assert spec.nice == 0
