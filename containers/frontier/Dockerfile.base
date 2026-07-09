@@ -1,4 +1,4 @@
-FROM ghcr.io/freddude2004/25.03_gnu_ubuntu:latest
+FROM ghcr.io/q-cad/25.03_gnu_ubuntu:latest
 
 ENV DEBIAN_FRONTEND=noninteractive
 WORKDIR /opt

@@ -8,7 +8,6 @@ import functools
 import datetime
 import sys
 
-import cloudpickle
 import networkx as nx
 
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -17,23 +16,9 @@ from pathlib import Path
 
 from matensemble.manager import FluxManager
 from matensemble.strategy import FutureProcessingStrategy, UserStrategy
-from matensemble.chore import Chore, ChoreSpec
+from matensemble.chore import Chore, ChoreRegistry, ChoreSpec
 from matensemble.model import OutputReference, Resources, ChoreType
 from matensemble.utils import _collect_dep_ids
-
-
-def _registry_entry_filename(key: str) -> str:
-    """Return *key* as a basename-only registry filename or raise ValueError."""
-    if key in (".", "..") or not key:
-        raise ValueError(f"invalid registry key: {key!r}")
-    if "\x00" in key:
-        raise ValueError(f"registry key contains null byte: {key!r}")
-    if "/" in key or "\\" in key:
-        raise ValueError(f"registry key must not contain path separators: {key!r}")
-    safe = Path(key).name
-    if safe != key:
-        raise ValueError(f"registry key must be a single path segment: {key!r}")
-    return safe
 
 
 class Pipeline:
@@ -81,7 +66,11 @@ class Pipeline:
     concrete upstream results, and calls the function.
     """
 
-    def __init__(self, basedir: str | None = None) -> None:
+    def __init__(
+        self,
+        basedir: str | None = None,
+        registry: ChoreRegistry | None = None,
+    ) -> None:
         """
         Parameters
         ----------
@@ -92,7 +81,7 @@ class Pipeline:
 
         self._counter = 0
         self._chore_list: list[Chore] = []
-        self._registry: dict[str, Callable] = {}
+        self._registry = registry if registry is not None else ChoreRegistry()
         self._output_reference_list: list[OutputReference] = []
 
         root = Path.cwd() if basedir is None else Path(basedir)
@@ -107,6 +96,85 @@ class Pipeline:
         self._submission_state_lock = threading.Lock()
         self._submission_executor: ThreadPoolExecutor | None = None
         self._submission_future: Future | None = None
+
+    def _merge_pythonpath(self, env: dict[str, str] | None) -> dict[str, str]:
+        source_root = str(self._base_dir.parent.resolve())
+        merged_env = dict(env or {})
+        old_pythonpath = merged_env.get("PYTHONPATH")
+
+        if old_pythonpath:
+            merged_env["PYTHONPATH"] = f"{source_root}:{old_pythonpath}"
+        else:
+            merged_env["PYTHONPATH"] = source_root
+
+        return merged_env
+
+    def _runtime_worker_command(self, chore_id: str, workdir: Path) -> list[str]:
+        return [
+            sys.executable,
+            "-m",
+            "matensemble.runtime_worker",
+            "--chore-id",
+            chore_id,
+            "--spec-file",
+            str(workdir / "chore.pickle"),
+        ]
+
+    def _enqueue_registered(
+        self,
+        name: str,
+        args: tuple[Any, ...],
+        kwargs: dict[str, Any],
+        resources: Resources | None = None,
+        nice: int = 0,
+    ) -> OutputReference:
+        entry = self._registry.get(name)
+        res = copy.deepcopy(resources if resources is not None else entry.resources)
+        res.env = self._merge_pythonpath(res.env)
+
+        self._counter += 1
+        chore_id = f"chore-{entry.id_name}-{self._counter:04d}"
+        workdir = self._out_dir / chore_id
+        deps = _collect_dep_ids(args, kwargs)
+
+        chore = Chore(
+            id=chore_id,
+            workdir=workdir,
+            command=self._runtime_worker_command(chore_id, workdir),
+            chore_type=ChoreType.PYTHON,
+            resources=res,
+            chore_qualname=entry.qualname,
+            deps=deps,
+            args=copy.deepcopy(args),
+            kwargs=copy.deepcopy(kwargs),
+            nice=nice,
+        )
+        out_ref = OutputReference(chore_id, workdir)
+
+        self._chore_list.append(chore)
+        self._output_reference_list.append(out_ref)
+
+        return out_ref
+
+    def call(
+        self,
+        name: str,
+        *args: Any,
+        resources: Resources | None = None,
+        queue_nice: int = 0,
+        **kwargs: Any,
+    ) -> OutputReference:
+        """
+        Create a delayed Python chore from an already registered callable.
+        """
+
+        return self._enqueue_registered(
+            name,
+            args,
+            kwargs,
+            resources=resources,
+            nice=queue_nice,
+        )
 
     def chore(
         self,
@@ -164,64 +232,24 @@ class Pipeline:
 
         def decorator(func: Callable[..., Any]) -> Callable[..., OutputReference]:
             registry_key = name or str(func.__qualname__)
-            self._registry[registry_key] = func
+            resources = Resources(
+                num_tasks=num_tasks,
+                cores_per_task=cores_per_task,
+                gpus_per_task=gpus_per_task,
+                mpi=mpi,
+                env=env,
+                inherit_env=inherit_env,
+            )
+            self._registry.register(
+                func,
+                name=registry_key,
+                resources=resources,
+                id_name=name or func.__name__,
+            )
 
             @functools.wraps(func)
             def wrapper(*args: Any, **kwargs: Any) -> OutputReference:
-                self._counter += 1
-
-                source_root = str(self._base_dir.parent.resolve())
-                merged_env = dict(env or {})
-                old_pythonpath = merged_env.get("PYTHONPATH")
-
-                if old_pythonpath:
-                    merged_env["PYTHONPATH"] = f"{source_root}:{old_pythonpath}"
-                else:
-                    merged_env["PYTHONPATH"] = source_root
-
-                chore_id = (
-                    f"chore-{name}-{self._counter:04d}"
-                    if name
-                    else f"chore-{func.__name__}-{self._counter:04d}"
-                )
-                workdir = self._out_dir / chore_id
-                cmd = [
-                    sys.executable,
-                    "-m",
-                    "matensemble.runtime_worker",
-                    "--chore-id",
-                    chore_id,
-                    "--spec-file",
-                    str(workdir / "chore.pickle"),
-                ]
-                res = Resources(
-                    num_tasks=num_tasks,
-                    cores_per_task=cores_per_task,
-                    gpus_per_task=gpus_per_task,
-                    mpi=mpi,
-                    env=merged_env,
-                    inherit_env=inherit_env,
-                )
-                chore_qualname = registry_key
-                deps = _collect_dep_ids(args, kwargs)
-
-                chore = Chore(
-                    id=chore_id,
-                    workdir=workdir,
-                    command=cmd,
-                    chore_type=ChoreType.PYTHON,
-                    resources=res,
-                    chore_qualname=chore_qualname,
-                    deps=deps,
-                    args=copy.deepcopy(args),
-                    kwargs=copy.deepcopy(kwargs),
-                )
-                out_ref = OutputReference(chore_id, workdir)
-
-                self._chore_list.append(chore)
-                self._output_reference_list.append(out_ref)
-
-                return out_ref
+                return self._enqueue_registered(registry_key, args, kwargs)
 
             return wrapper
 
@@ -284,7 +312,19 @@ class Pipeline:
                     )
 
             registry_key = name or str(func.__qualname__)
-            self._registry[registry_key] = func
+            self._registry.register(
+                func,
+                name=registry_key,
+                resources=Resources(
+                    num_tasks=num_tasks,
+                    cores_per_task=cores_per_task,
+                    gpus_per_task=gpus_per_task,
+                    mpi=mpi,
+                    env=env,
+                    inherit_env=inherit_env,
+                ),
+                id_name=name or func.__name__,
+            )
 
             self._strategy_spec = {
                 "name": registry_key,
@@ -376,6 +416,144 @@ class Pipeline:
             command=command,
             chore_type=ChoreType.EXECUTABLE,
             resources=res,
+            nice=0,
+        )
+        self._chore_list.append(chore)
+        return chore
+
+    # TODO: So this needs to call the driver, and the driver will split it into two groups
+    #       one group on the gpus and one on the cpus, but I need to read the code to figure
+    #       out where it is actually splitting to, so like does each GPU get a cpu? or how
+    #       does that work, and we need to make a way to then add thi sto the piplien as
+    #       its own chore, which should be simple. but we also need a way to standardize
+    #       the functions so that they have a communicator and I need to figure out how
+    #       important it is that we give them that.
+    def dynopro(
+        self,
+        gpu_subprocess: str,
+        cpu_subprocess: str,
+        *,
+        nnodes: int,
+        gpus_per_node: int,
+        cores_per_node: int,
+        gpu_args: tuple[Any, ...] = (),
+        gpu_kwargs: dict[str, Any] | None = None,
+        cpu_args: tuple[Any, ...] = (),
+        cpu_kwargs: dict[str, Any] | None = None,
+        name: str | None = None,
+        num_tasks: int | None = None,
+        cores_per_task: int = 1,
+        gpus_per_task: int = 0,
+        env: dict[str, str] | None = None,
+        inherit_env: bool = True,
+        subprocess_args: tuple[Any, ...] = (),
+        subprocess_kwargs: dict[str, Any] | None = None,
+    ) -> Chore:
+        """
+        Register a dynopro wrapper chore that runs GPU and CPU subprocess chores.
+
+        Prefer ``gpu_args`` / ``gpu_kwargs`` and ``cpu_args`` / ``cpu_kwargs`` to
+        pass arguments to each registered subprocess independently. The legacy
+        ``subprocess_args`` / ``subprocess_kwargs`` parameters still apply the
+        same payload to both subprocesses, but cannot be mixed with per-chore
+        payloads.
+        """
+
+        for subprocess_name in (gpu_subprocess, cpu_subprocess):
+            if subprocess_name not in self._registry:
+                raise ValueError(
+                    f"dynopro subprocess {subprocess_name!r} is not registered. "
+                    "Register it first with Pipeline.chore(...)."
+                )
+
+        if not isinstance(nnodes, int) or nnodes < 1:
+            raise ValueError("nnodes must be an integer >= 1")
+        if not isinstance(gpus_per_node, int) or gpus_per_node < 1:
+            raise ValueError("gpus_per_node must be an integer >= 1")
+        if not isinstance(cores_per_node, int) or cores_per_node < 1:
+            raise ValueError("cores_per_node must be an integer >= 1")
+        if gpus_per_node > cores_per_node:
+            raise ValueError("gpus_per_node cannot exceed cores_per_node")
+
+        res = Resources(
+            num_tasks=num_tasks if num_tasks is not None else nnodes * cores_per_node,
+            cores_per_task=cores_per_task,
+            gpus_per_task=gpus_per_task,
+            mpi=True,
+            env=env,
+            inherit_env=inherit_env,
+        )
+
+        self._counter += 1
+        chore_id = (
+            f"chore-{name}-{self._counter:04d}"
+            if name
+            else f"chore-exec-{self._counter:04d}"
+        )
+        workdir = self._out_dir / chore_id
+
+        subprocess_kwargs = {} if subprocess_kwargs is None else subprocess_kwargs
+        shared_payload_provided = bool(subprocess_args) or bool(subprocess_kwargs)
+        per_chore_payload_provided = (
+            bool(gpu_args) or bool(cpu_args) or bool(gpu_kwargs) or bool(cpu_kwargs)
+        )
+        if shared_payload_provided and per_chore_payload_provided:
+            raise ValueError(
+                "dynopro shared subprocess_args/subprocess_kwargs cannot be mixed "
+                "with gpu_args/gpu_kwargs or cpu_args/cpu_kwargs"
+            )
+        if gpu_subprocess == cpu_subprocess and per_chore_payload_provided:
+            raise ValueError(
+                "dynopro per-chore arguments require distinct gpu_subprocess "
+                "and cpu_subprocess names"
+            )
+
+        gpu_kwargs = {} if gpu_kwargs is None else gpu_kwargs
+        cpu_kwargs = {} if cpu_kwargs is None else cpu_kwargs
+
+        if shared_payload_provided:
+            dynopro_args = {
+                gpu_subprocess: subprocess_args,
+                cpu_subprocess: subprocess_args,
+            }
+            dynopro_kwargs = {
+                gpu_subprocess: subprocess_kwargs,
+                cpu_subprocess: subprocess_kwargs,
+            }
+        else:
+            dynopro_args = {
+                gpu_subprocess: gpu_args,
+                cpu_subprocess: cpu_args,
+            }
+            dynopro_kwargs = {
+                gpu_subprocess: gpu_kwargs,
+                cpu_subprocess: cpu_kwargs,
+            }
+
+        deps = _collect_dep_ids(dynopro_args, dynopro_kwargs)
+
+        chore = Chore(
+            id=chore_id,
+            workdir=workdir,
+            command=[
+                sys.executable,
+                "-m",
+                "matensemble.dynopro.driver",
+                f"--gpus-per-node={gpus_per_node}",
+                f"--cores-per-node={cores_per_node}",
+                f"--gpu-subprocess={gpu_subprocess}",
+                f"--cpu-subprocess={cpu_subprocess}",
+                f"--chore-dir={workdir}",
+            ],
+            chore_type=ChoreType.EXECUTABLE,
+            resources=res,
+            deps=deps,
+            args=copy.deepcopy(subprocess_args),
+            kwargs=copy.deepcopy(subprocess_kwargs),
+            dynopro_args=copy.deepcopy(dynopro_args),
+            dynopro_kwargs=copy.deepcopy(dynopro_kwargs),
+            nnodes=nnodes,
+            nice=0,
         )
         self._chore_list.append(chore)
         return chore
@@ -447,13 +625,7 @@ class Pipeline:
         chore_id = f"chore-{chore_name}-{self._counter:04d}"
         workdir = self._out_dir / chore_id
         cmd = [
-            sys.executable,
-            "-m",
-            "matensemble.runtime_worker",
-            "--chore-id",
-            chore_id,
-            "--spec-file",
-            str(workdir / "chore.pickle"),
+            *self._runtime_worker_command(chore_id, workdir),
         ]
 
         args = (dependent,) if dependent is not None else ()
@@ -468,6 +640,7 @@ class Pipeline:
             chore_qualname=chore_name,
             deps=deps,
             args=args,
+            nice=0,
         )
         out_ref = OutputReference(chore_id, workdir)
 
@@ -479,13 +652,7 @@ class Pipeline:
         chore_id = f"chore-{spec.qualname}-{self._counter:04d}"
         workdir = self._out_dir / chore_id
         cmd = [
-            sys.executable,
-            "-m",
-            "matensemble.runtime_worker",
-            "--chore-id",
-            chore_id,
-            "--spec-file",
-            str(workdir / "chore.pickle"),
+            *self._runtime_worker_command(chore_id, workdir),
         ]
 
         args = copy.deepcopy(spec.args)
@@ -502,6 +669,7 @@ class Pipeline:
             deps=deps,
             args=args,
             kwargs=kwargs,
+            nice=spec.nice,
         )
         out_ref = OutputReference(chore_id, workdir)
 
@@ -573,11 +741,7 @@ class Pipeline:
 
             self._out_dir.mkdir(parents=True, exist_ok=True)
             registry_dir = self._out_dir / "registry"
-            registry_dir.mkdir(parents=True, exist_ok=True)
-            for key in self._registry:
-                safe_name = _registry_entry_filename(key)
-                with open(registry_dir / safe_name, "wb") as file:
-                    cloudpickle.dump(self._registry[key], file)
+            self._registry.write(registry_dir)
 
             manager = FluxManager(
                 chore_list=ordered_chores,
@@ -615,8 +779,96 @@ class Pipeline:
                 self._finished = True
             return self._collect_results()
 
-    def graph(self) -> nx.DiGraph:
-        return self._create_graph()
+    def graph(
+        self,
+        output_path: str | Path | None = None,
+        *,
+        show: bool = False,
+        figsize: tuple[float, float] = (12.0, 7.0),
+    ) -> nx.DiGraph:
+        """
+        Return the workflow DAG, optionally rendering it as an image.
+
+        Calling ``graph()`` with no arguments preserves the historical behavior
+        and returns the :class:`networkx.DiGraph`. Passing ``output_path`` writes
+        a visual representation of the DAG using Matplotlib and still returns
+        the graph for further inspection.
+        """
+
+        dag = self._create_graph()
+        if output_path is None and not show:
+            return dag
+
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError as exc:
+            raise RuntimeError(
+                "Rendering a Pipeline graph requires matplotlib to be installed."
+            ) from exc
+
+        if dag.number_of_nodes() == 0:
+            pos = {}
+        else:
+            try:
+                layers = list(nx.topological_generations(dag))
+                for layer_index, layer in enumerate(layers):
+                    for node in layer:
+                        dag.nodes[node]["layer"] = layer_index
+                pos = nx.multipartite_layout(dag, subset_key="layer")
+            except Exception:
+                pos = nx.spring_layout(dag, seed=42)
+
+        labels = {}
+        for node_id, data in dag.nodes(data=True):
+            chore = data.get("chore")
+            if chore is None:
+                labels[node_id] = node_id
+                continue
+            chore_name = chore.chore_qualname or node_id
+            nice = getattr(chore, "nice", 0)
+            labels[node_id] = f"{node_id}\n{chore_name}\nnice={nice}"
+
+        fig, ax = plt.subplots(figsize=figsize)
+        ax.set_title("MatEnsemble Workflow DAG")
+        ax.axis("off")
+
+        nx.draw_networkx_edges(
+            dag,
+            pos,
+            ax=ax,
+            arrows=True,
+            arrowstyle="-|>",
+            arrowsize=18,
+            edge_color="#667085",
+            width=1.5,
+        )
+        nx.draw_networkx_nodes(
+            dag,
+            pos,
+            ax=ax,
+            node_color="#d9eafd",
+            edgecolors="#255f85",
+            linewidths=1.2,
+            node_size=2600,
+        )
+        nx.draw_networkx_labels(
+            dag,
+            pos,
+            labels=labels,
+            ax=ax,
+            font_size=8,
+            font_color="#111827",
+        )
+
+        fig.tight_layout()
+        if output_path is not None:
+            path = Path(output_path)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            fig.savefig(path, bbox_inches="tight", dpi=160)
+        if show:
+            plt.show()
+        plt.close(fig)
+        return dag
 
     def _collect_results(self) -> dict[str, Any]:
         results = {}

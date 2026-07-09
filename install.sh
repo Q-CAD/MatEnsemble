@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 if [ -z "${BASH_VERSION:-}" ] || [ "$(basename "${BASH:-sh}")" = "sh" ]; then
 	echo "install.sh: please run this installer with bash, for example:" >&2
-	echo "  curl -fsSL https://raw.githubusercontent.com/FredDude2004/MatEnsemble/refs/heads/mcp_refactor/install.sh | bash" >&2
+	echo "  curl -fsSL https://raw.githubusercontent.com/Q-CAD/MatEnsemble/refs/heads/mcp_refactor/install.sh | bash" >&2
 	exit 2
 fi
 
 set -euo pipefail
 
-REPO_URL="${MATENSEMBLE_REPO_URL:-https://github.com/FredDude2004/MatEnsemble.git}"
-GHCR_NAMESPACE="${MATENSEMBLE_GHCR_NAMESPACE:-ghcr.io/freddude2004/matensemble}"
+REPO_URL="${MATENSEMBLE_REPO_URL:-https://github.com/Q-CAD/MatEnsemble.git}"
+GHCR_NAMESPACE="${MATENSEMBLE_GHCR_NAMESPACE:-ghcr.io/q-cad/matensemble}"
 
 err() {
 	echo "install.sh: error: $*" >&2

@@ -6,13 +6,13 @@ from mpi4py import MPI
 pipe = Pipeline()
 
 
-@pipe.chore(num_tasks=10, cores_per_task=1, gpus_per_task=0, mpi=True)
+@pipe.chore(num_tasks=10, cores_per_task=1, gpus_per_task=0, mpi=true)
 def mpi_hello_world():
-    size = MPI.COMM_WORLD.Get_size()
-    rank = MPI.COMM_WORLD.Get_rank()
-    name = MPI.Get_processor_name()
+    size = mpi.comm_world.get_size()
+    rank = mpi.comm_world.get_rank()
+    name = mpi.get_processor_name()
 
-    print(f"Hello World! I am process {rank} of {size} on {name}.")
+    print(f"hello world! i am process {rank} of {size} on {name}.")
 
 
 # Then we add the chore to the workflow 10 separate times

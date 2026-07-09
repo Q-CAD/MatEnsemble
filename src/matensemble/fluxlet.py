@@ -47,6 +47,17 @@ class Fluxlet:
         gpus_per_node = total_gpus // nnodes
         return nnodes, gpus_per_node
 
+    def _write_chore_spec_if_needed(self, chore: Chore) -> None:
+        if chore.chore_type is not ChoreType.PYTHON and chore.nnodes is None:
+            return
+
+        with tempfile.NamedTemporaryFile(
+            "wb", dir=chore.spec_path.parent, delete=False
+        ) as tf:
+            pickle.dump(chore, tf)
+            temp_name = tf.name
+        os.replace(temp_name, chore.spec_path)
+
     def submit(
         self,
         executor: flux.job.FluxExecutor,
@@ -82,7 +93,7 @@ class Fluxlet:
 
         # Dynopro splits jobs between the CPUs and GPUs. GPUs are used for
         # the intensive jobs and then processing jobs are spawned into the CPUs
-        if dynopro:
+        if dynopro or chore.nnodes:
             jobspec = flux.job.JobspecV1.per_resource(
                 chore.command,
                 ncores=chore.resources.num_tasks,
@@ -94,6 +105,7 @@ class Fluxlet:
             )
 
             chore.workdir.mkdir(parents=True, exist_ok=True)
+            self._write_chore_spec_if_needed(chore)
 
             jobspec.cwd = str(chore.workdir)
             jobspec.stdout = str(chore.workdir / "stdout")
@@ -127,13 +139,7 @@ class Fluxlet:
 
             chore.workdir.mkdir(parents=True, exist_ok=True)
 
-            if chore.chore_type is ChoreType.PYTHON:
-                with tempfile.NamedTemporaryFile(
-                    "wb", dir=chore.spec_path.parent, delete=False
-                ) as tf:
-                    pickle.dump(chore, tf)
-                    temp_name = tf.name
-                os.replace(temp_name, chore.spec_path)
+            self._write_chore_spec_if_needed(chore)
 
             jobspec.cwd = str(chore.workdir)
             jobspec.stdout = str(chore.workdir / "stdout")

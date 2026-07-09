@@ -26,7 +26,7 @@ affiliations:
     index: 2
 date: 25 May 2026
 bibliography: paper.bib
-repository: https://github.com/FredDude2004/MatEnsemble
+repository: https://github.com/Q-CAD/MatEnsemble
 ---
 
 ## Summary
