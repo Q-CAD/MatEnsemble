@@ -16,7 +16,7 @@ def _dashboard_import_error() -> RuntimeError:
     return RuntimeError(
         "The MatEnsemble dashboard requires the optional dashboard dependencies. "
         "Install `starlette` and `uvicorn` in the runtime environment before "
-        "running `matensemble dashboard`."
+        "running `matensemble-dashboard`."
     )
 
 
@@ -138,15 +138,15 @@ def create_app(status_file: str) -> Any:
     Create the web app that serves a single workflow status file.
 
     This helper is retained for tests and legacy single-workflow compatibility.
-    The supported user-facing dashboard entrypoint is the ``matensemble
-    dashboard`` CLI, which serves a campaign directory and can be launched on a
-    login node.
+    The supported user-facing dashboard entrypoint is the
+    ``matensemble-dashboard`` CLI, which serves a campaign directory and can be
+    launched on a login node.
 
     Example
     -------
     .. code-block:: bash
 
-        matensemble dashboard /path/to/matensemble_campaign --host 127.0.0.1 --port 8000
+        matensemble-dashboard /path/to/matensemble_campaign --host 127.0.0.1 --port 8000
         ssh -N -L 8000:127.0.0.1:8000 <user>@<login.host>
     """
     status_path = Path(status_file)

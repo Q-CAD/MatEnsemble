@@ -5,7 +5,7 @@ from importlib import metadata
 from pathlib import Path
 from typing import Any
 
-SUPPORTED_SYSTEMS = ("frontier", "perlmutter", "pathfinder")
+SUPPORTED_SYSTEMS = ("frontier", "perlmutter", "pathfinder", "linux")
 GHCR_NAMESPACE = "ghcr.io/q-cad/matensemble"
 
 CORE_SOURCE_FILES = (
@@ -62,16 +62,17 @@ The standard image tag pattern is:
 
     ghcr.io/q-cad/matensemble:<system>-vX.Y.Z
 
-Where `<system>` is one of `frontier`, `perlmutter`, or `pathfinder`, and
+Where `<system>` is one of `frontier`, `perlmutter`, `pathfinder`, or `linux`, and
 `X.Y.Z` is the local MatEnsemble version. The MCP server does not probe GHCR for
 tags; it derives the expected latest tags from the checked-out MatEnsemble
 version.
 
 Frontier and Pathfinder normally use Apptainer `.sif` images built or pulled
 from the GHCR image. Perlmutter normally uses `podman-hpc pull` with the GHCR
-tag. If a user needs extra dependencies, start FROM the MatEnsemble image for
-their system and install additional apt, uv/pip, or compiled dependencies in a
-custom container layer.
+tag. General Linux installations use the `linux` image with Apptainer, Docker,
+or Podman. If a user needs extra dependencies, start FROM the MatEnsemble image
+for their system and install additional apt, uv/pip, or compiled dependencies
+in a custom container layer.
 """
 
 
@@ -119,7 +120,7 @@ def get_examples_for_system(system: str | None = None) -> dict[str, str]:
     root = repo_root()
     files: dict[str, str] = {}
     for directory in (
-        root / "example_workflows" / "generic",
+        root / "example_workflows" / "general",
         root / "example_workflows" / key,
     ):
         files.update(_read_tree(directory, root))

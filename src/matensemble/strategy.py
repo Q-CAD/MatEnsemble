@@ -3,14 +3,12 @@ import traceback
 import concurrent.futures
 import pickle
 
-import flux
-import flux.job.executor
-
 from datetime import datetime
 from pathlib import Path
 
 from abc import ABC, abstractmethod
 
+from matensemble.chore import Chore
 from matensemble.model import OutputReference
 
 
@@ -29,6 +27,77 @@ class FutureProcessingStrategy(ABC):
         Must be implemented by the child classes
         """
         pass
+
+    def _process_future(self, fut) -> tuple[bool, Chore]:
+        """Record one completed future and return ``(succeeded, chore)``."""
+
+        chore_id = getattr(fut, "chore_id")
+        chore = getattr(fut, "chore_obj")
+
+        try:
+            rc = fut.result()
+        except Exception as e:
+            tb = traceback.format_exc()
+            stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+            append_text(
+                chore.workdir / "stderr",
+                (
+                    f"\n\n===== MATENSEMBLE WRAPPER ERROR ({stamp}) =====\n"
+                    f"chore={chore_id}\n"
+                    f"workdir={chore.workdir}\n"
+                    f"{type(e).__name__}: {e}"
+                    f"{tb}\n"
+                ),
+            )
+            self.manager._logger.exception("CHORE FAILED: chore=%s", chore_id)
+            released_cores, released_gpus = self.manager._finish_chore(
+                chore,
+                failure_reason="exception",
+                exception=f"{type(e).__name__}: {e}",
+            )
+            succeeded = False
+        else:
+            # rc 134 is a double free or corruption error caused by
+            # lammps-symmetrix cleanup. The function still produces a valid
+            # result.pickle, so preserve the existing successful treatment.
+            if rc != 0 and rc != 134:
+                append_text(
+                    chore.workdir / "stderr",
+                    f"\n\n===== MATENSEMBLE: NONZERO EXIT =====\nchore={chore_id} rc={rc}\n",
+                )
+                self.manager._logger.error(
+                    "CHORE NONZERO EXIT: chore=%s rc=%s | workdir=%s | stdout=%s | stderr=%s",
+                    chore_id,
+                    rc,
+                    chore.workdir,
+                    chore.workdir / "stdout",
+                    chore.workdir / "stderr",
+                )
+                released_cores, released_gpus = self.manager._finish_chore(
+                    chore,
+                    failure_reason=f"nonzero_exit:{rc}",
+                )
+                succeeded = False
+            else:
+                released_cores, released_gpus = self.manager._finish_chore(chore)
+                succeeded = True
+
+        self.manager._logger.info(
+            "CHORE FINISHED: chore=%s state=%s released_cores=%d released_gpus=%d",
+            chore_id,
+            "completed" if succeeded else "failed",
+            released_cores,
+            released_gpus,
+        )
+        self.manager._log_progress()
+
+        if succeeded and self.manager._write_restart_freq and (
+            len(self.manager._completed_chores) % self.manager._write_restart_freq == 0
+        ):
+            self.manager._make_restart()
+
+        return succeeded, chore
 
 
 class AdaptiveStrategy(FutureProcessingStrategy):
@@ -60,178 +129,49 @@ class AdaptiveStrategy(FutureProcessingStrategy):
             The amount of time to wait between chores being completed.
         """
 
+        if not self.manager._futures:
+            return
+
         completed, self.manager._futures = concurrent.futures.wait(
-            self.manager._futures, timeout=buffer_time
+            self.manager._futures,
+            timeout=buffer_time,
+            return_when=concurrent.futures.FIRST_COMPLETED,
         )
-
-        had_failure = False
         for fut in completed:
-            chore_id = getattr(fut, "chore_id")
-            chore = getattr(fut, "chore_obj")
-            self.manager._running_chores.remove(chore_id)
+            self._process_future(fut)
 
-            try:
-                rc = fut.result()
-            except Exception as e:
-                tb = traceback.format_exc()
-                stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-                append_text(
-                    chore.workdir / "stderr",
-                    (
-                        f"\n\n===== MATENSEMBLE WRAPPER ERROR ({stamp}) =====\n"
-                        f"chore={chore_id}\n"
-                        f"workdir={chore.workdir}\n"
-                        f"{type(e).__name__}: {e}"
-                        f"{tb}\n"
-                    ),
-                )
-                self.manager._logger.exception("CHORE FAILED: chore=%s", chore_id)
-                self.manager._record_failure(
-                    chore_id,
-                    reason="exception",
-                    exception=f"{type(e).__name__}: {e}",
-                )
-                self.manager._fail_dependents(chore_id)
-                had_failure = True
-                continue
-
-            # rc 134 is a double free or corruption error caused by lammps-symmetrix in the
-            # in the frontier image during lammps cleanup
-            # the function will still complete successfully and produce a result.pickle file
-            # so if we can safely ignore the return code
-            if rc != 0 and rc != 134:
-                append_text(
-                    chore.workdir / "stderr",
-                    f"\n\n===== MATENSEMBLE: NONZERO EXIT =====\nchore={chore_id} rc={rc}\n",
-                )
-                self.manager._logger.error(
-                    "CHORE NONZERO EXIT: chore=%s rc=%s | workdir=%s | stdout=%s | stderr=%s",
-                    chore_id,
-                    rc,
-                    chore.workdir,
-                    chore.workdir / "stdout",
-                    chore.workdir / "stderr",
-                )
-                self.manager._record_failure(
-                    chore_id,
-                    reason=f"nonzero_exit:{rc}",
-                )
-                self.manager._fail_dependents(chore_id)
-                had_failure = True
-                continue
-
-            self.manager._completed_chores.append(chore_id)
-
-            for dep_id in self.manager._dependents.get(chore_id, []):
-                self.manager._remaining_deps[dep_id] -= 1
-                if self.manager._remaining_deps[dep_id] == 0:
-                    self.manager._mark_ready(dep_id)
-                    self.manager._blocked.discard(dep_id)
-
-            # adaptively submit another chore
+        if completed:
+            # All resources released by this completion batch are visible before
+            # filling the newly available capacity.
             self.manager._submit_until_ooresources(
                 buffer_time=buffer_time,
                 dynopro=getattr(self.manager, "_dynopro", False),
             )
 
-            if self.manager._write_restart_freq and (
-                len(self.manager._completed_chores) % self.manager._write_restart_freq
-                == 0
-            ):
-                self.manager._make_restart()
-
-        if had_failure:
-            return
-
 
 class NonAdaptiveStrategy(FutureProcessingStrategy):
     """
-    An implementation of the :obj:`FutureProcessingStrategy` which will not adaptively
-    submit new :obj:`Chore`'s as incoming chores are completed.
+    Process chores in discrete waves.
+
+    All futures submitted in the current wave are allowed to finish before
+    their newly ready dependents, or any remaining ready chores, can be
+    submitted by the manager's next outer-loop iteration.
     """
 
     def __init__(self, manager) -> None:
         super().__init__(manager)
 
     def process_futures(self, buffer_time) -> None:
-        completed, self.manager._futures = concurrent.futures.wait(
-            self.manager._futures, timeout=buffer_time
-        )
-
-        had_failure = False
-        for fut in completed:
-            chore_id = getattr(fut, "chore_id")
-            chore = getattr(fut, "chore_obj")
-            self.manager._running_chores.remove(chore_id)
-
-            try:
-                rc = fut.result()
-            except Exception as e:
-                tb = traceback.format_exc()
-                stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-                append_text(
-                    chore.workdir / "stderr",
-                    (
-                        f"\n\n===== MATENSEMBLE WRAPPER ERROR ({stamp}) =====\n"
-                        f"chore={chore_id}\n"
-                        f"workdir={chore.workdir}\n"
-                        f"{type(e).__name__}: {e}"
-                        f"{tb}\n"
-                    ),
-                )
-                self.manager._logger.exception("CHORE FAILED: chore=%s", chore_id)
-                self.manager._record_failure(
-                    chore_id,
-                    reason="exception",
-                    exception=f"{type(e).__name__}: {e}",
-                )
-                self.manager._fail_dependents(chore_id)
-                had_failure = True
-                continue
-
-            # rc 134 is a double free or corruption error caused by lammps-symmetrix in the
-            # in the frontier image during lammps cleanup
-            # the function will still complete successfully and produce a result.pickle file
-            # so if we can safely ignore the return code
-            if rc != 0 and rc != 134:
-                append_text(
-                    chore.workdir / "stderr",
-                    f"\n\n===== MATENSEMBLE: NONZERO EXIT =====\nchore={chore_id} rc={rc}\n",
-                )
-                self.manager._logger.error(
-                    "CHORE NONZERO EXIT: chore=%s rc=%s | workdir=%s | stdout=%s | stderr=%s",
-                    chore_id,
-                    rc,
-                    chore.workdir,
-                    chore.workdir / "stdout",
-                    chore.workdir / "stderr",
-                )
-                self.manager._record_failure(
-                    chore_id,
-                    reason=f"nonzero_exit:{rc}",
-                )
-                self.manager._fail_dependents(chore_id)
-                had_failure = True
-                continue
-
-            self.manager._completed_chores.append(chore_id)
-
-            for dep_id in self.manager._dependents.get(chore_id, []):
-                self.manager._remaining_deps[dep_id] -= 1
-                if self.manager._remaining_deps[dep_id] == 0:
-                    self.manager._mark_ready(dep_id)
-                    self.manager._blocked.discard(dep_id)
-
-            if self.manager._write_restart_freq and (
-                len(self.manager._completed_chores) % self.manager._write_restart_freq
-                == 0
-            ):
-                self.manager._make_restart()
-
-        if had_failure:
+        if not self.manager._futures:
             return
+
+        # Freeze the wave before waiting. Process and log each future as it
+        # finishes so status is current, but never submit here; the manager's
+        # next fill phase cannot begin until this entire snapshot is drained.
+        wave = set(self.manager._futures)
+        for fut in concurrent.futures.as_completed(wave):
+            self.manager._futures.discard(fut)
+            self._process_future(fut)
 
 
 class UserStrategy(FutureProcessingStrategy):
@@ -250,75 +190,21 @@ class UserStrategy(FutureProcessingStrategy):
         #     )
 
     def process_futures(self, buffer_time) -> None:
-        completed, self.manager._futures = concurrent.futures.wait(
-            self.manager._futures, timeout=buffer_time
-        )
+        if not self.manager._futures:
+            return
 
-        had_failure = False
+        completed, self.manager._futures = concurrent.futures.wait(
+            self.manager._futures,
+            timeout=buffer_time,
+            return_when=concurrent.futures.FIRST_COMPLETED,
+        )
         for fut in completed:
             chore_id = getattr(fut, "chore_id")
-            chore = getattr(fut, "chore_obj")
+            succeeded, chore = self._process_future(fut)
+            if not succeeded:
+                continue
+
             chore_name = chore_id.removeprefix("chore-").rsplit("-", 1)[0]
-            self.manager._running_chores.remove(chore_id)
-
-            try:
-                rc = fut.result()
-            except Exception as e:
-                tb = traceback.format_exc()
-                stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-                append_text(
-                    chore.workdir / "stderr",
-                    (
-                        f"\n\n===== MATENSEMBLE WRAPPER ERROR ({stamp}) =====\n"
-                        f"chore={chore_id}\n"
-                        f"workdir={chore.workdir}\n"
-                        f"{type(e).__name__}: {e}"
-                        f"{tb}\n"
-                    ),
-                )
-                self.manager._logger.exception("CHORE FAILED: chore=%s", chore_id)
-                self.manager._record_failure(
-                    chore_id,
-                    reason="exception",
-                    exception=f"{type(e).__name__}: {e}",
-                )
-                self.manager._fail_dependents(chore_id)
-                had_failure = True
-                continue
-
-            # rc 134 is a double free or corruption error caused by lammps-symmetrix in the
-            # in the frontier image during lammps cleanup
-            # the function will still complete successfully and produce a result.pickle file
-            # so if we can safely ignore the return code
-            if rc != 0 and rc != 134:
-                append_text(
-                    chore.workdir / "stderr",
-                    f"\n\n===== MATENSEMBLE: NONZERO EXIT =====\nchore={chore_id} rc={rc}\n",
-                )
-                self.manager._logger.error(
-                    "CHORE NONZERO EXIT: chore=%s rc=%s | workdir=%s | stdout=%s | stderr=%s",
-                    chore_id,
-                    rc,
-                    chore.workdir,
-                    chore.workdir / "stdout",
-                    chore.workdir / "stderr",
-                )
-                self.manager._record_failure(
-                    chore_id,
-                    reason=f"nonzero_exit:{rc}",
-                )
-                self.manager._fail_dependents(chore_id)
-                had_failure = True
-                continue
-
-            self.manager._completed_chores.append(chore_id)
-
-            for dep_id in self.manager._dependents.get(chore_id, []):
-                self.manager._remaining_deps[dep_id] -= 1
-                if self.manager._remaining_deps[dep_id] == 0:
-                    self.manager._mark_ready(dep_id)
-                    self.manager._blocked.discard(dep_id)
 
             # --- Processing the chore and spawning the new one ---
             if chore_name == self.proc_chore:
@@ -356,20 +242,11 @@ class UserStrategy(FutureProcessingStrategy):
                                 f"bolo_match={chore_name} | due the following Exception ->\n{e}"
                             )
 
-            # adaptively submit another chore
+        if completed:
             self.manager._submit_until_ooresources(
                 buffer_time=buffer_time,
                 dynopro=getattr(self.manager, "_dynopro", False),
             )
-
-            if self.manager._write_restart_freq and (
-                len(self.manager._completed_chores) % self.manager._write_restart_freq
-                == 0
-            ):
-                self.manager._make_restart()
-
-        if had_failure:
-            return
 
 
 def append_text(path: Path, text: str) -> None:

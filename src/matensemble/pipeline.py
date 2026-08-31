@@ -35,7 +35,8 @@ class Pipeline:
 
     #. ``Pipeline.chore(...)``
        Wraps a top-level Python function and turns each call to that function
-       into a delayed ``Chore`` object instead of executing it immediately.
+       into a delayed call to that function, or a ``Chore`` object instead of
+       executing it immediately.
        The call returns an ``OutputReference`` placeholder that can be passed
        into later chores to define dependencies between tasks.
 
@@ -70,6 +71,8 @@ class Pipeline:
         self,
         basedir: str | None = None,
         registry: ChoreRegistry | None = None,
+        reserve_broker_node: bool | None = None,
+        controller_cores: int | None = None,
     ) -> None:
         """
         Parameters
@@ -77,12 +80,36 @@ class Pipeline:
         basedir : str, optional
             The root directory of the workflow. Defaults to the current working
             directory
+        reserve_broker_node : bool or None, optional
+            Controls whether Flux broker rank 0 is reserved exclusively for the
+            workflow controller. ``None`` (the default) shares rank 0 for a
+            single-rank Flux instance and reserves it for a multi-rank instance.
+            ``True`` always reserves rank 0, while ``False`` always allows chores
+            to run there.
+        controller_cores : int or None, optional
+            Chore capacity to leave available for Flux and MatEnsemble in a
+            shared, single-rank instance. ``None`` reserves one core in that
+            configuration and zero otherwise. Explicit nonzero reservations are
+            only supported for single-rank instances.
         """
+
+        if reserve_broker_node is not None and not isinstance(
+            reserve_broker_node, bool
+        ):
+            raise TypeError("reserve_broker_node must be a bool or None")
+        if controller_cores is not None and (
+            isinstance(controller_cores, bool)
+            or not isinstance(controller_cores, int)
+            or controller_cores < 0
+        ):
+            raise ValueError("controller_cores must be a non-negative integer or None")
 
         self._counter = 0
         self._chore_list: list[Chore] = []
         self._registry = registry if registry is not None else ChoreRegistry()
         self._output_reference_list: list[OutputReference] = []
+        self._reserve_broker_node = reserve_broker_node
+        self._controller_cores = controller_cores
 
         root = Path.cwd() if basedir is None else Path(basedir)
         self._base_dir = (
@@ -749,6 +776,8 @@ class Pipeline:
                 write_restart_freq=write_restart_freq,
                 set_cpu_affinity=set_cpu_affinity,
                 set_gpu_affinity=set_gpu_affinity,
+                reserve_broker_node=self._reserve_broker_node,
+                controller_cores=self._controller_cores,
             )
 
             if self._strategy_spec:
@@ -778,97 +807,6 @@ class Pipeline:
             with self._submission_state_lock:
                 self._finished = True
             return self._collect_results()
-
-    def graph(
-        self,
-        output_path: str | Path | None = None,
-        *,
-        show: bool = False,
-        figsize: tuple[float, float] = (12.0, 7.0),
-    ) -> nx.DiGraph:
-        """
-        Return the workflow DAG, optionally rendering it as an image.
-
-        Calling ``graph()`` with no arguments preserves the historical behavior
-        and returns the :class:`networkx.DiGraph`. Passing ``output_path`` writes
-        a visual representation of the DAG using Matplotlib and still returns
-        the graph for further inspection.
-        """
-
-        dag = self._create_graph()
-        if output_path is None and not show:
-            return dag
-
-        try:
-            import matplotlib.pyplot as plt
-        except ImportError as exc:
-            raise RuntimeError(
-                "Rendering a Pipeline graph requires matplotlib to be installed."
-            ) from exc
-
-        if dag.number_of_nodes() == 0:
-            pos = {}
-        else:
-            try:
-                layers = list(nx.topological_generations(dag))
-                for layer_index, layer in enumerate(layers):
-                    for node in layer:
-                        dag.nodes[node]["layer"] = layer_index
-                pos = nx.multipartite_layout(dag, subset_key="layer")
-            except Exception:
-                pos = nx.spring_layout(dag, seed=42)
-
-        labels = {}
-        for node_id, data in dag.nodes(data=True):
-            chore = data.get("chore")
-            if chore is None:
-                labels[node_id] = node_id
-                continue
-            chore_name = chore.chore_qualname or node_id
-            nice = getattr(chore, "nice", 0)
-            labels[node_id] = f"{node_id}\n{chore_name}\nnice={nice}"
-
-        fig, ax = plt.subplots(figsize=figsize)
-        ax.set_title("MatEnsemble Workflow DAG")
-        ax.axis("off")
-
-        nx.draw_networkx_edges(
-            dag,
-            pos,
-            ax=ax,
-            arrows=True,
-            arrowstyle="-|>",
-            arrowsize=18,
-            edge_color="#667085",
-            width=1.5,
-        )
-        nx.draw_networkx_nodes(
-            dag,
-            pos,
-            ax=ax,
-            node_color="#d9eafd",
-            edgecolors="#255f85",
-            linewidths=1.2,
-            node_size=2600,
-        )
-        nx.draw_networkx_labels(
-            dag,
-            pos,
-            labels=labels,
-            ax=ax,
-            font_size=8,
-            font_color="#111827",
-        )
-
-        fig.tight_layout()
-        if output_path is not None:
-            path = Path(output_path)
-            path.parent.mkdir(parents=True, exist_ok=True)
-            fig.savefig(path, bbox_inches="tight", dpi=160)
-        if show:
-            plt.show()
-        plt.close(fig)
-        return dag
 
     def _collect_results(self) -> dict[str, Any]:
         results = {}
@@ -902,8 +840,9 @@ class Pipeline:
             Restart/checkpoint files are not supported yet. Leave this as
             ``None``. Passing an integer raises :exc:`NotImplementedError`.
         buffer_time : float
-            The amount of seconds that the :obj:`FluxManager` should wait between
-            submission of chores, defaults to 1.0s.
+            Maximum number of seconds adaptive strategies wait for a future
+            completion before checking workflow state again. Chore submissions
+            are not delayed, defaults to 1.0s.
         log_delay : float
             The amount delay in seconds between the writing of logs
         set_cpu_affinity : bool

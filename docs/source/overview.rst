@@ -29,7 +29,7 @@ parameter sweeps, or analysis pipelines where classic "one Slurm job per task" w
 scheduler or spend too much time queued. In the context of high-throughput materials modeling, fully leveraging
 exascale resource capabilities with SLURM or similar schedulers is challenging due to:
 
-* Many short ``sbatch`` / ``srun`` invocations increasing scheduler load and log volume.
+* Many short ``sbatch`` / ``srun`` invocations increasing scheduler overhad and log volume.
 * Queue latency dominating when tasks are tiny relative to scheduler quanta.
 * Some centers capping how many job steps may be launched inside a single allocation.
 * Significant throughput loss due to idle resources and lack of fine-grained task management.
@@ -46,36 +46,43 @@ free up, keeping the allocation saturated until all work is done.
 What MatEnsemble does
 =====================
 
-MatEnsemble continuously: (1) tracks available computing resources, (2) submits ready DAG nodes to the queue,
-(3) processes completed Flux jobs, (4) unblocks dependents, and (5) repeats until no ready, running, or blocked
-work remains. User-defined strategies can also spawn additional DAG work based on intermediate results.
+MatEnsemble continuously:
+(1) tracks available computing resources,
+(2) submits ready DAG nodes to the queue,
+(3) processes completed Flux jobs,
+(4) unblocks dependents, and
+(5) repeats until no ready, running, or blocked work remains.
+
+User-defined strategies can also spawn additional DAG work based on intermediate results.
 
 See :doc:`design` for the exact loop, artifacts, and environment assumptions.
 
-Core concepts
-=============
+Core
+====
 
 :class:`~matensemble.pipeline.Pipeline`
     User-facing builder. Python functions decorated with :meth:`~matensemble.pipeline.Pipeline.chore` turn into
     delayed function calls; :meth:`~matensemble.pipeline.Pipeline.exec` adds argv-style work.
 
-:class:`~matensemble.model.OutputReference`
-    Placeholder returned from a delayed function call. Passing it into another chore encodes a **dependency edge**
-    and ensures upstream results are unpickled before the downstream function runs.
+:class:`~matensemble.manager.FluxManager`
+    Runtime coordinator created when :meth:`~matensemble.pipeline.Pipeline.submit` is called.
 
 :class:`~matensemble.chore.Chore`
     Single Flux submission record: command, resources, working directory, and for Python chores, the qualified
     name of the function you want to call.
 
-:class:`~matensemble.manager.FluxManager`
-    Runtime coordinator created when :meth:`~matensemble.pipeline.Pipeline.submit` is called.
+:class:`~matensemble.model.OutputReference`
+    Placeholder returned from a delayed function call. Passing it into another chore encodes a **dependency edge**
+    and ensures upstream results are unpickled before the downstream function runs.
 
 :class:`~matensemble.strategy.FutureProcessingStrategy`
     Pluggable completion handler. Built-ins: :class:`~matensemble.strategy.AdaptiveStrategy` (fill idle
     resources as tasks finish) and :class:`~matensemble.strategy.NonAdaptiveStrategy` (wave-style drain).
+    `~matensemble.pipeline.Pipeline.strategy` can be used to create a processing strategy based on the
+    results of an intermediate chore.
 
-Logging and on-disk layout
-==========================
+Outputs
+=======
 
 Every run creates a **timestamped workflow directory** under your chosen base path (by default the current
 working directory):
@@ -102,16 +109,19 @@ working directory):
 The driver prints a short hint to stderr with absolute paths to ``status.json``, the log file, and the ``out``
 tree when logging initializes.
 
-Adaptive vs. non-adaptive scheduling
+Adaptive vs. Non-Adaptive Scheduling
 =====================================
 
-In **adaptive** mode (the default), completing a chore can **immediately** trigger more submissions in the same
-super-loop iteration via :meth:`~matensemble.manager.FluxManager._submit_until_ooresources`, keeping the
-allocation saturated when a backlog exists.
+In **adaptive** mode (the default), completed futures immediately release their locally tracked resources and
+can cause more submissions in the same super-loop iteration via
+:meth:`~matensemble.manager.FluxManager._submit_until_ooresources`, keeping the allocation saturated when a
+backlog exists.
 
-In **non-adaptive** mode, the manager only submits during the initial "fill until out of resources" phases;
-completion handling updates the DAG but **does not** proactively pull additional ready chores until the next
-outer-loop scheduling opportunity: use this when tighter control or simpler resource snapshots are desired.
+In **non-adaptive** mode, each "fill until out of resources" phase forms a wave. Completion handling waits for
+every running chore in that wave to finish before returning to the outer loop and submitting the next wave.
+Completions and released resources are still logged as they occur. With heterogeneous chore walltimes, slots
+that finish early remain idle until the slowest chore in their wave completes. This mode is useful as a static
+wave-scheduling baseline.
 
 .. image:: ../../media/chain_v_adaptive_scheduling.png
    :alt: Diagram contrasting static batching with adaptive back-filling of tasks
@@ -177,7 +187,7 @@ The :obj:`bolo_list` tells the manager which chores it should monitor for strate
 If that strategy returns a :obj:`matensemble.chore.ChoreSpec`, the specified callable, arguments, and resources
 (cores, GPUs, MPI, etc.) are added to the live queue.
 
-Roadmap and stability
+Roadmap and Stability
 =====================
 
 .. note::
@@ -206,11 +216,10 @@ References
    resource-driven online ensemble sampling simulation framework." arXiv:2504.05539.
    https://doi.org/10.48550/arXiv.2504.05539
 
-Next steps
+Next Steps
 ==========
 
 * :doc:`installation` — containers, PyPI install, site-specific shell snippets.
 * :doc:`tutorials` — minimal Python and executable examples, dependency graphs, packaging tips.
 * :doc:`design` — Flux interactions, ``PYTHONPATH``, failure propagation, dashboard tunneling.
-* :doc:`reference` — exhaustive parameter and artifact listing.
 * :ref:`api-reference` — docstring-generated module documentation.

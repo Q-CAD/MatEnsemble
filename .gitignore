@@ -50,3 +50,5 @@ example_workflows/**/matensemble_workflow-*/
 example_workflows/**/lammps_mace_calculator/
 *.pt
 *.pth
+example_workflows/generic/adaptive 
+

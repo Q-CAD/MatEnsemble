@@ -143,7 +143,7 @@ class StatusWriter:
     path : Path
         the path to the status file
     nnodes : int
-        The number of nodes that flux is managing (total_allocation - 1 for flux borker)
+        The number of nodes available to chores after applying the broker policy.
     cores_per_node : int
         The number of CPU cores that are available on each node
     gpus_per_node : int
@@ -311,8 +311,7 @@ def _setup_status_writer(
     path : Path
         The path to the status file
     nnodes : int
-        The number of nodes that are on the allocation minus one for the Flux
-        borker
+        The number of nodes available to chores after applying the broker policy.
     cores_per_node : int
         The number of CPU cores per node
     gpus_per_node : int

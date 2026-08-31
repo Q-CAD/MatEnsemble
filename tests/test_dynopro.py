@@ -199,8 +199,6 @@ def test_fluxlet_writes_dynopro_spec_in_per_resource_branch(monkeypatch, tmp_pat
             return _Done()
 
     monkeypatch.setattr("flux.job.JobspecV1", _JobspecV1, raising=False)
-    monkeypatch.setattr(Fluxlet, "get_gpus_per_node", lambda _self: (1, 1))
-
     chore = Chore(
         id="chore-dynopro-0001",
         workdir=tmp_path / "chore-dynopro-0001",
@@ -210,7 +208,7 @@ def test_fluxlet_writes_dynopro_spec_in_per_resource_branch(monkeypatch, tmp_pat
         nnodes=1,
     )
 
-    fluxlet = Fluxlet(_Handle())
+    fluxlet = Fluxlet(_Handle(), num_nodes=1, gpus_per_node=1)
     fluxlet.submit(_Executor(), chore)
 
     with (chore.workdir / "chore.pickle").open("rb") as f:

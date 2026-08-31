@@ -46,6 +46,9 @@ def _install_flux_stub() -> None:
             return _RpcResult()
 
     class _DummyResources:
+        class all:
+            ranks = [0, 1]
+
         class free:
             ranks = [1]
             ncores = 1

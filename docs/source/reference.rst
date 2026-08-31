@@ -54,13 +54,25 @@ a Python chore if you need DAG edges.
 ``Pipeline.submit``
 -------------------
 
+Broker placement is configured when constructing :class:`~matensemble.pipeline.Pipeline`:
+
+``reserve_broker_node`` (``bool`` or ``None``; default ``None``)
+    Automatic mode (``None``) shares rank 0 for a single-rank Flux instance and
+    dedicates it for a multi-rank instance. ``False`` always shares rank 0;
+    ``True`` always dedicates it and therefore requires at least two ranks.
+
+``controller_cores`` (``int`` or ``None``; default ``None``)
+    Chore capacity retained for the controller in a shared single-rank instance.
+    ``None`` reserves one core in that configuration and zero otherwise. This is
+    capacity accounting rather than hard CPU-ID pinning.
+
 ``write_restart_freq`` (:class:`int` or ``None``; default ``None``)
     Restart/checkpoint files are not supported yet. Leave this as ``None``. Passing an integer raises
     :exc:`NotImplementedError` before work is submitted.
 
 ``buffer_time`` (:class:`float`; default ``1.0``)
-    Passed to :func:`concurrent.futures.wait` as the ``timeout`` when draining Flux futures; also used as a
-    :func:`time.sleep` after each individual submission. Set to ``0.0`` for minimal spacing.
+    Passed to :func:`concurrent.futures.wait` as the ``timeout`` while monitoring Flux futures. Ready chores
+    are submitted without an artificial delay.
 
 ``log_delay`` (:class:`float`; default ``5.0``)
     The amount of time the logging thread will wait before updating the logs. Dafaults to every ``5.0`` seconds.
@@ -71,8 +83,9 @@ a Python chore if you need DAG edges.
 
 ``adaptive`` (default ``True``)
     If true (and no custom ``processing_strategy`` is given), use :class:`~matensemble.strategy.AdaptiveStrategy`
-    so newly ready chores can be submitted inside the completion loop. If false, :class:`~matensemble.strategy.NonAdaptiveStrategy`
-    only drains futures.
+    so a completion releases locally tracked resources and newly ready chores can be submitted inside the
+    completion loop. If false, :class:`~matensemble.strategy.NonAdaptiveStrategy` waits for the entire current
+    wave of running chores to finish before the manager submits another wave.
 
 ``dynopro``
     Reserved flag threaded through to :meth:`~matensemble.manager.FluxManager.run` for whole-node dynopro
@@ -90,7 +103,7 @@ a Python chore if you need DAG edges.
 ----------------------
 
 MatEnsemble writes dashboard status with schema version 2 and two files. Serve
-the browser UI separately with ``matensemble dashboard <campaign-root>`` or the
+the browser UI separately with ``matensemble-dashboard <campaign-root>`` or the
 MCP server's ``launch_dashboard`` helper.
 
 ``status.json``
@@ -124,8 +137,8 @@ The dashboard endpoints are:
 Legacy flat status files are normalized as schema version 1 input and exposed as a
 schema-v2 workflow with one synthetic history snapshot.
 
-Per-chore artifacts
--------------------
+Chore Artifacts
+---------------
 
 ``stdout`` / ``stderr``
     Standard streams from Flux. MatEnsemble appends human-readable blocks to ``stderr`` when futures raise
@@ -142,8 +155,8 @@ Per-chore artifacts
     Python return value. Downstream chores load ``../<dep_chore_id>/result.pickle`` via
     :func:`matensemble.runtime_worker._load_dep_result`.
 
-Failure ``reason`` strings (internal)
----------------------------------------
+Failure ``reason`` strings
+--------------------------
 
 Recorded in :meth:`~matensemble.manager.FluxManager._record_failure` entries:
 
@@ -153,9 +166,3 @@ Recorded in :meth:`~matensemble.manager.FluxManager._record_failure` entries:
 * ``nonzero_exit:<rc>`` — future returned a non-zero integer exit code.
 * ``dependency_failed`` — cascaded skip because an upstream chore failed.
 
-Redis helper (optional)
------------------------
-
-``matensemble.redis.service.RedisService`` can launch ``redis-server`` under ``flux run`` for streaming /
-timeseries-style workflows. It is **orthogonal** to :class:`~matensemble.pipeline.Pipeline` and is mainly
-used from dynamics/analysis integrations. There is no requirement to run Redis for basic DAG workflows.

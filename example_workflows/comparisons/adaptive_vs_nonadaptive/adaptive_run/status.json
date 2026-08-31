@@ -1,0 +1,33 @@
+{
+  "schema_version": 2,
+  "workflow": {
+    "id": "89dbf3c1-cc7e-4c89-b8ba-d5cc786e15cb",
+    "name": "matensemble_workflow-20260812_194649",
+    "campaign": "adaptive_vs_nonadaptive",
+    "state": "completed",
+    "started_at": "2026-08-12T19:46:49.718Z",
+    "updated_at": "2026-08-12T19:49:50.548Z",
+    "finished_at": "2026-08-12T19:49:50.548Z",
+    "elapsed_seconds": 180.83
+  },
+  "allocation": {
+    "nodes": 3,
+    "cores_per_node": 6,
+    "gpus_per_node": 0,
+    "total_cores": 18,
+    "total_gpus": 0
+  },
+  "current": {
+    "sequence": 279,
+    "pending": 0,
+    "ready": 0,
+    "blocked": 0,
+    "running": 0,
+    "completed": 100,
+    "failed": 0,
+    "free_cores": 18,
+    "free_gpus": 0
+  },
+  "failures": [],
+  "history_file": "status_history.jsonl"
+}

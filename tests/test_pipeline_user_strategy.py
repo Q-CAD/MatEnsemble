@@ -1,5 +1,6 @@
 import time
 import threading
+import pytest
 
 from concurrent.futures import Future
 from pathlib import Path
@@ -8,6 +9,56 @@ from matensemble.chore import ChoreRegistry, ChoreSpec
 from matensemble.model import Resources
 from matensemble.model import OutputReference
 from matensemble.pipeline import Pipeline
+
+
+def test_pipeline_stores_broker_policy(tmp_path: Path):
+    pipeline = Pipeline(
+        basedir=str(tmp_path),
+        reserve_broker_node=False,
+        controller_cores=2,
+    )
+
+    assert pipeline._reserve_broker_node is False
+    assert pipeline._controller_cores == 2
+
+
+@pytest.mark.parametrize("value", [-1, True, 1.5, "1"])
+def test_pipeline_rejects_invalid_controller_cores(tmp_path: Path, value):
+    with pytest.raises(ValueError, match="controller_cores"):
+        Pipeline(basedir=str(tmp_path), controller_cores=value)
+
+
+def test_pipeline_rejects_non_boolean_broker_policy(tmp_path: Path):
+    with pytest.raises(TypeError, match="reserve_broker_node"):
+        Pipeline(basedir=str(tmp_path), reserve_broker_node="auto")
+
+
+def test_pipeline_passes_broker_policy_to_manager(monkeypatch, tmp_path: Path):
+    captured = {}
+
+    class _Manager:
+        def __init__(self, **kwargs):
+            captured.update(kwargs)
+
+        def run(self, **_kwargs):
+            return None
+
+    monkeypatch.setattr("matensemble.pipeline.FluxManager", _Manager)
+    pipeline = Pipeline(
+        basedir=str(tmp_path),
+        reserve_broker_node=False,
+        controller_cores=2,
+    )
+
+    @pipeline.chore()
+    def work():
+        return 1
+
+    work()
+    pipeline._submit(buffer_time=0)
+
+    assert captured["reserve_broker_node"] is False
+    assert captured["controller_cores"] == 2
 
 
 def test_spawn_chore_from_name_infers_dependency(tmp_path: Path):

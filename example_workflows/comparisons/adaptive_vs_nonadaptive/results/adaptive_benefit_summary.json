@@ -1,0 +1,11 @@
+{
+  "adaptive_elapsed_seconds": 180.83,
+  "nonadaptive_elapsed_seconds": 207.503,
+  "wall_clock_seconds_saved": 26.672999999999973,
+  "wall_clock_reduction_percent": 12.8542719864291,
+  "throughput_multiplier": 1.1475031797821156,
+  "task_runtime_coefficient_of_variation": 1.3057946922355406,
+  "task_count": 100,
+  "worker_slots": 18,
+  "prediction_calibration_factor": 1.043766885298043
+}

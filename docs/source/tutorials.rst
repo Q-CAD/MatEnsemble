@@ -2,254 +2,248 @@
 Tutorials
 =========
 
-These examples assume you already have a **Flux session** and the ``matensemble`` package importable in
-that environment in order to run (:doc:`installation`).
+Here we walk you through how to start a flux session and begin running workflows interactively
+with MatEnsemble. We assume that you have already installed MatEnsemble on whatever system you
+are planning to run on (if not you can refer to :doc:`installation`).
 
-Here we will go over what chores are and how to create them, how to build a workflow, and some capabilities
-that MatEnsemble gives you.
+.. contents:: Contents
+   :depth 1
 
-Minimal executable workflow
-===========================
+Starting Flux
+=============
 
-MatEnsemble is structured around :class:`~matensemble.chore.Chore`s which are units of work for MatEnsemble
-to manage the state and execution of. There are two types of :class:`~matensemble.chore.Chore`s PYTHON and
-EXECUTABLE. EXECUTABLE chores are the simpler of the two and can be created with the :class:`~matensemble.pipeline.Pipeline`
+Flux is a resource manager much like slurm, but is entirely in user space. Flux gives users the
+ability to have fine grained control over their allocation, allowing them to run jobs on individual
+CPU cores, GPUs and entire nodes hierarchically.
 
-The Pipeline object will create a Directed Acyclic Graph (DAG) of these chore objects and once you submit
-the graph to the manager it will sort the graph topologically and start the execution loop.
+.. contents:: Systems
+   :local:
+   :depth: 1
 
-``Pipeline.exec`` records a :class:`~matensemble.chore.Chore`.
-The command is either a string or an argv list.
+Locally
+-------
+
+If you have flux installed locally then you can start flux with:
+
+.. code-block:: bash
+
+   flux start
+
+This will launch an interactive flux session and give you a shell into the environment.
+You can see what resources flux is seeing with:
+
+.. code-block:: bash
+
+   flux resource list
+
+Which will print a message showing the number of nodes, cores and gpus that flux sees.
+If you have downloaded the general linux container image for MatEnsemble then you will
+first need to spin up a container from the image. Depending on what container engine
+you are running the command will differ slightly (refer to :doc:`installation` for more
+details). Here is how to start a container with docker.
+
+.. code-block:: bash
+
+   docker run --rm -it ghcr.io/q-cad/matensemble:linux-vX.Y.Z /bin/bash
+
+This will give you a shell into a single use docker container where you can then run:
+
+.. code-block:: bash
+
+   flux start
+
+To put begin a flux session.
+
+Frontier
+--------
+
+On the OLCF Frontier system you will need a conainer setup in order to run flux. The system
+provided module is outdated and does not have the most recent features of flux that MatEnsemble
+makes use of. Follow our :doc:`installation` instructions for Frontier to get a container
+ready on Frontier.
+
+Once you have a SIF file ready you can start flux on either a login node or under a SLURM allocation
+on a compute node
+
+Login Node
+~~~~~~~~~~
+
+Go to the directory where your SIF file is located and run the command:
+
+.. code-block:: bash
+
+   apptainer exec <name>.sif flux start
+
+This will give you a shell into the flux session. You can verify with:
+
+.. code-block:: bash
+
+   flux resource list
+
+Which will print out the resources that flux is seeing.
+
+Compute Node
+~~~~~~~~~~~~
+
+In order to start flux on a compute node you can run the following command:
+
+.. code-block:: bash
+
+   srun \
+    -N $SLURM_NNODES \
+    -n $SLURM_NNODES \
+    --external-launcher \
+    --gpu-bind=closest \
+    --mpi=pmi2 \
+    apptainer exec <name>.sif flux start
+
+This will give you an interactive shell into the flux session which can see the entire SLURM
+allocation. You can verify by running:
+
+.. code-block:: bash
+
+   flux resource list
+
+Pathfinder
+----------
+
+Pathfinder is virtually identical to Frontier. You can start a flux session on a login node
+for some quick testing or on a compute node.
+
+Login
+~~~~~
+
+Go to the directory where your SIF file is located and run the command:
+
+.. code-block:: bash
+
+   apptainer exec <name>.sif flux start
+
+This will give you a shell into the flux session. You can verify with:
+
+.. code-block:: bash
+
+   flux resource list
+
+Which will print out the resources that flux is seeing.
+
+Compute
+~~~~~~~
+
+In order to start flux on a compute node you can run the following command:
+
+.. code-block:: bash
+
+   srun \
+    -N $SLURM_NNODES \
+    -n $SLURM_NNODES \
+    --external-launcher \
+    --mpi=pmi2 \
+    apptainer exec <name>.sif flux start
+
+This will give you an interactive shell to the flux session which can see all of your
+resources. You can verify with.
+
+.. code-block:: bash
+
+   flux resource list
+
+Perlmutter
+----------
+
+Currently it is not recommended to start an interactive flux session on Perlmutter, it is very unstable
+and note very user friendly. Instead the recommended approach is to use the MatEnsemble CLI tool. If you
+are really curious then you can take a look at the `cli script <https://github.com/FredDude2004/MatEnsemble/blob/main/src/cli/matensemble-perlmutter>_`
+for Perlmutter.
+
+Running MatEnsemble
+===================
+
+After you are in a flux session you can now run a MatEnsemble script. Here we will go over the
+general shape of MatEnsemble workflows and common patterns.
+
+Pipeline
+--------
+
+The main user facing APIs of MatEnsemble are accesed through the Pipeline object. The pipline object
+is used to define work for the manager to schedule, add strategies and launch dynamic and adaptive
+workflows.
 
 .. code-block:: python
-   :linenos:
 
    from matensemble.pipeline import Pipeline
 
-   pipe = Pipeline()
+   pipe = Pipeline(
+            basedir=None,
+            registry=None,
+            reserve_broker_node=None,
+            controller_cores=None,
+          )
 
-   pipe.exec(command=["echo", "hello from MatEnsemble"])
+Accepting the defaults is the recommended use of MatEnsemble but some of the arguments are worth
+noting depending on your use case. If you are on a single node machine (i.e. your local computer)
+then the reserve_broker_node should be set to False. MatEnsemble defaults to reserving an entire
+node to run the manager. If you are only on one node this wouldn't leave any resources for the
+actual jobs to run. Instead you can have the manager run on a specified number of CPU cores.
 
-   pipe.submit()
+Chores
+------
 
-Nothing runs until :meth:`~matensemble.pipeline.Pipeline.submit`, which builds the DAG,
-instantiates :class:`~matensemble.manager.FluxManager`, and enters the scheduling loop.
+Executable
+~~~~~~~~~~
 
-Parameters you will commonly set on :meth:`~matensemble.pipeline.Pipeline.exec`:
+Python
+~~~~~~
 
-* ``num_tasks`` — Flux task count (for MPI programs this is usually your rank count).
-* ``cores_per_task`` / ``gpus_per_task`` — resource hints for scheduling.
-* ``mpi=True`` — toggles ``mpi=pmi2`` on the Flux jobspec; your program must initialize MPI accordingly.
-* ``env`` / ``inherit_env`` — see :doc:`reference`.
+Strategy
+--------
 
-PYTHON Chores and ``OutputReference``
-=====================================
+Running on Perlmutter
+=====================
 
-The other type of chores that you can create with MatEnsemble are PYTHON chores. These are still a unit
-of work for MatEnsemble to manage the state and execution, but rather than a call to an external executable,
-PYTHON chores are delayed function calls. You can define your own python functions and add those as chores
-for the manager to handle.
+Here is a walkthrough on how to run MatEnsemble on Perlmutter using the MatEnsemble CLI tool.
+In order to have MatEnsemble run properly on Perlmutter there has to be a lot of extra directories
+and libraries bound into the container at runtime which is impractical for users to enter by hand.
+For guides on how to create workflow files and how to run MatEnsemble read the above documentation.
 
-The :class:`~matensemble.pipeline.Pipeline` has a decorator function that you can use to register a function.
-When you instantiate a function it does NOT add any chores the the :class:`~matensemble.pipeline.Pipeline` yet.
-Decorated functions are **not** executed immediately. When you call a PYTHON :class:`~matensemble.chore.Chore`
-it returns a :class:`~matensemble.model.OutputReference` placeholder.
+To install the MatEnsemble CLI tool you can run our installation script.
 
-Defining chores
----------------
+.. code-block:: bash
 
-.. code-block:: python
-   :linenos:
+   curl -fsSL https://raw.githubusercontent.com/Q-CAD/MatEnsemble/main/src/cli/install.sh | bash
 
-   from matensemble.pipeline import Pipeline
-   from mpi4py import MPI
+This will place an executable script at `/usr/bin/matensemble`.
 
-   # We first create a Pipeline and define an MPI-enabled chore that launches
-   # 10 parallel MPI ranks using mpi4py.
-   pipe = Pipeline()
+Next you need to pull the MatEnsemble container image for Perlmutter:
 
+.. code-block:: bash
 
-   # Next we register a function to MatEnsemble
-   @pipe.chore(num_tasks=10, cores_per_task=1, gpus_per_task=0, mpi=True)
-   def mpi_hello_world():
-       size = MPI.COMM_WORLD.Get_size()
-       rank = MPI.COMM_WORLD.Get_rank()
-       name = MPI.Get_processor_name()
+   podman-hpc pull ghcr.io/q-cad/matensemble:perlmutter-vX.Y.Z
 
-       print(f"Hello World! I am process {rank} of {size} on {name}.")
+In order to run MatEnsemble on Perlmutter you need to be on a GPU node. The image has drivers that
+get bound into the image that will fail if no NVIDIA GPU is detected. You can get an allocation with
 
+.. code-block:: bash
 
-   # Then we create 10 Chore objects by calling the registered function
-   for _ in range(10):
-       mpi_hello_world()
+   salloc \
+    -A <project-name> \
+    -C gpu \
+    --qos=debug \
+    -t HH:MM:SS \
+    -N <num-nodes> \
+    --ntasks-per-node=1 \
+    --gpus-per-node=4 \
+    --gpu-bind=closest
 
-   # Submit the workflow with the logger refreshing every second
-   pipe.submit(log_delay=1)
+Once you have an allocation you will then need to set the container image with:
 
-Chaingin PYTHON Chores
-======================
+.. code-block:: bash
 
-:class:`~matensemble.model.OutputReference`
-objects can be treated as the results of a PYTHON chore and passed to other calls to PYTHON chores. When you pass
-an :class:`~matensemble.model.OutputReference` to another chore call MatEnsemble will create an edge between those
-two chores and when you submit the workflow MatEnsemble will see the downstream PYTHON chore as a dependent and will
-ensure that these jobs are submitted in the correct order.
+   matensemble set-image ghcr.io/q-cad/matensemble:perlmutter-vX.Y.Z
 
-.. code-block:: python
+With everything in place you can now navigate to wherever you have a MatEnsemble workflow script and
+run it with:
 
-   # functions.py
-   from matensemble.pipeline import Pipeline
+.. code-block:: bash
 
-   pipe = Pipeline()
-
-   @pipe.chore()
-   def chore1():
-       return 1
-
-   @pipe.chore()
-   def chore2(x):
-       return x + 1
-
-   @pipe.chore()
-   def chore3(x):
-       return x * 2
-
-   a = chore1()
-   b = chore2(a)
-   c = chore3(b)
-
-   pipe.submit()
-
-:class:`~matensemble.manager.FluxManager` only schedules ``chore2`` after ``chore1`` finishes, and ``chore3`` after
-``chore2`` finishes. Internally, the worker deserializes ``../chore1/result.pickle`` before invoking ``chore2``.
-
-.. note::
-
-   Cycles are rejected during DAG validation. Fan-in (many tasks → one consumer) and fan-out are supported
-   so long as the graph remains acyclic.
-
-User Defined Strategies
-=======================
-
-MatEnsemble uses the strategy design pattern for the processing of chore completions. There are two
-internal strategies that are shipped automatically. :class:`~matensemble.strategy.AdaptiveStrategy`
-and :class:`~matensemble.strategy.NonAdaptiveStrategy`. The :class:`~matensemble.strategy.AdaptiveStrategy`
-Users can also define their own strategies to be injected into the manager at runtime. MatEnsemble
-provides another decorator to do this.
-
-.. code-block:: python
-
-    from matensemble.model import Resources
-    from matensemble.pipeline import Pipeline
-    from matensemble.chore import ChoreSpec
-
-    pipe = Pipeline()
-
-    screen_resources = dict(num_tasks=1, cores_per_task=1)
-    validation_resources = dict(num_tasks=1, cores_per_task=4)
-
-    @pipe.chore(name="screen_candidate", **screen_resources)
-    def screen_candidate(candidate):
-        """Cheap proxy for a simulation or surrogate-model evaluation."""
-        temperature = candidate["temperature"]
-        return {
-            "candidate": candidate,
-            "formation_energy": ((temperature - 1500) ** 2) / 1_000_000,
-        }
-
-    @pipe.chore(name="analyze_screen", **screen_resources)
-    def analyze_screen(screen):
-        """Decide whether this candidate deserves a more expensive validation."""
-        energy = screen["formation_energy"]
-        return {
-            "candidate": screen["candidate"],
-            "formation_energy": energy,
-            "uncertainty": 0.12 if energy < 0.03 else 0.02,
-        }
-
-    @pipe.chore(name="validate_candidate", **validation_resources)
-    def validate_candidate(candidate):
-        """Placeholder for a larger MD, DFT, or phase-field validation run."""
-        return {"candidate": candidate, "validation_status": "submitted"}
-
-    @pipe.strategy(bolo_list=["analyze_screen"], **screen_resources)
-    def request_validation(report):
-        """Spawn validation only for uncertain, high-value candidates."""
-        if report["uncertainty"] <= 0.05:
-            return None
-
-        return ChoreSpec(
-            args=(report["candidate"],),
-            kwargs={},
-            resources=Resources(**validation_resources),
-            qualname="validate_candidate",
-        )
-
-    for temperature in (1400, 1500, 1700):
-        candidate = {"composition": "SiO2", "temperature": temperature}
-        screen = screen_candidate(candidate)
-        analyze_screen(screen)
-
-    future = pipe.submit(log_delay=1)
-    print(future.result())
-
-
-The :meth:`~matensemble.pipeline.Pipeline.strategy` can be thought of as adding a callback to a
-:class:`~matensemble.chore.Chore`. This function has access to the internal
-:class:`~matensemble.manager.FluxManager` queue. If this strategy function returns a
-:class:`~matensemble.chore.ChoreSpec` then it will be added to the matensemble queue at runtime.
-This lets you create workflows that expand dynamically.
-
-The ``bolo_list`` is the list of chore names that should trigger the strategy. If one of these chores completes,
-MatEnsemble launches the strategy and passes the completed chore result as an argument.
-
-User-defined strategies can observe completed chores and dynamically add more work by returning
-:class:`~matensemble.chore.ChoreSpec` objects.
-
-matensemble.chore.ChoreSpec
----------------------------
-
-:obj:`~matensemble.chore.ChoreSpec` objecs are a description of what chore will be spawned at runtime. It
-takes the name of a registered function to spawn along with the arguments, keyword arguments and resources
-that it will use when it runs. It also takes a `nice` value, which is its priority in the queue. Lower values
-mean that it has higher priority, and higher values means lower priority. Its like if someone is in line at
-a cofee shop, someone who is really nice will give up their spot, but somone who is really mean might budge to
-the front of the line.
-
-Custom Manager Strategies
-=========================
-
-If the user needs more fine grained control over the Manager then they can define their own custom
-:class:`~matensemble.strategy.FutureProcessingStrategy` which will give them access to the internal
-manager queue. Rather than using a Pipeline to build the workflow, you can instead register your
-python functions to MatEnsemble useing the :obj:`~matensemble.chore.ChoreRegistry` to decorate and
-register the functions as normal, and use the :meth:`~matensemble.pipeline.Pipeline.call` function
-to compose the DAG. Or you can create your own :obj:`~matensemble.chore.Chore` objects to submit to
-a :class:`~matensemble.manager.FluxManager`
-
-Later we will create an example for reference but it isn't recommended to use this approach.
-
-Nested arguments
-================
-
-Dependency scanning walks nested containers and non-class dataclasses. You may pass structured payloads
-mixing plain data and :class:`~matensemble.model.OutputReference` instances; the worker recursively replaces
-references with concrete Python objects.
-
-Third-party imports inside chores
-=================================
-
-Because workers import the defining module in full, **top-level imports** run automatically. You do not need
-to bury ``import numpy`` inside the chore body unless you want lazy loading for side-effect control.
-
-If you need extra wheels:
-
-* **Containers:** extend the provided image (Apptainer ``%post`` snippet with ``uv pip install …``,
-  :doc:`installation`).
-* **Virtualenv on NFS:** install once into the environment shared by all nodes.
-
-Further reading
-===============
-
-* :doc:`reference` — complete ``submit()`` parameter table and artifact schemas.
-* :ref:`api-reference` — authoritative signatures mirrored from the source docstrings.
+   matensemble run <script-name>.py

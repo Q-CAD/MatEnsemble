@@ -43,7 +43,7 @@ def create_server(default_system: str) -> FastMCP:
 
     @mcp.tool()
     def get_examples_for_system(system_override: str | None = None) -> dict[str, str]:
-        """Return generic examples plus examples for the configured system."""
+        """Return general examples plus examples for the configured system."""
 
         return context.get_examples_for_system(system_override or system)
 

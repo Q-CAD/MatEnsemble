@@ -7,10 +7,10 @@ import pytest
 from mcp_matensemble import context
 
 
-def test_examples_include_generic_and_selected_system():
+def test_examples_include_general_and_selected_system():
     files = context.get_examples_for_system("perlmutter")
 
-    assert "example_workflows/generic/mpi/workflow.py" in files
+    assert "example_workflows/general/mpi/workflow.py" in files
     assert "example_workflows/perlmutter/lammps_smoke/workflow.py" in files
 
 
@@ -65,6 +65,7 @@ def test_latest_container_tags_are_deterministic(monkeypatch: pytest.MonkeyPatch
         "frontier": "ghcr.io/q-cad/matensemble:frontier-v1.2.3",
         "perlmutter": "ghcr.io/q-cad/matensemble:perlmutter-v1.2.3",
         "pathfinder": "ghcr.io/q-cad/matensemble:pathfinder-v1.2.3",
+        "linux": "ghcr.io/q-cad/matensemble:linux-v1.2.3",
     }
 
 
@@ -97,7 +98,7 @@ def test_file_tree_uses_fixed_directories(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ):
     root = tmp_path / "repo"
-    (root / "example_workflows" / "generic").mkdir(parents=True)
+    (root / "example_workflows" / "general").mkdir(parents=True)
     (root / "example_workflows" / "frontier").mkdir(parents=True)
     (root / "containers" / "frontier").mkdir(parents=True)
     (root / "src" / "matensemble").mkdir(parents=True)
@@ -105,8 +106,8 @@ def test_file_tree_uses_fixed_directories(
         '[project]\nname = "matensemble"\nversion = "9.9.9"\n',
         encoding="utf-8",
     )
-    (root / "example_workflows" / "generic" / "workflow.py").write_text(
-        "GENERIC = True\n", encoding="utf-8"
+    (root / "example_workflows" / "general" / "workflow.py").write_text(
+        "GENERAL = True\n", encoding="utf-8"
     )
     (root / "example_workflows" / "frontier" / "workflow.py").write_text(
         "FRONTIER = True\n", encoding="utf-8"
@@ -120,7 +121,7 @@ def test_file_tree_uses_fixed_directories(
 
     assert context.get_examples_for_system("frontier") == {
         "example_workflows/frontier/demo/submit.slurm": "#SBATCH -J demo\n",
-        "example_workflows/generic/workflow.py": "GENERIC = True\n",
+        "example_workflows/general/workflow.py": "GENERAL = True\n",
         "example_workflows/frontier/workflow.py": "FRONTIER = True\n",
     }
     assert context.get_example_batch_scripts("frontier") == {

@@ -21,7 +21,7 @@ Useful additions:
 Dashboard launches intentionally run through the source checkout with uv:
 
 ```bash
-uv run --project /path/to/MatEnsemble matensemble dashboard /path/to/matensemble_campaigns --host 127.0.0.1 --port 8000
+uv run --project /path/to/MatEnsemble matensemble-dashboard /path/to/matensemble_campaigns --host 127.0.0.1 --port 8000
 ```
 
 The MCP `launch_dashboard` result includes the exact `command`, `command_text`,

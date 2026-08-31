@@ -24,28 +24,12 @@ class Fluxlet:
     def __init__(
         self,
         handle: flux.Flux,
+        num_nodes: int,
+        gpus_per_node: int,
     ) -> None:
         self.handle = handle
-        self.num_nodes, self.gpus_per_node = self.get_gpus_per_node()
-
-    def get_gpus_per_node(self) -> tuple[int, int]:
-        """
-        Get the available nodes and gpus and calculate the number of
-        GPUs per node.
-        """
-
-        # drain broker rank first, then measure what is actually usable
-        self.handle.rpc("resource.drain", {"targets": "0"}).get()
-
-        resources = flux.resource.list.resource_list(self.handle).get()
-        nnodes = len(resources.free.ranks)
-        total_gpus = resources.free.ngpus
-
-        if nnodes == 0:
-            return 0, 0
-
-        gpus_per_node = total_gpus // nnodes
-        return nnodes, gpus_per_node
+        self.num_nodes = num_nodes
+        self.gpus_per_node = gpus_per_node
 
     def _write_chore_spec_if_needed(self, chore: Chore) -> None:
         if chore.chore_type is not ChoreType.PYTHON and chore.nnodes is None:

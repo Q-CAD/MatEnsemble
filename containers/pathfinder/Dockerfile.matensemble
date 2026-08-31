@@ -1,4 +1,4 @@
-FROM ghcr.io/q-cad/matensemble-base:pathfinder
+FROM ghcr.io/freddude2004/matensemble-base:pathfinder
 
 # Install OpenGL for OVITO
 RUN apt-get update && apt-get install -y \

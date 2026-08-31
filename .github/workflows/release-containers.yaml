@@ -72,8 +72,8 @@ jobs:
             dockerfile: containers/frontier/Dockerfile.matensemble
           - flavor: perlmutter
             dockerfile: containers/perlmutter/Dockerfile.matensemble
-          # - flavor: linux
-          #   dockerfile: containers/linux/Dockerfile.matensemble
+          - flavor: linux
+            dockerfile: containers/linux/Dockerfile.matensemble
 
     steps:
       - name: Checkout

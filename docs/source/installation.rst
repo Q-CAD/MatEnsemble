@@ -2,47 +2,33 @@
 Installation
 ============
 
-This guide covers the different methods of **installing** MatEnsemble: **what must be true** in your
-environment and **copy-pastable patterns** for common HPC runtimes. Pair it with :doc:`tutorials`
-for code samples and with :doc:`design` if you need a mental model of the runtime.
+This guide covers the different methods of **installing** MatEnsemble:
 
-Versions and compatibility
-==========================
+.. contents:: Contents
+   :depth 1
 
-* **Python:** ``>=3.12`` (see ``requires-python`` in the project metadata).
-* **Flux:** You need a working Flux allocation or single-user Flux instance **before** importing MatEnsemble
-  for real runs. The PyPI extra ``flux`` installs the Python bindings; it does not install flux-core for you.
-* **Operating system:** Linux is assumed for HPC-style Flux workflows. macOS or Windows installs may work for editing
-  workflows but are not the primary target for execution.
+Install Script
+==============
 
-Local dev containers and Flux
-=============================
-
-The repository dev container includes Flux for local smoke tests. A bare ``flux resource list`` fails unless
-you are already inside a Flux broker session:
+We have an install script that will simplify the process of installing and setting up MatEnsemble
+which you can run with:
 
 .. code-block:: bash
 
-   flux start flux resource list
+    curl -fsSL https://raw.githubusercontent.com/Q-CAD/MatEnsemble/refs/heads/main/install.sh | bash
 
-MatEnsemble drains broker rank ``0`` before measuring usable workflow resources. In a one-rank local Flux
-instance, that leaves no rank for chores, so examples may report that chores require more resources than the
-allocation can provide. Use a multi-rank test instance for local or laptop dev-container runs:
+If you plan on using other software along side MatEnsemble then it is recommended to familiarize
+yourself with how to install MatEnsemble from scratch.
 
-.. code-block:: bash
+Containers
+==========
 
-   flux start -s 2 python example_workflows/generic/dependencies/workflow.py
+Containers are the recommended way to run MatEnsemble on HPC systems. If you are unfamiliar with
+HPC container runtimes, see our overview of supported container engines for a brief introduction.
 
-The dev container sets ``MATENSEMBLE_FLUX_START`` to the recommended local launcher, so you can also run:
-
-.. code-block:: bash
-
-   $MATENSEMBLE_FLUX_START python example_workflows/generic/dependencies/workflow.py
-
-On production allocations, use the site launch pattern instead of ``-s 2``.
-
-Container images (recommended on clusters)
-===========================================
+.. contents:: Container Engines
+   :local:
+   :depth: 1
 
 Official images are published to GitHub Container Registry:
 
@@ -65,45 +51,39 @@ Tags follow the pattern ``<platform>-vX.Y.Z``:
    * - ``linux-vX.Y.Z``
      - General install, not optimized for any specific system.
 
-Containers are the recommended way to run MatEnsemble on HPC systems. If you are unfamiliar with HPC
-container runtimes, see our overview of supported container engines for a brief introduction. Experienced
-users can skip ahead to the installation and usage instructions for their target system.
-
 Apptainer
-=========
+---------
 
 Apptainer (formerly Singularity) was developed at Lawrence Berkeley National Laboratory and is currently maintained by
 The Linux Foundation. It is open source and is meant to be a container engine targeted
-specifically for HPC systems. To get started you with MatEnsemble using Apptainer is simple.
-You can build a Singularity Image Format (\*.sif) file that acts as a full portable container.
+specifically for HPC systems. To get started with MatEnsemble using Apptainer You can build a
+Singularity Image Format (SIF) file that acts as a full portable container.
 Apptainer is OCI compliant, so you can use our provided Docker images from the GitHub Container
-Registry to build a \*.sif file.
+Registry to build a SIF file.
 
 .. code-block:: bash
 
-    apptainer build <name>.sif docker://<source>/<image>:<tag>
+    apptainer build <name>.sif docker://ghcr.io/q-cad/matensemble:<system>-vX.Y.Z
 
-The <name> is whatever you want the portable squashed image to be named and the <source>/<image>:<tag> will be
-the version of MatEnsemble that you want to use. Here is an example of building a \*.sif file.
+The <name> is whatever you want the portable squashed image to be named and the `system-vX.Y.Z` will
+be the HPC system you are targeting and the version of MatEnsemble that you would like to install
 
 Apptainer images are immutable by design to ensure reproducibility, but you may want to add software
-or packages into the image. Apptainer makes this very seamless, you can either convert your \*.sif file
-into "sandbox" or you can build the sandbox from an OCI image published to a registry. The sandbox format
-will allow you to install other packages or compile other software into the image. You can then convert
-the changes you made into a transferrable \*.sif file that is immutable.
+or packages into the image. Apptainer makes this very seamless, you can either convert your SIF file
+into a "sandbox" or you can build the sandbox from an OCI image published to a registry. The sandbox
+format will allow you to install other packages or compile other software into the image. You can
+then convert the changes you made into a transferrable SIF file that is immutable.
 
 .. code-block:: bash
 
-
-    apptainer build --sandbox <sandbox_name> docker://<source>/<image>:<tag>
+    apptainer build --sandbox <sandbox_name> docker://ghcr.io/q-cad/matensemble:<system>-vX.Y.Z
 
     # or
 
     apptainer build --sandbox <sandbox_name> <path/to/sif>.sif
 
-
-Once you have built the image you can install packages or compile software into it as if it were a Ubuntu
-system. You just need to open it in an editable mode.
+Once you have built the image you can install package or compile software into it as if it were a
+Ubuntu system. You just need to open it in an editable mode.
 
 .. code-block:: bash
 
@@ -116,46 +96,227 @@ squash it into an immutable format:
 
    apptainer build <name>.sif <path/to/sandbox>
 
-For more information on how to build and manage apptainer images see `Introduction to Apptainer/Singularity <https://hsf-training.github.io/hsf-training-singularity-webpage/>`_.
+You can also edit a container by building the SIF from a definition file. Much like a Dockerfile
+or Container a definition can be passed to apptainer to build a SIF. First you would createa a
+definition file:
+
+.. code-block:: text
+    :caption: matensemble.def
+
+    BootStrap: docker
+    From: ghcr.io/q-cad/matensemble:<system>-vX.Y.Z
+
+    %post
+        # install system packages
+        apt-get install -y <package>
+
+        # install python packages
+        pip install <package>
+
+        # install and build software from source
+        wget <source-code>
+        tar -xzf
+        ...
+
+    %environment
+        # update environment variables
+        export PATH=<new-path>:$PATH
+        export LD_LIBRARY_PATH=<new-path>:$LD_LIBRARY_PATH
+        ...
+
+    %runscript
+        # the command to be run when you run this SIF
+        python /opt/root/tutorials/roofit/rf101_basics.py
+
+    %help
+        # text that is printed when you run help on the SIF
+        Example MatEnsemble container
+
+Once you have the For more information on how to build and manage apptainer images see
+`Introduction to Apptainer/Singularity <https://hsf-training.github.io/hsf-training-singularity-webpage/>`_.
+
+Docker
+------
+
+Docker was the first of the container engines and has had the most influence, but it is not ideal
+for HPC because of the extra privileges users need to run it. For this reason Docker is not
+used on any HPC systems. But if you are trying to run MatEnsemble in the cloud or locally then
+Docker is one of your best options. First you can pull our Docker image targeted for general
+linux systems from the image registry.
+
+.. code-block:: bash
+
+   sudo docker pull ghcr.io/q-cad/matensemble:linux-vX.Y.Z
+
+You can then run the image as a container and binding your current working directory into it with
+this command:
+
+.. code-block:: bash
+
+   sudo docker run \
+    --rm -it \
+    -v "$(pwd):/workspace" \
+    -w /workspace \
+    ghcr.io/q-cad/matensemble:linux-vX.Y.Z \
+    /bin/bash
+
+If you need to install other packages into the image you can either install them interactively in
+in a container. In order to keep the changes you need to make sure that the container is saved
+rather than being removed which you can do by removing the --rm flag in the docker run command
+
+.. code-block:: bash
+
+   sudo docker run \
+    -it \
+    -v "$(pwd):/workspace" \
+    -w /workspace \
+    ghcr.io/q-cad/matensemble:linux-vX.Y.Z \
+    /bin/bash
+
+After you have made all of the changes you can re-attach to the container by first finding
+the container ID with:
+
+.. code-block:: bash
+
+    sudo docker ps -a
+
+and attach to the container in an interactive mode using the container ID:
+
+.. code-block:: bash
+
+   sudo docker exec -it <container-id> /bin/bash
+
+To make the changes more permanant you can save the container as an image.
+
+.. code-block::bash
+
+   sudo docker commit <container-id> <new-image-name>:<tag>
+
+Another way to build new images is with the Dockerfile. The Dockerfile makes the builds reproducible
+and are easy to update and pass around to others.
+If you would like to share the image with others you can also push the image to a registry like
+`Docker Hub <https://hub.docker.com/>_` or `GitHub Container Registry <https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registryhttps://hub.docker.com/>_`
+
+Podman
+------
+
+Podman is another popular container engine that is heavily inspired by Docker but has some
+advantages that Docker does not. Podman is made to be a drop in replacement for Docker and the
+commands are essentially identical, so if you are familiar with Docker then everything for podman
+will feel essentially the same. First you can pull our Docker image targeted for general
+linux systems from the image registry.
+
+.. code-block:: bash
+
+   podman pull ghcr.io/q-cad/matensemble:linux-vX.Y.Z
+
+You can then run the image as a container and binding your current working directory into it with
+this command:
+
+.. code-block:: bash
+
+   podman run \
+    --rm -it \
+    -v "$(pwd):/workspace" \
+    -w /workspace \
+    ghcr.io/q-cad/matensemble:linux-vX.Y.Z \
+    /bin/bash
+
+If you need to install other packages into the image you can either install them interactively in
+in a container. In order to keep the changes you need to make sure that the container is saved
+rather than being removed which you can do by removing the --rm flag in the podman run command
+
+.. code-block:: bash
+
+   podman run \
+    -it \
+    -v "$(pwd):/workspace" \
+    -w /workspace \
+    ghcr.io/q-cad/matensemble:linux-vX.Y.Z \
+    /bin/bash
+
+After you have made all of the changes you can re-attach to the container first finding
+the container ID with:
+
+.. code-block:: bash
+
+    podman ps -a
+
+and attach to the container in an interactive mode using the container ID:
+
+.. code-block:: bash
+
+   podman exec -it <container-id> /bin/bash
+
+To make the changes more permanant you can save the container as an image.
+
+.. code-block::bash
+
+   podman commit <container-id> <new-image-name>:<tag>
+
+Another way to build new images is with the Containerfile. The Containerfile makes the builds
+reproducible and are easy to update and pass around to others.
+If you would like to share the image with others you can also push the image to a registry like
+`Docker Hub <https://hub.docker.com/>_` or `GitHub Container Registry <https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registryhttps://hub.docker.com/>_`
 
 Podman-HPC
-==========
+----------
 
-Podman-HPC is a wrapper around podman to allow it to be used on HPC systems. The NERSC Perlmutter system is
-currently migrating from Shifter to Podman-HPC. If you are at all familiar with Docker then Podman-HPC
-will feel very familiar to you as it uses all the same commands. You can pull any OCI image and
-Podman-HPC will squash it automatically into a read only format and transfer it to your $SCRATCH storage
-
-.. code-block:: bash
-
-   podman-hpc pull <source>/<image>:<tag>
-
-The main benefit of Podman-HPC is that as well as being a container runtime you can also use it as an
-engine to build images. You can create a "recipe" as either a Dockerfile or more generally a Containerfile.
-Then you can build that recipe.
+Podman-HPC is a wrapper around podman to allow it to be used on HPC systems. The NERSC Perlmutter
+system is currently migrating from Shifter to Podman-HPC. If you are at all familiar with Docker
+then Podman-HPC will feel very familiar to you as it uses all the same commands. You can pull any
+OCI image and Podman-HPC will squash it automatically into a read only format and transfer it to
+your $SCRATCH storage
 
 .. code-block:: bash
 
-   podman-hpc build -t <source>/<image>:<tag> .
+   podman-hpc pull ghcr.io/q-cad/matensemble:<system>-vX.Y.Z
 
-When you first build the image it will not be put into a read-only format and it will not be migrated to
-your $SCRATCH storage. So you need to either migrate to the $SCRATCH storage or push the image to a registry
+The main benefit of Podman-HPC is that as well as being a container runtime you can also use it as
+an engine to build images. You can create a "recipe" as either a Dockerfile or more generally a
+Containerfile. Then you can build that recipe.
+
+.. code-block:: bash
+
+   podman-hpc build -t ghcr.io/q-cad/matensemble:<system>-vX.Y.Z .
+
+When you first build the image it will not be put into a read-only format and it will not be
+migrated to your $SCRATCH storage. So you need to either migrate to the $SCRATCH storage or push
+the image to a registry
 
 .. code-block::
 
    # To migrate to $SCRATCH
-   podman-hpc migrate <source>/<image>:<tag>
+   podman-hpc migrate ghcr.io/q-cad/matensemble:<system>-vX.Y.Z
 
-To push the image to a registry you first have to login to that respective registry and then you can enter
-the "podman-hpc push" command.
+To push the image to a registry you first have to login to that respective registry and then you
+can enter the "podman-hpc push" command.
 
 If you want to add packages or compile other software into an image like you can with an apptainer
-sandbox, you can. Its not as nice as with apptainer but its still possible. The most straightforward way
-is to just edit our provided recipe to install whatever packages you want. You can find the recipe on
-the `MatEnsemble GitHub Repository <https://github.com/Q-CAD/MatEnsemble/tree/main/example_workflows>`_.
+sandbox, you can. Its not as nice as with apptainer but its still possible. The most straightforward
+way is to just edit our provided recipe to install whatever packages you want. You can find the
+recipe on the `MatEnsemble GitHub Repository <https://github.com/Q-CAD/MatEnsemble/tree/main/example_workflows>`_.
 
-You can also run an image in an interactive mode and install the packages and save the changes but the steps
-are complicated and hard to get straight especially on HPC systems where you may lose connection.
+You can also run an image in an interactive mode and install the packages and save the changes but
+the steps are complicated and hard to get straight especially on HPC systems where you may lose
+connection.
+
+Conda
+=====
+
+We provide an environment.yaml file with all of the dependencies needed to run MatEnsemble (without GPU support).
+If you have Anaconda or Miniconda installed and are on an x86_64 machine, then you can build an environment to
+run MatEnsemble.
+
+You can build a Conda environment with MatEnsemble and dependencies installed using the environment.yaml file.
+
+.. code-block:: bash
+
+    conda env create -f environment.yaml
+    conda activate matensemble
+
+For more information see the `Anaconda Documentation <https://www.anaconda.com/docs/main>`__.
+
 
 Frontier (OLCF)
 ===============
@@ -337,24 +498,8 @@ You should see all of the resources ready to use and are ready run one of your m
 
 The curated Pathfinder smoke-test example lives under ``example_workflows/pathfinder/lammps_smoke``.
 
-Conda
-=====
-
-We provide an environment.yaml file with all of the dependencies needed to run MatEnsemble (without GPU support).
-If you have Anaconda or Miniconda installed and are on an x86_64 machine, then you can build an environment to
-run MatEnsemble.
-
-You can build a Conda environment with MatEnsemble and dependencies installed using the environment.yaml file.
-
-.. code-block:: bash
-
-    conda env create -f environment.yaml
-    conda activate matensemble
-
-For more information see the `Anaconda Documentation <https://www.anaconda.com/docs/main>`__.
-
-Dev Container
-=============
+Developer Container
+===================
 
 There is a .devcontainer folder in the repository so if you have Docker Desktop installed you can
 simply clone out the repository and open it in VS Code with the devcontainer extension installed.
@@ -370,6 +515,15 @@ In the CLI you can start a flux instance and a Jupyter server that has access to
 
 After starting the flux allocation you can copy the link that is printed and register it as a
 jupyter kernel in VS Code.
+
+Versions and compatibility
+==========================
+
+* **Python:** ``>=3.12`` (see ``requires-python`` in the project metadata).
+* **Flux:** You need a working Flux allocation or single-user Flux instance **before** importing MatEnsemble
+  for real runs. The PyPI extra ``flux`` installs the Python bindings; it does not install flux-core for you.
+* **Operating system:** Linux is assumed for HPC-style Flux workflows. macOS or Windows installs may work for editing
+  workflows but are not the primary target for execution.
 
 Where to read next
 ==================

@@ -9,20 +9,21 @@ guidance, and dashboard helpers.
 Install on an HPC login node
 ============================
 
-Currently the MCP server is only targeted at the Frontier, Pathfinder and Perlmutter
-HPC systems. To install the server you can use our script. Before running the install
-script make sure the $SCRATCH environment variable is set or navigate to a location
-that would like your workflows to live.
+The MCP server supports Frontier, Pathfinder, Perlmutter, and general Linux
+HPC systems. To install the server you can use our script. The installer will prompt
+you for the directory where the MatEnsemble workspace should be created.
 
 .. code-block:: bash
 
     curl -fsSL https://raw.githubusercontent.com/Q-CAD/MatEnsemble/refs/heads/main/install.sh | bash
 
-The installer will create a directory named MatEnsemble which is where most of the
-MCP configuration will live. It will install the MatEnsemble CLI tool to ~/.local/bin
-and ensure that uv is installed. Afterwards it will place agent configuration files
-for Claude Code, Codex, GitHub Copilot and Gemini into a subdirectory named
-matensemble_campaigns.
+The installer creates a MatEnsemble checkout and asks whether to write MCP
+configuration files. If selected, it ensures that uv is installed and writes agent
+configuration files for Claude Code, Codex, GitHub Copilot, Gemini, and VS Code into
+a ``matensemble_campaigns`` workspace. By default it also pulls the latest image
+for the selected system. Selecting Frontier, Pathfinder, or Perlmutter installs
+and configures the matching site CLI automatically; general Linux installations
+detect Apptainer, Docker, Podman, or Podman-HPC and do not install the HPC CLI.
 
 Usage
 =====
@@ -43,7 +44,7 @@ Once you have one of these tools installed you can then start using the MatEnsem
 .. code-block:: bash
 
    # navigate to the campaigns directory
-   cd $SCRATCH/MatEnsemble/matensemble_campaigns
+   cd /path/to/install/MatEnsemble/matensemble_campaigns
 
    # start the LLM with the CLI tool
    <claude, codex, copilot or gemini>
@@ -107,7 +108,7 @@ checkout with ``uv``:
 
 .. code-block:: bash
 
-   uv run --project /path/to/MatEnsemble matensemble dashboard /path/to/matensemble_campaigns --host 127.0.0.1 --port 8000
+   uv run --project /path/to/MatEnsemble matensemble-dashboard /path/to/matensemble_campaigns --host 127.0.0.1 --port 8000
 
 The ``launch_dashboard`` response includes the exact command, working directory, project
 root, and log path. If a launch exits immediately, check that the reported working
